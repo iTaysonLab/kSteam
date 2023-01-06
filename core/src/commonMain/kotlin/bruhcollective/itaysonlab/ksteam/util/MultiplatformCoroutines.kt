@@ -1,0 +1,5 @@
+package bruhcollective.itaysonlab.ksteam.util
+
+import kotlinx.coroutines.CoroutineDispatcher
+
+expect val MultiplatformIODispatcher: CoroutineDispatcher
