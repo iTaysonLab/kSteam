@@ -9,7 +9,9 @@ group = "bruhcollective.itaysonlab"
 version = "1.0-SNAPSHOT"
 
 tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+    }
 }
 
 application {

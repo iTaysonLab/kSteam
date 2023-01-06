@@ -17,13 +17,7 @@ version = "1.0-SNAPSHOT"
 kotlin {
     jvm {
         compilations.all {
-            kotlinOptions.jvmTarget = "1.8"
-        }
-
-        withJava()
-
-        testRuns["test"].executionTask.configure {
-            useJUnitPlatform()
+            kotlinOptions.options.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
         }
     }
 
