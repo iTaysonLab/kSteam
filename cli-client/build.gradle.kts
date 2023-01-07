@@ -14,6 +14,10 @@ tasks.withType<KotlinCompile> {
     }
 }
 
+kotlin {
+    jvmToolchain(8)
+}
+
 application {
     mainClass.set("MainKt")
 }
