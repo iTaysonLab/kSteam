@@ -2,10 +2,9 @@ package bruhcollective.itaysonlab.ksteam.network
 
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
-import bruhcollective.itaysonlab.ksteam.messages.BasePacketMessage
-import bruhcollective.itaysonlab.ksteam.messages.ProtoPacketMessage
-import bruhcollective.itaysonlab.ksteam.models.JobId
+import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.util.MultiplatformIODispatcher
+import bruhcollective.itaysonlab.ksteam.util.send
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
@@ -13,18 +12,22 @@ import io.ktor.websocket.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
+import okio.Buffer
+import okio.ByteString.Companion.toByteString
+import okio.Source
+import okio.buffer
 import steam.enums.EMsg
+import steam.messages.base.CMsgMulti
 import steam.messages.clientserver_login.CMsgClientHeartBeat
 import steam.messages.clientserver_login.CMsgClientHello
-import kotlin.time.Duration.Companion.seconds
 
-internal class WebSocketCMClient (
+internal class CMClient (
     private val serverList: CMList,
     private val configuration: SteamClientConfiguration
 ) {
     // A scope used to hold WSS connection
     private val internalScope = CoroutineScope(MultiplatformIODispatcher + SupervisorJob() + CoroutineName("kSteam-cmClient") + CoroutineExceptionHandler { coroutineContext, throwable ->
-        logDebug("SteamClient:Scope", "WSS error: ${throwable.message}")
+        logDebug("SteamClient:Restarter", "WSS error: ${throwable.message} <exception: ${throwable::class.simpleName}>")
         // TODO should delay and restart
         // launchConnectionCoroutine()
     })
@@ -39,12 +42,12 @@ internal class WebSocketCMClient (
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
      */
-    private val outgoingPacketsQueue = Channel<BasePacketMessage<*>>(capacity = Channel.UNLIMITED)
+    private val outgoingPacketsQueue = Channel<SteamPacket>(capacity = Channel.UNLIMITED)
 
     /**
      * A queue for incoming packets, which are processed by consumers
      */
-    private val mutableIncomingPacketsQueue = MutableSharedFlow<BasePacketMessage<*>>(0, Int.MAX_VALUE, BufferOverflow.SUSPEND)
+    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(0, Int.MAX_VALUE, BufferOverflow.SUSPEND)
     val incomingPacketsQueue = mutableIncomingPacketsQueue.asSharedFlow()
 
     /**
@@ -85,12 +88,13 @@ internal class WebSocketCMClient (
         configuration.networkClient.wss(urlString = "wss://" + (selectedServer?.endpoint ?: return) + "/cmsocket/") {
             logDebug("SteamClient:WsConnection", "Connected, sending hello (and login if available)")
 
-            send(Frame.Binary(fin = true, ProtoPacketMessage(
-                messageId = EMsg.k_EMsgClientHello,
-                protobufAdapter = CMsgClientHello.ADAPTER
-            ).withPayload(CMsgClientHello(
-                protocol_version = 65580
-            )).toSteamPacket()))
+            send(
+                SteamPacket.newProto(
+                        messageId = EMsg.k_EMsgClientHello,
+                        adapter = CMsgClientHello.ADAPTER,
+                        payload = CMsgClientHello(protocol_version = 65580)
+                )
+            )
 
             logDebug("SteamClient:WsConnection", "Hello sent successfully, now starting the loop")
 
@@ -105,8 +109,24 @@ internal class WebSocketCMClient (
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
                     if (packetToReceive is Frame.Binary) {
-                        logDebug("SteamClient:WsConnection", "Received binary message (data: ${packetToReceive.data})")
+                        logDebug("SteamClient:WsConnection", "Received binary message (data: ${packetToReceive.data.toByteString().hex()})")
                         // Parse message out from this and add to queue
+
+                        val steamPacket = runCatching {
+                            SteamPacket.ofNetworkPacket(packetToReceive.data)
+                        }
+
+                        if (steamPacket.isSuccess) {
+                            steamPacket.getOrNull()?.let { checkedPacket ->
+                                if (checkedPacket.messageId == EMsg.k_EMsgMulti) {
+                                    handleMultiPacket(checkedPacket)
+                                } else {
+                                    mutableIncomingPacketsQueue.tryEmit(checkedPacket)
+                                }
+                            }
+                        } else {
+                            logDebug("SteamClient:WsConnection", "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}")
+                        }
                     } else {
                         logDebug("SteamClient:WsConnection", "Received non-binary message (type: ${packetToReceive.frameType.name})")
                     }
@@ -116,34 +136,62 @@ internal class WebSocketCMClient (
                 if (outgoingPacketsQueue.isEmpty.not()) {
                     val packetToSend = outgoingPacketsQueue.receive()
                     logDebug("SteamClient:WsConnection", "Sending packet to Steam3 (message: ${packetToSend.messageId.name})")
-                    send(Frame.Binary(fin = true, data = packetToSend.toSteamPacket()))
+                    send(packetToSend.encode().also {
+                        logDebug("SteamClient:WsConnection", "> ${it.toByteString().hex()}")
+                    })
                 }
             }
         }
     }
 
     /**
-     * Add a packet of a type <Request> to a outgoing queue and then awaits for a response with a type <Response>.
-     * Use this only for typed requests with known request/results. If
+     * Sometimes, Steam can send multi-messages (gzipped 2+ messages at once).
+     * This function handles such messages.
      */
-    suspend fun <Request, Response> execute(packet: BasePacketMessage<Request>): BasePacketMessage<Response> {
+    private fun handleMultiPacket(checkedPacket: SteamPacket) {
+        val payload = checkedPacket.getProtoPayload(CMsgMulti.ADAPTER)
+
+        if ((payload.size_unzipped ?: 0) > 0) {
+            logDebug("SteamPacket:Multi", "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)")
+            TODO("kSteam does not support gzipped multipackets at the moment")
+        } else {
+            logDebug("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
+        }
+
+        require(payload.message_body != null) { "Payload body is null" }
+
+        val payloadBuffer = Buffer().write(payload.message_body ?: return)
+
+        do {
+            val packetSize = payloadBuffer.readIntLe()
+            val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
+            logDebug("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
+            mutableIncomingPacketsQueue.tryEmit(SteamPacket.ofNetworkPacket(packetContent))
+        } while (payloadBuffer.exhausted().not())
+    }
+
+    /**
+     * Add a packet to a outgoing queue and then awaits for a response with the attached job ID.
+     */
+    suspend fun execute(packet: SteamPacket): SteamPacket {
         tryConnect()
 
         val processedSourcePacket = packet.apply {
-            sourceJobId = JobId(++jobIdCounter)
+            header.sourceJobId = ++jobIdCounter
+            header.sessionId = 0
         }
 
         return incomingPacketsQueue.onSubscription {
             outgoingPacketsQueue.trySend(processedSourcePacket)
         }.filter { incomingPacket ->
-            incomingPacket.targetJobId == processedSourcePacket.sourceJobId
-        }.filterIsInstance<BasePacketMessage<Response>>().single()
+            incomingPacket.header.targetJobId == processedSourcePacket.header.sourceJobId
+        }.single()
     }
 
     /**
      * Add a packet to a outgoing queue and forget about it (no job IDs and awaits)
      */
-    suspend fun executeAndForget(packet: BasePacketMessage<*>) {
+    suspend fun executeAndForget(packet: SteamPacket) {
         tryConnect()
         outgoingPacketsQueue.trySend(packet)
     }
@@ -155,10 +203,11 @@ internal class WebSocketCMClient (
             while (true) {
                 logDebug("SteamClient:Heartbeat", "Adding heartbeat packet to queue")
 
-                executeAndForget(ProtoPacketMessage(
+                executeAndForget(SteamPacket.newProto(
                     messageId = EMsg.k_EMsgClientHeartBeat,
-                    protobufAdapter = CMsgClientHeartBeat.ADAPTER
-                ).withPayload(CMsgClientHeartBeat()))
+                    adapter = CMsgClientHeartBeat.ADAPTER,
+                    payload = CMsgClientHeartBeat()
+                ))
 
                 delay(intervalMs)
             }
