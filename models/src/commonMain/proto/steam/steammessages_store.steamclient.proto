@@ -3,7 +3,7 @@ import "steam/steammessages_unified_base.steamclient.proto";
 import "steam/contenthubs.proto";
 import "steam/enums.proto";
 
-option java_generic_services = true;
+option java_generic_services = false;
 option java_multiple_files = true;
 option java_package = "steam.messages.store";
 

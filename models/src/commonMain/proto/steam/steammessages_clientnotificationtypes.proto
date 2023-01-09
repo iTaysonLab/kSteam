@@ -1,5 +1,5 @@
 option optimize_for = SPEED;
-option java_generic_services = true;
+option java_generic_services = false;
 option java_multiple_files = true;
 option java_package = "steam.messages.clientnotificationtypes";
 

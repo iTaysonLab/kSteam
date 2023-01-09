@@ -1,7 +1,7 @@
 import "steam/steammessages_base.proto";
 import "steam/steammessages_unified_base.steamclient.proto";
 
-option java_generic_services = true;
+option java_generic_services = false;
 option java_multiple_files = true;
 option java_package = "steam.messages.econ";
 
