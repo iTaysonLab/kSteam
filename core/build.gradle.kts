@@ -1,6 +1,8 @@
 plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.library")
+    `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
@@ -11,6 +13,10 @@ kotlin {
         compilations.all {
             kotlinOptions.options.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
         }
+    }
+
+    android {
+        publishAllLibraryVariants()
     }
 
     configure(listOf(
@@ -69,4 +75,18 @@ kotlin {
         val jvmMain by getting
         val jvmTest by getting
     }
+}
+
+android {
+    buildToolsVersion = "32.0.0"
+    compileSdk = 31
+
+    defaultConfig {
+        minSdk = 17
+        targetSdk = 31
+    }
+
+    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
+
+    testCoverage.jacocoVersion = "0.8.8"
 }
