@@ -43,6 +43,10 @@ sealed class SteamPacketHeader private constructor() {
             buffer.writeLongLe(steamId.toLong())
             buffer.writeIntLe(sessionId)
         }
+
+        override fun toString(): String {
+            return "Binary(headerSize=$headerSize, headerVersion=$headerVersion, targetJobId=$targetJobId, sourceJobId=$sourceJobId, headerCanary=$headerCanary, steamId=$steamId, sessionId=$sessionId)"
+        }
     }
 
     class Protobuf: SteamPacketHeader() {
@@ -89,6 +93,10 @@ sealed class SteamPacketHeader private constructor() {
                 buffer.writeIntLe(protoData.size)
                 buffer.write(protoData)
             }
+        }
+
+        override fun toString(): String {
+            return protoHeader.toString()
         }
     }
 }

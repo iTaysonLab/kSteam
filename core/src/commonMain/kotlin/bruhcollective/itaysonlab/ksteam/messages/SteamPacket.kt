@@ -31,7 +31,6 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
             val messageId = EMsg.fromValue(messageIdRaw and ProtobufClearMask)
 
             logDebug("SteamPacket:ParseNet", "Received packet of ID $messageId (proto: ${(messageIdRaw and ProtobufMask) != 0})")
-            logDebug("SteamPacket:ParseNet", "> ${rawPacket.toByteString().hex()}")
 
             val header: SteamPacketHeader = if ((messageIdRaw and ProtobufMask) != 0) {
                 SteamPacketHeader.Protobuf()
@@ -39,7 +38,11 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
                 SteamPacketHeader.Binary()
             }.apply { read(packetBuffer) }
 
+            logDebug("SteamPacket:ParseNet", "[header] > $header")
+
             val payload = packetBuffer.readByteArray()
+
+            logDebug("SteamPacket:ParseNet", "[payload] > ${payload.toByteString().hex()}")
 
             return SteamPacket(
                 messageId = messageId ?: EMsg.k_EMsgInvalid,

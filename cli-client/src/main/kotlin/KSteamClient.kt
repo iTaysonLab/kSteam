@@ -29,6 +29,8 @@ class KSteamClient: CoroutineScope by CoroutineScope(SupervisorJob() + Dispatche
         runBlocking {
             steamClient.start()
 
+            println("Sending message")
+
             val responsePacket = steamClient.execute(SteamPacket.newProto(
                 messageId = EMsg.k_EMsgServiceMethodCallFromClientNonAuthed,
                 adapter = CAuthentication_BeginAuthSessionViaQR_Request.ADAPTER,

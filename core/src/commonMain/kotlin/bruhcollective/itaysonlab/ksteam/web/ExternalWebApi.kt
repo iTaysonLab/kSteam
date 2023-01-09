@@ -7,10 +7,9 @@ import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-class WebApi (
+internal class ExternalWebApi (
     private val httpClient: HttpClient
 ) {
     internal suspend fun getCmList(): List<CMServerEntry> {
