@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.network
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.platform.MultiplatformIODispatcher
 import bruhcollective.itaysonlab.ksteam.util.send
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
@@ -24,11 +25,11 @@ internal class CMClient (
     private val configuration: SteamClientConfiguration
 ) {
     // A scope used to hold WSS connection
-    private val internalScope = CoroutineScope(MultiplatformIODispatcher + SupervisorJob() + CoroutineName("kSteam-cmClient") + CoroutineExceptionHandler { _, throwable ->
+    private val internalScope = CreateSupervisedCoroutineScope("cmClient", MultiplatformIODispatcher) { _, throwable ->
         logDebug("CMClient:Restarter", "WSS error: ${throwable.message} <exception: ${throwable::class.simpleName}>")
         // TODO should delay and restart
         // launchConnectionCoroutine()
-    })
+    }
 
     private var selectedServer: CMServerEntry? = null
 
@@ -147,25 +148,31 @@ internal class CMClient (
      * This function handles such messages.
      */
     private fun handleMultiPacket(checkedPacket: SteamPacket) {
-        val payload = checkedPacket.getProtoPayload(CMsgMulti.ADAPTER)
+        val payloadResult = checkedPacket.getProtoPayload(CMsgMulti.ADAPTER)
 
-        if ((payload.size_unzipped ?: 0) > 0) {
-            logDebug("SteamPacket:Multi", "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)")
-            TODO("kSteam does not support gzipped multipackets at the moment")
+        if (payloadResult.isSuccess) {
+            val payload = payloadResult.data
+
+            if ((payload.size_unzipped ?: 0) > 0) {
+                logDebug("SteamPacket:Multi", "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)")
+                TODO("kSteam does not support gzipped multipackets at the moment")
+            } else {
+                logDebug("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
+            }
+
+            require(payload.message_body != null) { "Payload body is null" }
+
+            val payloadBuffer = Buffer().write(payload.message_body ?: return)
+
+            do {
+                val packetSize = payloadBuffer.readIntLe()
+                val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
+                logDebug("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
+                mutableIncomingPacketsQueue.tryEmit(SteamPacket.ofNetworkPacket(packetContent))
+            } while (payloadBuffer.exhausted().not())
         } else {
-            logDebug("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
+            logDebug("SteamPacket:Multi", "> ${payloadResult.result.name}")
         }
-
-        require(payload.message_body != null) { "Payload body is null" }
-
-        val payloadBuffer = Buffer().write(payload.message_body ?: return)
-
-        do {
-            val packetSize = payloadBuffer.readIntLe()
-            val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
-            logDebug("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
-            mutableIncomingPacketsQueue.tryEmit(SteamPacket.ofNetworkPacket(packetContent))
-        } while (payloadBuffer.exhausted().not())
     }
 
     /**

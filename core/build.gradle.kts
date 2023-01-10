@@ -52,24 +52,36 @@ kotlin {
             }
         }
 
-        val darwinMain by creating {
+        val nonJvmMain by creating {
+            this.dependsOn(commonMain)
+        }
+
+        val iosMain by creating {
+            this.dependsOn(commonMain)
+        }
+
+        val macosMain by creating {
             this.dependsOn(commonMain)
         }
 
         val macosArm64Main by getting {
-            this.dependsOn(darwinMain)
+            this.dependsOn(nonJvmMain)
+            this.dependsOn(macosMain)
         }
 
         val macosX64Main by getting {
-            this.dependsOn(darwinMain)
+            this.dependsOn(nonJvmMain)
+            this.dependsOn(macosMain)
         }
 
         val iosArm64Main by getting {
-            this.dependsOn(darwinMain)
+            this.dependsOn(nonJvmMain)
+            this.dependsOn(iosMain)
         }
 
         val iosX64Main by getting {
-            this.dependsOn(darwinMain)
+            this.dependsOn(nonJvmMain)
+            this.dependsOn(iosMain)
         }
 
         val jvmMain by getting

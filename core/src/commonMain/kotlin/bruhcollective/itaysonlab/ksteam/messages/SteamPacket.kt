@@ -1,11 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.messages
 
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.util.buffer
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
 import steam.enums.EMsg
+import steam.extra.enums.EResult
 
 /**
  * Structure:
@@ -73,9 +75,14 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
         write(payload)
     }.readByteArray()
 
-    fun <T> getProtoPayload(adapter: ProtoAdapter<T>): T {
+    fun <T> getProtoPayload(adapter: ProtoAdapter<T>): Result<T> {
         require(header is SteamPacketHeader.Protobuf) { "Message is not protobuf, but proto decoding requested" }
-        return adapter.decode(payload)
+
+        return if (header.result == EResult.OK) {
+            Result(adapter.decode(payload) to EResult.OK)
+        } else {
+            Result(null to header.result)
+        }
     }
 
     fun <T> getBinaryPayload(adapter: SteamBinaryPayloadAdapter<T>): T {

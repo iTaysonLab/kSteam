@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
+import bruhcollective.itaysonlab.ksteam.models.Result
 import com.squareup.wire.Message
 import com.squareup.wire.ProtoAdapter
 import steam.enums.EMsg
@@ -10,13 +11,22 @@ import steam.enums.EMsg
 class WebApi(
     private val steamClient: SteamClient
 ): BaseHandler {
+    /**
+     * Create a WebAPI request using the Steam network transport
+     *
+     * @param signed if this request should be done on current account scope
+     * @param methodName formatted as "Service.Method", like "Authentication.BeginAuthSessionViaQR"
+     * @param requestAdapter Wire adapter for request body
+     * @param responseAdapter Wire adapter for response body
+     * @param requestData request body
+     */
     suspend fun <Request: Message<Request, *>, Response: Message<Response, *>> execute(
         signed: Boolean = true,
         methodName: String,
         requestAdapter: ProtoAdapter<Request>,
         responseAdapter: ProtoAdapter<Response>,
         requestData: Request
-    ): Response {
+    ): Result<Response> {
         return steamClient.execute(SteamPacket.newProto(
             messageId = if (signed) {
                 EMsg.k_EMsgServiceMethodCallFromClient

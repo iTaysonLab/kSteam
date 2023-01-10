@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.messages
 
 import okio.Buffer
+import steam.extra.enums.EResult
 import steam.messages.base.CMsgProtoBufHeader
 
 sealed class SteamPacketHeader private constructor() {
@@ -81,6 +82,8 @@ sealed class SteamPacketHeader private constructor() {
             set(value) {
                 protoHeader = protoHeader.copy(target_job_name = value)
             }
+
+        val result: EResult get() = protoHeader.eresult ?: EResult.Fail
 
         override fun read(buffer: Buffer) {
             val headerLength = buffer.readIntLe().toLong()
