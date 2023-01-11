@@ -1,7 +1,7 @@
 kSteam
 ---
 
-kSteam is a **multiplatform Kotlin library** which allows you to connect to the Steam network.
+kSteam is a **JVM/Android Kotlin library** which allows you to connect to the Steam network.
 
 It's usage mostly based on **Kotlin Coroutines** and **states** to better suit for modern application development.
 
@@ -11,23 +11,12 @@ It's usage mostly based on **Kotlin Coroutines** and **states** to better suit f
 ---
 
 ### Goals
-- Provide a multiplatform library for accessing the Steam network
+- Provide a easy-to-use library for accessing the Steam network on JVM/Android
 - Make UI development easier by providing state-based approach without taking care of Protocol Buffers
 - Manage high performance and low memory/storage footprint by using well-tested modern technology such as Wire (for protobufs) and Ktor (for networking)
 - Provide full Steam Guard and new auth flow support
 - Removing the gap between WebAPI and Steam3 messages
 - Actively cache data for minimizing network usage and portability
-
----
-
-### Platforms
-- JVM (with Android)
-- macOS / iOS (as a KMM dependency)
-
-> Kotlin/JS is nearly impossible to use due to Steam's CORS policy (you need to use a proxy to bypass).
-> 
-> Linux/Windows support is planned.
----
 
 ### Credits
 - [SteamKit](https://github.com/SteamRE/SteamKit/) and [JavaSteam](https://github.com/Longi94/JavaSteam/) - base for understanding how Steam3 network works
