@@ -1,14 +1,20 @@
 package bruhcollective.itaysonlab.ksteam.models
 
+import okio.ByteString
 import steam.messages.auth.CAuthentication_BeginAuthSessionViaCredentials_Response
 import steam.messages.auth.EAuthSessionGuardType
 
 sealed class AuthorizationState {
     object Unauthorized: AuthorizationState()
 
+    object Success: AuthorizationState()
+
     class AwaitingTwoFactor(
+        val clientId: Long,
+        val requestId: ByteString?,
         val steamId: SteamId,
-        val supportedConfirmationMethods: List<ConfirmationMethod>
+        val supportedConfirmationMethods: List<ConfirmationMethod>,
+        internal val sumProtos: List<EAuthSessionGuardType>
     ): AuthorizationState() {
         internal constructor(networkResponse: CAuthentication_BeginAuthSessionViaCredentials_Response): this(
             supportedConfirmationMethods = networkResponse.allowed_confirmations.mapNotNull {
@@ -20,7 +26,7 @@ sealed class AuthorizationState {
                     EAuthSessionGuardType.k_EAuthSessionGuardType_MachineToken -> ConfirmationMethod.MachineToken
                     else -> null
                 }
-            }, steamId = SteamId((networkResponse.steamid ?: 0L).toULong())
+            }, sumProtos = networkResponse.allowed_confirmations.mapNotNull { it.confirmation_type }, steamId = SteamId((networkResponse.steamid ?: 0L).toULong()), clientId = networkResponse.client_id ?: 0L, requestId = networkResponse.request_id
         )
 
         enum class ConfirmationMethod {

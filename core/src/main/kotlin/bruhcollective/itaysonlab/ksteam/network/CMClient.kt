@@ -87,7 +87,9 @@ internal class CMClient (
 
         logDebug("CMClient:Start", "Connecting to WSS [url = ${selectedServer?.endpoint}]")
         configuration.networkClient.wss(urlString = "wss://" + (selectedServer?.endpoint ?: return) + "/cmsocket/") {
-            logDebug("CMClient:WsConnection", "Connected, sending hello (and login if available)")
+            call.request.attributes
+
+            logDebug("CMClient:WsConnection", "Connected to Steam3 network")
 
             send(
                 SteamPacket.newProto(
@@ -97,15 +99,9 @@ internal class CMClient (
                 )
             )
 
-            logDebug("CMClient:WsConnection", "Hello sent successfully, now starting the loop")
-
             clientState.value = CMClientState.Connected
 
             while (true) {
-                if (incoming.isEmpty.not() || outgoingPacketsQueue.isEmpty.not()) {
-                    logDebug("CMClient:WsConnection", "Loop started (have incoming: ${incoming.isEmpty.not()}, have outgoing: ${outgoingPacketsQueue.isEmpty.not()})")
-                }
-
                 // Check if a message from server is present
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
@@ -136,10 +132,8 @@ internal class CMClient (
                 // Check if outgoing messages are in queue
                 if (outgoingPacketsQueue.isEmpty.not()) {
                     val packetToSend = outgoingPacketsQueue.receive()
-                    logDebug("CMClient:WsConnection", "Sending packet to Steam3 (message: ${packetToSend.messageId.name})")
-                    send(packetToSend.encode().also {
-                        logDebug("CMClient:WsConnection", "> ${it.toByteString().hex()}")
-                    })
+                    logDebug("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
+                    send(packetToSend.encode())
                 }
             }
         }

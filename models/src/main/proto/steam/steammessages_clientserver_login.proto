@@ -1,5 +1,4 @@
 import "steam/steammessages_base.proto";
-import "steam_ext/enums.proto";
 
 option optimize_for = SPEED;
 option cc_generic_services = false;
@@ -92,7 +91,7 @@ message CMsgClientLogon {
 }
 
 message CMsgClientLogonResponse {
-	optional .EResult eresult = 1 [default = Fail];
+	optional int32 eresult = 1 [default = 2];
 	optional int32 legacy_out_of_game_heartbeat_seconds = 2;
 	optional int32 heartbeat_seconds = 3;
 	optional uint32 deprecated_public_ip = 4;
@@ -125,7 +124,7 @@ message CMsgClientRequestWebAPIAuthenticateUserNonce {
 }
 
 message CMsgClientRequestWebAPIAuthenticateUserNonceResponse {
-	optional .EResult eresult = 1 [default = Fail];
+	optional int32 eresult = 1 [default = 2];
 	optional string webapi_authenticate_user_nonce = 11;
 	optional int32 token_type = 3 [default = -1];
 }
@@ -134,7 +133,7 @@ message CMsgClientLogOff {
 }
 
 message CMsgClientLoggedOff {
-	optional .EResult eresult = 1 [default = Fail];
+	optional int32 eresult = 1 [default = 2];
 }
 
 message CMsgClientNewLoginKey {

@@ -4,21 +4,30 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AuthorizationState
+import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.platform.*
-import com.squareup.wire.ProtoAdapter
+import bruhcollective.itaysonlab.ksteam.util.buffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
+import steam.enums.EMsg
 import steam.enums.ESessionPersistence
 import steam.extra.enums.EResult
 import steam.messages.auth.*
+import steam.messages.base.CMsgIPAddress
+import steam.messages.clientserver_login.CMsgClientLogon
+import steam.messages.clientserver_login.CMsgClientLogonResponse
+import java.net.InetAddress
+import java.util.*
+import kotlin.random.Random
 
 class Account(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
     private val deviceInfo get() = steamClient.config.deviceInfo
 
@@ -76,7 +85,9 @@ class Account(
             requestData = CAuthentication_GetPasswordRSAPublicKey_Request(account_name = username)
         ).data
 
-        val encryptedPassword = Cryptography.rsaEncrypt(password, rsaData.publickey_mod.orEmpty(), rsaData.publickey_exp.orEmpty()).toByteString().base64().dropLast(1)
+        val encryptedPassword =
+            Cryptography.rsaEncrypt(password, rsaData.publickey_mod.orEmpty(), rsaData.publickey_exp.orEmpty())
+                .toByteString().base64().dropLast(1)
 
         val signInResult = webApi.execute(
             signed = false,
@@ -100,11 +111,35 @@ class Account(
             AuthorizationResult.InvalidPassword
         } else {
             with(signInResult.data) {
+                logDebug(
+                    "Account:SignIn",
+                    "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
+                )
+
                 authState.tryEmit(AuthorizationState.AwaitingTwoFactor(this))
                 createWatcherFlow(this.interval ?: 5f, this.client_id!!, this.request_id!!)
             }
 
             AuthorizationResult.Success
+        }
+    }
+
+    suspend fun updateCurrentSessionWithCode(code: String) {
+        require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
+
+        (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).let { authState ->
+            webApi.execute(
+                signed = false,
+                methodName = "Authentication.UpdateAuthSessionWithSteamGuardCode",
+                requestAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request.ADAPTER,
+                responseAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Response.ADAPTER,
+                requestData = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request(
+                    client_id = authState.clientId,
+                    steamid = authState.steamId.id.toLong(),
+                    code = code,
+                    code_type = authState.sumProtos.first()
+                )
+            )
         }
     }
 
@@ -118,7 +153,38 @@ class Account(
 
     }
 
-    private suspend fun pollAuthStatus(clientId: Long, requestId: ByteString): CAuthentication_PollAuthSessionStatus_Response {
+    private suspend fun sendClientLogon(accountName: String, token: String, steamId: SteamId) {
+        steamClient.execute(SteamPacket.newProto(
+            EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
+                protocol_version = 65580,
+                client_package_version = 1671236931,
+                client_language = "english",
+                client_os_type = steamClient.config.deviceInfo.osType.value,
+                should_remember_password = true,
+                qos_level = 2,
+                machine_id = Random.nextBytes(64).toByteString(),
+                machine_name = steamClient.config.deviceInfo.deviceName,
+                eresult_sentryfile = EResult.Fail.value,
+                steamguard_dont_remember_computer = false,
+                is_steam_deck = false,
+                is_steam_box = false,
+                client_instance_id = 0L,
+                supports_rate_limit_response = true,
+                access_token = token,
+                sha_sentryfile = null,
+            )
+        ).withHeader {
+            this.sessionId = 0
+            this.steamId = steamId.id
+        })
+    }
+
+    suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
+
+    private suspend fun pollAuthStatus(
+        clientId: Long,
+        requestId: ByteString
+    ): CAuthentication_PollAuthSessionStatus_Response {
         return webApi.execute(
             signed = false,
             methodName = "Authentication.PollAuthSessionStatus",
@@ -137,6 +203,14 @@ class Account(
 
                 if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
                     // Success, now we can cancel the session
+                    logDebug("Account:Watcher", "Succesfully logged in: $pollAnswer")
+
+                    sendClientLogon(
+                        accountName = pollAnswer.account_name.orEmpty(),
+                        token = pollAnswer.refresh_token.orEmpty(),
+                        steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
+                    )
+
                     break
                 } else {
                     delay((interval * 1000).toLong())
@@ -149,6 +223,19 @@ class Account(
 
     override suspend fun onEvent(packet: SteamPacket) {
         when (packet.messageId) {
+            EMsg.k_EMsgClientLogOnResponse -> {
+                if (packet.isProtobuf()) {
+                    val response = packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER)
+
+                    if (response.data.eresult == EResult.OK.value) {
+                        // We are logged in to Steam3 server
+                        authState.value = AuthorizationState.Success
+                    }
+                } else {
+                    // Ignore, that's kicked out for inactivity, Restarter should reconnect again
+                }
+            }
+
             else -> {}
         }
     }
@@ -156,6 +243,7 @@ class Account(
     enum class AuthorizationResult {
         // Now you should use the state from Account.accountAuthState to show TFA interface
         Success,
+
         // The password does not match.
         InvalidPassword
     }

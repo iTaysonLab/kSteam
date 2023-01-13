@@ -17,7 +17,7 @@ import steam.extra.enums.EResult
  * packet can be both proto/structure-based
  * proto has a protobuf header + message glued
  */
-class SteamPacket private constructor(val messageId: EMsg, val header: SteamPacketHeader, private var payload: ByteArray) {
+class SteamPacket private constructor(val messageId: EMsg, val header: SteamPacketHeader, internal var payload: ByteArray) {
     companion object {
         // Usage: EMsg and ProtobufMask
         private const val ProtobufMask = 0x80000000.toInt()
@@ -32,7 +32,7 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
             val messageIdRaw = packetBuffer.readIntLe()
             val messageId = EMsg.fromValue(messageIdRaw and ProtobufClearMask)
 
-            logDebug("SteamPacket:ParseNet", "Received packet of ID $messageId (proto: ${(messageIdRaw and ProtobufMask) != 0})")
+            logDebug("SteamPacket:ParseNet", "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})")
 
             val header: SteamPacketHeader = if ((messageIdRaw and ProtobufMask) != 0) {
                 SteamPacketHeader.Protobuf()
@@ -40,11 +40,11 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
                 SteamPacketHeader.Binary()
             }.apply { read(packetBuffer) }
 
-            logDebug("SteamPacket:ParseNet", "[header] > $header")
+            logDebug("SteamPacket:ParseNet", "> [header] $header")
 
             val payload = packetBuffer.readByteArray()
 
-            logDebug("SteamPacket:ParseNet", "[payload] > ${payload.toByteString().hex()}")
+            logDebug("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
 
             return SteamPacket(
                 messageId = messageId ?: EMsg.k_EMsgInvalid,
@@ -60,6 +60,11 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
                 payload = adapter.encode(payload)
             )
         }
+    }
+
+    fun withHeader(func: SteamPacketHeader.() -> Unit): SteamPacket {
+        header.apply(func)
+        return this
     }
 
     fun encode(): ByteArray = Buffer().apply {
@@ -89,4 +94,7 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
         require(header is SteamPacketHeader.Binary) { "Message is not binary, but binary decoding requested" }
         return adapter.decode(payload.buffer())
     }
+
+    fun isProtobuf() = header is SteamPacketHeader.Protobuf
+    fun isBinary() = header is SteamPacketHeader.Binary
 }
