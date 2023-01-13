@@ -7,7 +7,6 @@ import bruhcollective.itaysonlab.ksteam.models.storage.GlobalConfiguration
 import bruhcollective.itaysonlab.ksteam.models.storage.SavedAccount
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.internal.writeJson
 import kotlinx.serialization.json.okio.decodeFromBufferedSource
 import kotlinx.serialization.json.okio.encodeToBufferedSink
 import okio.buffer
@@ -22,25 +21,35 @@ import java.io.File
 internal class Storage(
     private val steamClient: SteamClient
 ): BaseHandler {
-    private val globalConfigFile = File(steamClient.config.rootFolder, "config.json")
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
+
+    private val globalConfigFile = File(steamClient.config.rootFolder, "config.json").also {
+        if (it.exists().not()) it.createNewFile()
+    }
 
     @OptIn(ExperimentalSerializationApi::class)
-    internal var globalConfiguration: GlobalConfiguration = Json.decodeFromBufferedSource(globalConfigFile.source().buffer())
+    internal var globalConfiguration: GlobalConfiguration = if (globalConfigFile.length() != 0L) {
+        globalConfigFile.source().buffer().use {
+            json.decodeFromBufferedSource(it)
+        }
+    } else GlobalConfiguration()
         set(value) {
             field = value
-
-            globalConfigFile.let {
-                it.delete()
-                it.createNewFile()
+            globalConfigFile.sink().buffer().use {
+                json.encodeToBufferedSink(value, it)
             }
-
-            Json.encodeToBufferedSink(value, globalConfigFile.sink().buffer())
         }
 
     fun modifyAccount(steamId: SteamId, func: SavedAccount.() -> SavedAccount) {
         globalConfiguration = globalConfiguration.copy(
             availableAccounts = globalConfiguration.availableAccounts.toMutableMap().apply {
                 put(steamId.id, (globalConfiguration.availableAccounts[steamId.id] ?: SavedAccount(steamId = steamId.id)).let(func))
+            }, defaultAccount = if (globalConfiguration.defaultAccount == 0u.toULong()) {
+                steamId.id
+            } else {
+                globalConfiguration.defaultAccount
             }
         )
     }
