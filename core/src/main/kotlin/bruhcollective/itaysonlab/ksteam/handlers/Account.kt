@@ -167,7 +167,7 @@ class Account(
     }
 
     private suspend fun sendClientLogon(token: String, steamId: SteamId) {
-        steamClient.execute(SteamPacket.newProto(
+        steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
                 protocol_version = 65580,
                 client_package_version = 1671236931,
