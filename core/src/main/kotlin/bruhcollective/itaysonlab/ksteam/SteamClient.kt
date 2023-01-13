@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.handlers.Account
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.Storage
 import bruhcollective.itaysonlab.ksteam.handlers.WebApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.network.CMClient
@@ -21,7 +22,7 @@ import kotlinx.coroutines.flow.onEach
  * Main entrypoint for kSteam usage.
  */
 class SteamClient (
-    internal val config: SteamClientConfiguration = SteamClientConfiguration()
+    internal val config: SteamClientConfiguration
 ) {
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
 
@@ -32,6 +33,7 @@ class SteamClient (
     val handlers = listOf<BaseHandler>(
         Account(this),
         WebApi(this),
+        Storage(this)
     )
 
     suspend fun start() {

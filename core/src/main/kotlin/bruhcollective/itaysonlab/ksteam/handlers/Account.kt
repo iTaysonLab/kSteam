@@ -6,23 +6,18 @@ import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.platform.*
-import bruhcollective.itaysonlab.ksteam.util.buffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.withContext
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import steam.enums.EMsg
 import steam.enums.ESessionPersistence
 import steam.extra.enums.EResult
 import steam.messages.auth.*
-import steam.messages.base.CMsgIPAddress
 import steam.messages.clientserver_login.CMsgClientLogon
 import steam.messages.clientserver_login.CMsgClientLogonResponse
-import java.net.InetAddress
-import java.util.*
 import kotlin.random.Random
 
 class Account(
@@ -34,6 +29,10 @@ class Account(
     // Lazy init because it'll crash on creation
     private val webApi by lazy {
         steamClient.getHandler<WebApi>()
+    }
+
+    private val storage by lazy {
+        steamClient.getHandler<Storage>()
     }
 
     private var authStateWatcher: Job? = null
@@ -146,14 +145,28 @@ class Account(
     /**
      * Tries to sign in using saved session data from [Storage].
      * You can specify your own SteamID to sign in a particular account. If this parameter is null, the "default" SteamID will be selected.
+     *
+     * @return if there is an account available
      */
     suspend fun trySignInSaved(
-        steamId: Long? = null
-    ) {
+        steamId: SteamId? = null
+    ): Boolean {
+        val accountToSignIn = if (steamId != null) {
+            storage.globalConfiguration.availableAccounts[steamId.id]
+        } else {
+            storage.globalConfiguration.availableAccounts[storage.globalConfiguration.defaultAccount]
+        } ?: storage.globalConfiguration.availableAccounts.values.firstOrNull()
 
+        return if (accountToSignIn != null) {
+            sendClientLogon(steamId = SteamId(accountToSignIn.steamId), token = accountToSignIn.refreshToken)
+            true
+        } else {
+            logDebug("Account:AutoSignIn", "No accounts found on the kSteam database. Please log in manually to use this feature.")
+            false
+        }
     }
 
-    private suspend fun sendClientLogon(accountName: String, token: String, steamId: SteamId) {
+    private suspend fun sendClientLogon(token: String, steamId: SteamId) {
         steamClient.execute(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
                 protocol_version = 65580,
@@ -205,10 +218,19 @@ class Account(
                     // Success, now we can cancel the session
                     logDebug("Account:Watcher", "Succesfully logged in: $pollAnswer")
 
+                    val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
+
+                    storage.modifyAccount(steamId) {
+                        copy(
+                            accessToken = pollAnswer.access_token.orEmpty(),
+                            refreshToken = pollAnswer.refresh_token.orEmpty(),
+                            accountName = pollAnswer.account_name.orEmpty()
+                        )
+                    }
+
                     sendClientLogon(
-                        accountName = pollAnswer.account_name.orEmpty(),
                         token = pollAnswer.refresh_token.orEmpty(),
-                        steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
+                        steamId = steamId
                     )
 
                     break

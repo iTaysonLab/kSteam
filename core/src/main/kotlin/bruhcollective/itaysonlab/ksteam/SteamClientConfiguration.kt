@@ -9,12 +9,18 @@ import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
+import java.io.File
 
 class SteamClientConfiguration (
     private val httpProxyIp: String? = null,
     private val httpProxyPort: Int = 80,
-    internal val deviceInfo: DeviceInformation = DeviceInformation()
+    internal val deviceInfo: DeviceInformation = DeviceInformation(),
+    internal val rootFolder: File,
 ) {
+    init {
+        rootFolder.mkdirs()
+    }
+
     internal val networkClient = HttpClient(CIO) {
         engine {
             if (httpProxyIp.isNullOrEmpty().not()) {
