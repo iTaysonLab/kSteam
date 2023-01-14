@@ -1,5 +1,8 @@
 import "google/protobuf/descriptor.proto";
 
+option java_multiple_files = true;
+option java_package = "steam.messages.unified_base";
+
 option optimize_for = SPEED;
 option cc_generic_services = false;
 

@@ -1,7 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models
 
-import steam.extra.enums.EResult
-import kotlin.jvm.JvmInline
+import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 
 @JvmInline
 value class Result <T> (private val packed: Pair<T?, EResult>) {

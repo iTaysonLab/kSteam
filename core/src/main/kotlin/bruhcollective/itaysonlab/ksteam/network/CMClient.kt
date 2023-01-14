@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.network
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.util.send
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
@@ -17,7 +18,6 @@ import okio.ByteString.Companion.toByteString
 import okio.Source
 import okio.buffer
 import okio.gzip
-import steam.enums.EMsg
 import steam.messages.base.CMsgMulti
 import steam.messages.clientserver_login.CMsgClientHeartBeat
 import steam.messages.clientserver_login.CMsgClientHello
@@ -31,6 +31,7 @@ internal class CMClient (
         logDebug("CMClient:Restarter", "WSS error: ${throwable.message} <exception: ${throwable::class.simpleName}>")
         // TODO should delay and restart
         // launchConnectionCoroutine()
+        mutableClientState.value = CMClientState.Connecting
     }
 
     private var selectedServer: CMServerEntry? = null
@@ -54,7 +55,8 @@ internal class CMClient (
     /**
      * CMClient state
      */
-    val clientState = MutableStateFlow(CMClientState.Idle)
+    private val mutableClientState = MutableStateFlow(CMClientState.Idle)
+    val clientState = mutableClientState.asStateFlow()
 
     /**
      * Starts a coroutine which launches the WSS client. Also used to start the client if it's not started yet.
@@ -74,13 +76,13 @@ internal class CMClient (
         internalScope.launch {
             connect()
         }.invokeOnCompletion {
-            clientState.value = CMClientState.Idle
+            mutableClientState.value = CMClientState.Idle
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun connect() {
-        clientState.value = CMClientState.Connecting
+        mutableClientState.value = CMClientState.Connecting
 
         logDebug("CMClient:Start", "Fetching CMList")
         selectedServer = serverList.getBestServer()
@@ -99,7 +101,7 @@ internal class CMClient (
                 )
             )
 
-            clientState.value = CMClientState.Connected
+            mutableClientState.value = CMClientState.Connected
 
             while (true) {
                 // Check if a message from server is present

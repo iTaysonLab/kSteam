@@ -5,10 +5,14 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "1.0-SNAPSHOT"
+version = "b2"
 
 kotlin {
     jvmToolchain(8)
+}
+
+java {
+    withSourcesJar()
 }
 
 dependencies {
@@ -25,4 +29,17 @@ dependencies {
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            pom {
+                name.set("kSteam - Core")
+                description.set("A Steam Network client library with a slice of Kotlin.")
+                url.set("https://github.com/itaysonlab/ksteam")
+                from(components.findByName("java"))
+            }
+        }
+    }
 }

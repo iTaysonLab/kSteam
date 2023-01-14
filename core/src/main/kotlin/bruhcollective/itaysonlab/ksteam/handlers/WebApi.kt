@@ -4,9 +4,9 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.Result
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import com.squareup.wire.Message
 import com.squareup.wire.ProtoAdapter
-import steam.enums.EMsg
 
 class WebApi(
     private val steamClient: SteamClient

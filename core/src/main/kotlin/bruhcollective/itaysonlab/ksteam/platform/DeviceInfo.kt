@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.platform
 
-import steam.extra.enums.EGamingDeviceType
-import steam.extra.enums.EOSType
+import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
+import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import steam.messages.auth.CAuthentication_DeviceDetails
 import steam.messages.auth.EAuthTokenPlatformType
 
@@ -33,7 +33,7 @@ class DeviceInformation(
     fun toAuthDetails() = CAuthentication_DeviceDetails(
         device_friendly_name = deviceName,
         platform_type = platformType,
-        os_type = osType,
-        gaming_device_type = gamingDeviceType,
+        os_type = osType.encoded,
+        gaming_device_type = gamingDeviceType.encoded,
     )
 }

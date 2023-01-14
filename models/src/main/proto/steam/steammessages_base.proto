@@ -1,5 +1,4 @@
 import "google/protobuf/descriptor.proto";
-import "steam_ext/enums.proto";
 
 option optimize_for = SPEED;
 option java_generic_services = true;
@@ -102,7 +101,7 @@ message CMsgProtoBufHeader {
 	optional fixed64 jobid_target = 11 [default = 18446744073709551615];
 	optional string target_job_name = 12;
 	optional int32 seq_num = 24;
-	optional .EResult eresult = 13 [default = Fail];
+	optional int32 eresult = 13 [default = 2];
 	optional string error_message = 14;
 	optional uint32 auth_account_flags = 16;
 	optional uint32 token_source = 22;

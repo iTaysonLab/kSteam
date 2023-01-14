@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.storage.GlobalConfiguration
 import bruhcollective.itaysonlab.ksteam.models.storage.SavedAccount
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -12,7 +13,6 @@ import kotlinx.serialization.json.okio.encodeToBufferedSink
 import okio.buffer
 import okio.sink
 import okio.source
-import steam.enums.EMsg
 import java.io.File
 
 /**

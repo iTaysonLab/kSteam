@@ -5,6 +5,8 @@ import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -12,9 +14,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
-import steam.enums.EMsg
 import steam.enums.ESessionPersistence
-import steam.extra.enums.EResult
 import steam.messages.auth.*
 import steam.messages.clientserver_login.CMsgClientLogon
 import steam.messages.clientserver_login.CMsgClientLogonResponse
@@ -26,14 +26,8 @@ class Account(
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
     private val deviceInfo get() = steamClient.config.deviceInfo
 
-    // Lazy init because it'll crash on creation
-    private val webApi by lazy {
-        steamClient.getHandler<WebApi>()
-    }
-
-    private val storage by lazy {
-        steamClient.getHandler<Storage>()
-    }
+    private val webApi get() = steamClient.getHandler<WebApi>()
+    private val storage get() = steamClient.getHandler<Storage>()
 
     private var authStateWatcher: Job? = null
     private var authState = MutableStateFlow<AuthorizationState>(AuthorizationState.Unauthorized)
@@ -172,12 +166,12 @@ class Account(
                 protocol_version = 65580,
                 client_package_version = 1671236931,
                 client_language = "english",
-                client_os_type = steamClient.config.deviceInfo.osType.value,
+                client_os_type = steamClient.config.deviceInfo.osType.encoded,
                 should_remember_password = true,
                 qos_level = 2,
                 machine_id = Random.nextBytes(64).toByteString(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
-                eresult_sentryfile = EResult.Fail.value,
+                eresult_sentryfile = EResult.Fail.encoded,
                 steamguard_dont_remember_computer = false,
                 is_steam_deck = false,
                 is_steam_box = false,
@@ -249,7 +243,7 @@ class Account(
                 if (packet.isProtobuf()) {
                     val response = packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER)
 
-                    if (response.data.eresult == EResult.OK.value) {
+                    if (response.data.eresult == EResult.OK.encoded) {
                         // We are logged in to Steam3 server
                         authState.value = AuthorizationState.Success
                     }

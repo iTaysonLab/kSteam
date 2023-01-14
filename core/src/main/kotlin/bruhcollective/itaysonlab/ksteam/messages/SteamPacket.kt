@@ -2,12 +2,11 @@ package bruhcollective.itaysonlab.ksteam.messages
 
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.models.Result
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.util.buffer
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
-import steam.enums.EMsg
-import steam.extra.enums.EResult
 
 /**
  * Structure:
@@ -30,7 +29,7 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
 
             val packetBuffer = rawPacket.buffer()
             val messageIdRaw = packetBuffer.readIntLe()
-            val messageId = EMsg.fromValue(messageIdRaw and ProtobufClearMask)
+            val messageId = EMsg.byEncoded(messageIdRaw and ProtobufClearMask)
 
             logDebug("SteamPacket:ParseNet", "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})")
 
@@ -47,7 +46,7 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
             logDebug("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
 
             return SteamPacket(
-                messageId = messageId ?: EMsg.k_EMsgInvalid,
+                messageId = messageId,
                 header = header,
                 payload = payload
             )
@@ -68,7 +67,7 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
     }
 
     fun encode(): ByteArray = Buffer().apply {
-        writeIntLe(messageId.value.let {
+        writeIntLe(messageId.encoded.let {
             if (header is SteamPacketHeader.Protobuf) {
                 it or ProtobufMask
             } else {
