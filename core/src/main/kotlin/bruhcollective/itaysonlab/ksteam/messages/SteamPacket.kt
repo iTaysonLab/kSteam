@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.messages
 
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.util.buffer
@@ -31,7 +31,7 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
             val messageIdRaw = packetBuffer.readIntLe()
             val messageId = EMsg.byEncoded(messageIdRaw and ProtobufClearMask)
 
-            logDebug("SteamPacket:ParseNet", "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})")
+            logVerbose("SteamPacket:ParseNet", "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})")
 
             val header: SteamPacketHeader = if ((messageIdRaw and ProtobufMask) != 0) {
                 SteamPacketHeader.Protobuf()
@@ -39,11 +39,11 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
                 SteamPacketHeader.Binary()
             }.apply { read(packetBuffer) }
 
-            logDebug("SteamPacket:ParseNet", "> [header] $header")
+            logVerbose("SteamPacket:ParseNet", "> [header] $header")
 
             val payload = packetBuffer.readByteArray()
 
-            logDebug("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
+            logVerbose("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
 
             return SteamPacket(
                 messageId = messageId,

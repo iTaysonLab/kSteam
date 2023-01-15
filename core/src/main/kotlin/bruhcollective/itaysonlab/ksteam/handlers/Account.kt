@@ -1,13 +1,15 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.debug.logWarning
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.platform.*
+import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
+import bruhcollective.itaysonlab.ksteam.platform.Cryptography
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -104,7 +106,7 @@ class Account(
             AuthorizationResult.InvalidPassword
         } else {
             with(signInResult.data) {
-                logDebug(
+                logVerbose(
                     "Account:SignIn",
                     "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
                 )
@@ -117,6 +119,9 @@ class Account(
         }
     }
 
+    /**
+     * Update a current session with a Steam Guard or email code.
+     */
     suspend fun updateCurrentSessionWithCode(code: String) {
         require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
 
@@ -155,7 +160,10 @@ class Account(
             sendClientLogon(steamId = SteamId(accountToSignIn.steamId), token = accountToSignIn.refreshToken)
             true
         } else {
-            logDebug("Account:AutoSignIn", "No accounts found on the kSteam database. Please log in manually to use this feature.")
+            if (steamId != null) {
+                logWarning("Account:AutoSignIn", "No accounts found on the kSteam database. Please log in manually to use this feature.")
+            }
+
             false
         }
     }
@@ -186,6 +194,11 @@ class Account(
         })
     }
 
+    /**
+     * Cancel authentication polling, if you have used [getSignInQrCode].
+     */
+    suspend fun cancelPolling() = authStateWatcher?.cancel()
+
     suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
 
     private suspend fun pollAuthStatus(
@@ -210,7 +223,7 @@ class Account(
 
                 if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
                     // Success, now we can cancel the session
-                    logDebug("Account:Watcher", "Succesfully logged in: $pollAnswer")
+                    logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
 
                     val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
 

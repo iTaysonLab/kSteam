@@ -2,8 +2,11 @@ package bruhcollective.itaysonlab.ksteam.network
 
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.logError
+import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.util.send
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
@@ -21,17 +24,17 @@ import okio.gzip
 import steam.messages.base.CMsgMulti
 import steam.messages.clientserver_login.CMsgClientHeartBeat
 import steam.messages.clientserver_login.CMsgClientHello
+import steam.messages.clientserver_login.CMsgClientLogonResponse
 
 internal class CMClient (
     private val serverList: CMList,
     private val configuration: SteamClientConfiguration
 ) {
     // A scope used to hold WSS connection
-    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO) { _, throwable ->
-        logDebug("CMClient:Restarter", "WSS error: ${throwable.message} <exception: ${throwable::class.simpleName}>")
-        // TODO should delay and restart
-        // launchConnectionCoroutine()
+    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO) { ctx, throwable ->
+        logError("CMClient:Restarter", "WSS error: ${throwable.message} <exception: ${throwable::class.simpleName}>")
         mutableClientState.value = CMClientState.Connecting
+        // TODO: restart
     }
 
     private var selectedServer: CMServerEntry? = null
@@ -40,6 +43,9 @@ internal class CMClient (
      * A counter used to set sourceJobID field in the Steam packets.
      */
     private var jobIdCounter = 0L
+
+    private var cellId = 0
+    private var clientSessionId = 0
 
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
@@ -101,14 +107,14 @@ internal class CMClient (
                 )
             )
 
-            mutableClientState.value = CMClientState.Connected
+            mutableClientState.value = CMClientState.Logging
 
             while (true) {
                 // Check if a message from server is present
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
                     if (packetToReceive is Frame.Binary) {
-                        logDebug("CMClient:WsConnection", "Received binary message (data: ${packetToReceive.data.toByteString().hex()})")
+                        logVerbose("CMClient:WsConnection", "Received binary message (data: ${packetToReceive.data.toByteString().hex()})")
                         // Parse message out from this and add to queue
 
                         val steamPacket = runCatching {
@@ -120,11 +126,15 @@ internal class CMClient (
                                 if (checkedPacket.messageId == EMsg.k_EMsgMulti) {
                                     handleMultiPacket(checkedPacket)
                                 } else {
+                                    if (checkedPacket.messageId == EMsg.k_EMsgClientLogOnResponse) {
+                                        handleClientLogOn(checkedPacket)
+                                    }
+
                                     mutableIncomingPacketsQueue.tryEmit(checkedPacket)
                                 }
                             }
                         } else {
-                            logDebug("CMClient:WsConnection", "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}")
+                            logError("CMClient:WsConnection", "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}")
                         }
                     } else {
                         logDebug("CMClient:WsConnection", "Received non-binary message (type: ${packetToReceive.frameType.name})")
@@ -134,10 +144,21 @@ internal class CMClient (
                 // Check if outgoing messages are in queue
                 if (outgoingPacketsQueue.isEmpty.not()) {
                     val packetToSend = outgoingPacketsQueue.receive()
-                    logDebug("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
+                    logVerbose("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
                     send(packetToSend.encode())
                 }
             }
+        }
+    }
+
+    private fun handleClientLogOn(checkedPacket: SteamPacket) {
+        val payloadResult = checkedPacket.getProtoPayload(CMsgClientLogonResponse.ADAPTER)
+
+        if (payloadResult.isSuccess && payloadResult.data.eresult == EResult.OK.encoded) {
+            cellId = payloadResult.data.cell_id ?: 0
+            clientSessionId = checkedPacket.header.sessionId
+            internalScope.startHeartbeat(intervalMs = (payloadResult.data.heartbeat_seconds ?: 9) * 1000L)
+            mutableClientState.value = CMClientState.Connected
         }
     }
 
@@ -152,9 +173,9 @@ internal class CMClient (
             val payload = payloadResult.data
 
             if ((payload.size_unzipped ?: 0) > 0) {
-                logDebug("SteamPacket:Multi", "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)")
+                logVerbose("SteamPacket:Multi", "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)")
             } else {
-                logDebug("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
+                logVerbose("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
             }
 
             require(payload.message_body != null) { "Payload body is null" }
@@ -168,11 +189,11 @@ internal class CMClient (
             do {
                 val packetSize = payloadBuffer.readIntLe()
                 val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
-                logDebug("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
+                logVerbose("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
                 mutableIncomingPacketsQueue.tryEmit(SteamPacket.ofNetworkPacket(packetContent))
             } while (payloadBuffer.exhausted().not())
         } else {
-            logDebug("SteamPacket:Multi", "> ${payloadResult.result.name}")
+            logVerbose("SteamPacket:Multi", "> ${payloadResult.result.name}")
         }
     }
 
@@ -184,7 +205,7 @@ internal class CMClient (
 
         val processedSourcePacket = packet.apply {
             header.sourceJobId = ++jobIdCounter
-            header.sessionId = 0
+            header.sessionId = clientSessionId
         }
 
         return incomingPacketsQueue.onSubscription {
@@ -207,7 +228,7 @@ internal class CMClient (
 
         launch(actorJob + CoroutineName("kSteam-heartbeat")) {
             while (true) {
-                logDebug("CMClient:Heartbeat", "Adding heartbeat packet to queue")
+                logVerbose("CMClient:Heartbeat", "Adding heartbeat packet to queue")
 
                 executeAndForget(SteamPacket.newProto(
                     messageId = EMsg.k_EMsgClientHeartBeat,

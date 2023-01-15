@@ -1,19 +1,23 @@
 package bruhcollective.itaysonlab.ksteam
 
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.handlers.Account
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.Storage
 import bruhcollective.itaysonlab.ksteam.handlers.WebApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.network.CMClient
+import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
 import bruhcollective.itaysonlab.ksteam.web.ExternalWebApi
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 
 /**
  * Main entrypoint for kSteam usage.
@@ -34,13 +38,24 @@ class SteamClient (
     )
 
     val connectionStatus get() = cmClient.clientState
+    val incomingPacketsFlow get() = cmClient.incomingPacketsQueue
 
     suspend fun start() {
         cmClient.tryConnect()
     }
 
     init {
-        cmClient.incomingPacketsQueue
+        connectionStatus
+            .onEach {
+                if (it == CMClientState.Logging) {
+                    // Now we can log in with a default account if available
+                    getHandler<Account>().trySignInSaved()
+                }
+            }.catch { throwable ->
+                logError("SteamClient:EventFlow", "Error occurred when collecting a client state: ${throwable.message}")
+            }.launchIn(eventsScope)
+
+        incomingPacketsFlow
             .filter { packet ->
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
@@ -49,7 +64,7 @@ class SteamClient (
                     handler.onEvent(packet)
                 }
             }.catch { throwable ->
-                logDebug("SteamClient:EventFlow", "Error occurred when collecting a packet: ${throwable.message}")
+                logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${throwable.message}")
             }.launchIn(eventsScope)
     }
 
@@ -61,8 +76,6 @@ class SteamClient (
         }
     }.first()
 
-    // Low-level packet API goes below. If applicable, use proper bindings.
     suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
     suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)
-    val incomingPacketsFlow get() = cmClient.incomingPacketsQueue
 }
