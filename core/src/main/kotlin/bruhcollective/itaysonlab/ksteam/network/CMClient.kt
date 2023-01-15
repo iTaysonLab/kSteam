@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.network
 
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.debug.logError
@@ -103,7 +104,7 @@ internal class CMClient (
                 SteamPacket.newProto(
                         messageId = EMsg.k_EMsgClientHello,
                         adapter = CMsgClientHello.ADAPTER,
-                        payload = CMsgClientHello(protocol_version = 65580)
+                        payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
                 )
             )
 

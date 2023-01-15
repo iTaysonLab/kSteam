@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.debug.logWarning
@@ -171,7 +172,7 @@ class Account(
     private suspend fun sendClientLogon(token: String, steamId: SteamId) {
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
-                protocol_version = 65580,
+                protocol_version = EnvironmentConstants.PROTOCOL_VERSION,
                 client_package_version = 1671236931,
                 client_language = "english",
                 client_os_type = steamClient.config.deviceInfo.osType.encoded,
