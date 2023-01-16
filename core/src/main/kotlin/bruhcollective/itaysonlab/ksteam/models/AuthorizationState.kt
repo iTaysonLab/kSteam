@@ -10,8 +10,6 @@ sealed class AuthorizationState {
     object Success: AuthorizationState()
 
     class AwaitingTwoFactor(
-        val clientId: Long,
-        val requestId: ByteString?,
         val steamId: SteamId,
         val supportedConfirmationMethods: List<ConfirmationMethod>,
         internal val sumProtos: List<EAuthSessionGuardType>
@@ -26,7 +24,7 @@ sealed class AuthorizationState {
                     EAuthSessionGuardType.k_EAuthSessionGuardType_MachineToken -> ConfirmationMethod.MachineToken
                     else -> null
                 }
-            }, sumProtos = networkResponse.allowed_confirmations.mapNotNull { it.confirmation_type }, steamId = SteamId((networkResponse.steamid ?: 0L).toULong()), clientId = networkResponse.client_id ?: 0L, requestId = networkResponse.request_id
+            }, sumProtos = networkResponse.allowed_confirmations.mapNotNull { it.confirmation_type }, steamId = SteamId((networkResponse.steamid ?: 0L).toULong())
         )
 
         enum class ConfirmationMethod {

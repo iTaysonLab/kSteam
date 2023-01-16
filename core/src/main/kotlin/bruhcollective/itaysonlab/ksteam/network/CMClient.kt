@@ -71,9 +71,16 @@ internal class CMClient (
      */
     suspend fun tryConnect() = coroutineScope {
         launchConnectionCoroutine()
+        awaitConnection(authRequired = false)
+    }
 
+    suspend fun awaitConnection(authRequired: Boolean = true) {
         clientState.first {
-            it == CMClientState.Connected
+            it == if (authRequired) {
+                CMClientState.Connected
+            } else {
+                CMClientState.Logging
+            }
         }
     }
 
@@ -202,7 +209,7 @@ internal class CMClient (
      * Add a packet to a outgoing queue and then awaits for a response with the attached job ID.
      */
     suspend fun execute(packet: SteamPacket): SteamPacket {
-        tryConnect()
+        awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
 
         val processedSourcePacket = packet.apply {
             header.sourceJobId = ++jobIdCounter
@@ -220,7 +227,7 @@ internal class CMClient (
      * Add a packet to a outgoing queue and forget about it (no job IDs and awaits)
      */
     suspend fun executeAndForget(packet: SteamPacket) {
-        tryConnect()
+        awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
         outgoingPacketsQueue.trySend(packet)
     }
 

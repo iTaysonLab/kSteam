@@ -32,6 +32,7 @@ class Account(
     private val webApi get() = steamClient.getHandler<WebApi>()
     private val storage get() = steamClient.getHandler<Storage>()
 
+    private var pollInfo: PollInfo? = null
     private var authStateWatcher: Job? = null
     private var authState = MutableStateFlow<AuthorizationState>(AuthorizationState.Unauthorized)
     val clientAuthState = authState.asStateFlow()
@@ -57,7 +58,8 @@ class Account(
 
         return if (qrData.isSuccess) {
             with(qrData.data) {
-                createWatcherFlow(this.interval ?: 5f, this.client_id!!, this.request_id!!)
+                pollInfo = PollInfo(this.client_id!! to this.request_id!!)
+                createWatcherFlow(this.interval ?: 5f)
                 QrCodeData((this.version ?: 0) to this.challenge_url.orEmpty())
             }
         } else {
@@ -112,8 +114,14 @@ class Account(
                     "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
                 )
 
+                pollInfo = PollInfo(this.client_id!! to this.request_id!!)
                 authState.tryEmit(AuthorizationState.AwaitingTwoFactor(this))
-                createWatcherFlow(this.interval ?: 5f, this.client_id!!, this.request_id!!)
+
+                if (allowed_confirmations.mapNotNull { it.confirmation_type }.let {
+                    it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation) || it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation)
+                }) {
+                    createWatcherFlow(this.interval ?: 5f)
+                }
             }
 
             AuthorizationResult.Success
@@ -122,8 +130,10 @@ class Account(
 
     /**
      * Update a current session with a Steam Guard or email code.
+     *
+     * @return if 2FA code is valid
      */
-    suspend fun updateCurrentSessionWithCode(code: String) {
+    suspend fun updateCurrentSessionWithCode(code: String): Boolean {
         require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
 
         (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).let { authState ->
@@ -133,13 +143,17 @@ class Account(
                 requestAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request.ADAPTER,
                 responseAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Response.ADAPTER,
                 requestData = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request(
-                    client_id = authState.clientId,
+                    client_id = pollInfo!!.clientId,
                     steamid = authState.steamId.id.toLong(),
                     code = code,
-                    code_type = authState.sumProtos.first()
+                    code_type = authState.sumProtos.filterNot {
+                        it == EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation || it == EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation
+                    }.first()
                 )
             )
         }
+
+        return pollAuthStatusInternal()
     }
 
     /**
@@ -198,49 +212,26 @@ class Account(
     /**
      * Cancel authentication polling, if you have used [getSignInQrCode].
      */
-    suspend fun cancelPolling() = authStateWatcher?.cancel()
+    fun cancelPolling() = authStateWatcher?.cancel()
 
     suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
 
-    private suspend fun pollAuthStatus(
-        clientId: Long,
-        requestId: ByteString
-    ): CAuthentication_PollAuthSessionStatus_Response {
+    private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
+        require(pollInfo != null) { "pollInfo should not be null" }
         return webApi.execute(
             signed = false,
             methodName = "Authentication.PollAuthSessionStatus",
             requestAdapter = CAuthentication_PollAuthSessionStatus_Request.ADAPTER,
             responseAdapter = CAuthentication_PollAuthSessionStatus_Response.ADAPTER,
-            requestData = CAuthentication_PollAuthSessionStatus_Request(client_id = clientId, request_id = requestId)
+            requestData = CAuthentication_PollAuthSessionStatus_Request(client_id = pollInfo!!.clientId, request_id = pollInfo!!.requestId)
         ).data
     }
 
-    private fun createWatcherFlow(interval: Float, clientId: Long, requestId: ByteString) {
+    private fun createWatcherFlow(interval: Float) {
         authStateWatcher?.cancel()
-
         authStateWatcher = flow<Unit> {
             while (true) {
-                val pollAnswer = pollAuthStatus(clientId, requestId)
-
-                if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
-                    // Success, now we can cancel the session
-                    logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
-
-                    val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
-
-                    storage.modifyAccount(steamId) {
-                        copy(
-                            accessToken = pollAnswer.access_token.orEmpty(),
-                            refreshToken = pollAnswer.refresh_token.orEmpty(),
-                            accountName = pollAnswer.account_name.orEmpty()
-                        )
-                    }
-
-                    sendClientLogon(
-                        token = pollAnswer.refresh_token.orEmpty(),
-                        steamId = steamId
-                    )
-
+                if (pollAuthStatusInternal()) {
                     break
                 } else {
                     delay((interval * 1000).toLong())
@@ -251,6 +242,34 @@ class Account(
         }.launchIn(pollScope)
     }
 
+    private suspend fun pollAuthStatusInternal(): Boolean {
+        val pollAnswer = pollAuthStatus()
+
+        return if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
+            // Success, now we can cancel the session
+            logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
+
+            val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
+
+            storage.modifyAccount(steamId) {
+                copy(
+                    accessToken = pollAnswer.access_token.orEmpty(),
+                    refreshToken = pollAnswer.refresh_token.orEmpty(),
+                    accountName = pollAnswer.account_name.orEmpty()
+                )
+            }
+
+            sendClientLogon(
+                token = pollAnswer.refresh_token.orEmpty(),
+                steamId = steamId
+            )
+
+            true
+        } else {
+            false
+        }
+    }
+
     override suspend fun onEvent(packet: SteamPacket) {
         when (packet.messageId) {
             EMsg.k_EMsgClientLogOnResponse -> {
@@ -259,6 +278,7 @@ class Account(
 
                     if (response.data.eresult == EResult.OK.encoded) {
                         // We are logged in to Steam3 server
+                        authStateWatcher?.cancel()
                         authState.value = AuthorizationState.Success
                     }
                 } else {
@@ -282,5 +302,11 @@ class Account(
     value class QrCodeData(private val packed: Pair<Int, String>) {
         val version get() = packed.first
         val data get() = packed.second
+    }
+
+    @JvmInline
+    value class PollInfo(private val packed: Pair<Long, ByteString>) {
+        val clientId get() = packed.first
+        val requestId get() = packed.second
     }
 }

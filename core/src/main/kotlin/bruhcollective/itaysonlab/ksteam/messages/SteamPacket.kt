@@ -18,11 +18,18 @@ import okio.ByteString.Companion.toByteString
  */
 class SteamPacket private constructor(val messageId: EMsg, val header: SteamPacketHeader, internal var payload: ByteArray) {
     companion object {
+        // Whitelist of EMsg ID's that can be executed without auth
+        private val anonymousIds = arrayOf(EMsg.k_EMsgClientHello, EMsg.k_EMsgServiceMethodCallFromClientNonAuthed, EMsg.k_EMsgClientLogon)
+
         // Usage: EMsg and ProtobufMask
         private const val ProtobufMask = 0x80000000.toInt()
 
         // Usage: Int and ProtobufClearMask
         private const val ProtobufClearMask = ProtobufMask.inv()
+
+        fun canBeExecutedWithoutAuth(packet: SteamPacket): Boolean {
+            return packet.messageId in anonymousIds
+        }
 
         fun ofNetworkPacket(rawPacket: ByteArray): SteamPacket {
             require(rawPacket.size >= 4) { "Packet is not valid (too small)" }

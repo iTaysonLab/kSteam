@@ -13,7 +13,7 @@ wire {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "b2"
+version = "r4"
 
 kotlin {
     jvmToolchain(8)
