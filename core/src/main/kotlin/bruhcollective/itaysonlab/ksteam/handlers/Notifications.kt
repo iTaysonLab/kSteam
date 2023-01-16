@@ -2,31 +2,26 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
-import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import kotlinx.coroutines.flow.*
 import steam.messages.clientserver_friends.CMsgClientPersonaState
 import steam.messages.clientserver_friends.CMsgClientRequestFriendData
-import steam.messages.clientserver_login.CMsgClientAccountInfo
-import steam.messages.clientserver_login.CMsgClientLogonResponse
 
 /**
  * Access persona data using this interface.
  *
  * All data will be kept inside the in-memory cache.
  */
-class Persona(
+class Notifications(
     private val steamClient: SteamClient
 ): BaseHandler {
-    private val personas = MutableStateFlow(mutableMapOf<SteamId, Persona>())
+    private val webApi get() = steamClient.getHandler<WebApi>()
 
-    private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
-    val currentPersona = _currentPersonaData.asStateFlow()
+    private val _notifications = MutableStateFlow(mutableMapOf<SteamId, Persona>())
+    private val notifications = _notifications.asStateFlow()
 
     private fun updatePersonaState(incoming: List<CMsgClientPersonaState.Friend>) {
         personas.update { map ->
@@ -74,32 +69,6 @@ class Persona(
 
     override suspend fun onEvent(packet: SteamPacket) {
         when (packet.messageId) {
-            EMsg.k_EMsgClientPersonaState -> {
-                updatePersonaState(packet.getProtoPayload(CMsgClientPersonaState.ADAPTER).data.friends)
-            }
-
-            EMsg.k_EMsgClientAccountInfo -> {
-                packet.getProtoPayload(CMsgClientAccountInfo.ADAPTER).data.let { obj ->
-                    _currentPersonaData.update {
-                        it.copy(
-                            id = SteamId(packet.header.steamId),
-                            name = obj.persona_name.orEmpty(),
-                            flags = AccountFlags(obj.account_flags ?: 0),
-                            country = obj.ip_country ?: "US",
-                        )
-                    }
-                }
-            }
-
-            EMsg.k_EMsgClientLogOnResponse -> {
-                packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER).data.let { logonResponse ->
-                    if (logonResponse.eresult != EResult.OK.encoded) return
-                    _currentPersonaData.update {
-                        it.copy(vanityUrl = logonResponse.vanity_url.orEmpty())
-                    }
-                }
-            }
-
             else -> {}
         }
     }

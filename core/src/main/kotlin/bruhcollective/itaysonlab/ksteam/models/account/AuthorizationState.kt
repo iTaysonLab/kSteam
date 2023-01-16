@@ -1,6 +1,6 @@
-package bruhcollective.itaysonlab.ksteam.models
+package bruhcollective.itaysonlab.ksteam.models.account
 
-import okio.ByteString
+import bruhcollective.itaysonlab.ksteam.models.SteamId
 import steam.messages.auth.CAuthentication_BeginAuthSessionViaCredentials_Response
 import steam.messages.auth.EAuthSessionGuardType
 

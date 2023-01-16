@@ -1,5 +1,6 @@
-package bruhcollective.itaysonlab.ksteam.models
+package bruhcollective.itaysonlab.ksteam.models.persona
 
+import bruhcollective.itaysonlab.ksteam.models.SteamId
 import steam.messages.clientserver_friends.CMsgClientPersonaState
 
 /**
