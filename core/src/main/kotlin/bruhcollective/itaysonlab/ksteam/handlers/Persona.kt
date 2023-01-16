@@ -10,10 +10,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import kotlinx.coroutines.flow.*
-import steam.messages.clientserver_friends.CMsgClientPersonaState
-import steam.messages.clientserver_friends.CMsgClientRequestFriendData
-import steam.messages.clientserver_login.CMsgClientAccountInfo
-import steam.messages.clientserver_login.CMsgClientLogonResponse
+import steam.webui.common.*
 
 /**
  * Access persona data using this interface.
@@ -28,7 +25,7 @@ class Persona(
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
     val currentPersona = _currentPersonaData.asStateFlow()
 
-    private fun updatePersonaState(incoming: List<CMsgClientPersonaState.Friend>) {
+    private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
         personas.update { map ->
             map.apply {
                 incoming.forEach { friend ->

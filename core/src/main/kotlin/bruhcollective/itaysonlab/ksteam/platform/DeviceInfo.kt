@@ -2,8 +2,8 @@ package bruhcollective.itaysonlab.ksteam.platform
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
-import steam.messages.auth.CAuthentication_DeviceDetails
-import steam.messages.auth.EAuthTokenPlatformType
+import steam.webui.authentication.CAuthentication_DeviceDetails
+import steam.webui.authentication.EAuthTokenPlatformType
 
 /**
  * This is used to send data to Steam when creating an authorization state.

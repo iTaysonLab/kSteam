@@ -1,8 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.models.account
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import steam.messages.auth.CAuthentication_BeginAuthSessionViaCredentials_Response
-import steam.messages.auth.EAuthSessionGuardType
+import steam.webui.authentication.CAuthentication_BeginAuthSessionViaCredentials_Response
+import steam.webui.authentication.EAuthSessionGuardType
 
 sealed class AuthorizationState {
     object Unauthorized: AuthorizationState()

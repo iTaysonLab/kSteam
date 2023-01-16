@@ -22,10 +22,10 @@ import okio.ByteString.Companion.toByteString
 import okio.Source
 import okio.buffer
 import okio.gzip
-import steam.messages.base.CMsgMulti
-import steam.messages.clientserver_login.CMsgClientHeartBeat
 import steam.messages.clientserver_login.CMsgClientHello
-import steam.messages.clientserver_login.CMsgClientLogonResponse
+import steam.webui.common.CMsgClientHeartBeat
+import steam.webui.common.CMsgClientLogonResponse
+import steam.webui.common.CMsgMulti
 
 internal class CMClient (
     private val serverList: CMList,

@@ -2,7 +2,7 @@ package bruhcollective.itaysonlab.ksteam.messages
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import okio.Buffer
-import steam.messages.base.CMsgProtoBufHeader
+import steam.webui.common.CMsgProtoBufHeader
 
 sealed class SteamPacketHeader private constructor() {
     abstract fun read(buffer: Buffer)

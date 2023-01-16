@@ -17,10 +17,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
-import steam.enums.ESessionPersistence
-import steam.messages.auth.*
-import steam.messages.clientserver_login.CMsgClientLogon
-import steam.messages.clientserver_login.CMsgClientLogonResponse
+import steam.webui.authentication.*
+import steam.webui.common.CMsgClientLogon
+import steam.webui.common.CMsgClientLogonResponse
 import kotlin.random.Random
 
 class Account(

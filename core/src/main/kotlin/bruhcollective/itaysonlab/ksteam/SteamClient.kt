@@ -1,10 +1,8 @@
 package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.debug.logError
-import bruhcollective.itaysonlab.ksteam.handlers.Account
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.Storage
-import bruhcollective.itaysonlab.ksteam.handlers.WebApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.network.CMClient
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
@@ -34,7 +32,9 @@ class SteamClient (
     val handlers = listOf<BaseHandler>(
         Account(this),
         WebApi(this),
-        Storage(this)
+        Storage(this),
+        Persona(this),
+        Notifications(this)
     )
 
     val connectionStatus get() = cmClient.clientState

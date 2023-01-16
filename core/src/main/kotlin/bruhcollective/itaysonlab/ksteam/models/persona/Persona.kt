@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import steam.messages.clientserver_friends.CMsgClientPersonaState
+import steam.webui.common.CMsgClientPersonaState_Friend
 
 /**
  * A persona is a user in the Steam network.
@@ -26,7 +26,7 @@ data class Persona internal constructor(
      */
     val lastSeen: LastSeen,
 ) {
-    internal constructor(obj: CMsgClientPersonaState.Friend): this(
+    internal constructor(obj: CMsgClientPersonaState_Friend): this(
         id = SteamId(obj.friendid?.toULong() ?: 0u),
         name = obj.player_name.orEmpty(),
         avatar = AvatarHash(obj.avatar_hash?.hex() ?: ""),
