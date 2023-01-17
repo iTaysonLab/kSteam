@@ -5,6 +5,21 @@ option java_package = "steam.webui.steamnotification";
 option java_generic_services = true;
 option java_multiple_files = true;
 
+// kSteam-edits BEGIN
+
+enum SteamNotificationType {
+	Gift = 2;
+	Comment = 3;
+	Item = 4;
+	FriendInvite = 5;
+	MajorSale = 6;
+	PreloadAvailable = 7;
+	Wishlist = 8;
+	Promotion = 10; // not sure if that's true (Steam Replay notification falls under that category)
+}
+
+// kSteam-edits END
+
 message CSteamNotification_GetPreferences_Request {
 }
 
@@ -27,7 +42,7 @@ message CSteamNotification_HideNotification_Notification {
 
 message CSteamNotification_MarkNotificationsRead_Notification {
 	optional uint32 timestamp = 1;
-	optional int32 notification_type = 2 [(.description) = "enum"];
+	optional .SteamNotificationType notification_type = 2;
 	repeated uint64 notification_ids = 3;
 	optional bool mark_all_read = 4;
 }
@@ -42,7 +57,7 @@ message CSteamNotification_SetPreferences_Response {
 message SteamNotificationData {
 	optional uint64 notification_id = 1;
 	optional uint32 notification_targets = 2;
-	optional int32 notification_type = 3 [(.description) = "enum"];
+	optional .SteamNotificationType notification_type = 3;
 	optional string body_data = 4;
 	optional bool read = 7;
 	optional uint32 timestamp = 8;
@@ -50,7 +65,7 @@ message SteamNotificationData {
 }
 
 message SteamNotificationPreference {
-	optional int32 notification_type = 1 [(.description) = "enum"];
+	optional .SteamNotificationType notification_type = 1;
 	optional uint32 notification_targets = 2;
 }
 

@@ -162,7 +162,7 @@ internal class CMClient (
     private fun handleClientLogOn(checkedPacket: SteamPacket) {
         val payloadResult = checkedPacket.getProtoPayload(CMsgClientLogonResponse.ADAPTER)
 
-        if (payloadResult.isSuccess && payloadResult.data.eresult == EResult.OK.encoded) {
+        if (payloadResult.data.eresult == EResult.OK.encoded) {
             cellId = payloadResult.data.cell_id ?: 0
             clientSessionId = checkedPacket.header.sessionId
             internalScope.startHeartbeat(intervalMs = (payloadResult.data.heartbeat_seconds ?: 9) * 1000L)
@@ -198,7 +198,13 @@ internal class CMClient (
                 val packetSize = payloadBuffer.readIntLe()
                 val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
                 logVerbose("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
-                mutableIncomingPacketsQueue.tryEmit(SteamPacket.ofNetworkPacket(packetContent))
+                val packetParsed = SteamPacket.ofNetworkPacket(packetContent)
+
+                if (packetParsed.messageId == EMsg.k_EMsgClientLogOnResponse) {
+                    handleClientLogOn(packetParsed)
+                }
+
+                mutableIncomingPacketsQueue.tryEmit(packetParsed)
             } while (payloadBuffer.exhausted().not())
         } else {
             logVerbose("SteamPacket:Multi", "> ${payloadResult.result.name}")

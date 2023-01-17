@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam
 
+import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import io.ktor.client.*
 import io.ktor.client.engine.*
@@ -16,6 +17,7 @@ class SteamClientConfiguration (
     private val httpProxyPort: Int = 80,
     internal val deviceInfo: DeviceInformation = DeviceInformation(),
     internal val rootFolder: File,
+    internal val language: ELanguage
 ) {
     init {
         rootFolder.mkdirs()

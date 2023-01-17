@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlin.reflect.KClass
 
 /**
  * Main entrypoint for kSteam usage.
@@ -29,12 +30,14 @@ class SteamClient (
     private val serverList = CMList(externalWebApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
-    val handlers = listOf<BaseHandler>(
-        Account(this),
-        WebApi(this),
-        Storage(this),
-        Persona(this),
-        Notifications(this)
+    val handlers = mapOf<KClass<*>, BaseHandler>(
+        Account(this).createAssociation(),
+        WebApi(this).createAssociation(),
+        Storage(this).createAssociation(),
+        Persona(this).createAssociation(),
+        Notifications(this).createAssociation(),
+        Store(this).createAssociation(),
+        Library(this).createAssociation()
     )
 
     val connectionStatus get() = cmClient.clientState
@@ -60,7 +63,7 @@ class SteamClient (
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
             }.onEach { packet ->
-                handlers.forEach { handler ->
+                handlers.values.forEach { handler ->
                     handler.onEvent(packet)
                 }
             }.catch { throwable ->
@@ -68,13 +71,12 @@ class SteamClient (
             }.launchIn(eventsScope)
     }
 
-    inline fun <reified T: BaseHandler> getHandler() = handlers.filterIsInstance<T>().apply {
-        if (isEmpty()) {
-            throw IllegalStateException("No typed handler found - that's a library issue!")
-        } else if (size > 1) {
-            throw IllegalStateException("More than one typed handler found - that's a library issue!")
-        }
-    }.first()
+    inline fun <reified T: BaseHandler> getHandler(): T {
+        val handler = handlers[T::class] ?: throw IllegalStateException("No typed handler registered (trying to get: ${T::class.java.simpleName}).")
+        return (handler as? T) ?: throw IllegalStateException("Typed handler registered with incorrect mapping (trying to get: ${T::class.java.simpleName}, got: ${handler::class.java.simpleName}).")
+    }
+
+    private inline fun <reified T: BaseHandler> T.createAssociation() = T::class to this
 
     suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
     suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)

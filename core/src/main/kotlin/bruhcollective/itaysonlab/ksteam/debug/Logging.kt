@@ -37,7 +37,7 @@ class DefaultLoggingTransport: LoggingTransport {
             Level.SEVERE -> LoggingVerbosity.Error
             Level.WARNING -> LoggingVerbosity.Warning
             Level.FINE -> LoggingVerbosity.Debug
-            Level.FINEST -> LoggingVerbosity.Verbose
+            Level.ALL -> LoggingVerbosity.Verbose
             else -> LoggingVerbosity.Disable
         }
         set(value) {
@@ -46,7 +46,7 @@ class DefaultLoggingTransport: LoggingTransport {
                 LoggingVerbosity.Error -> Level.SEVERE
                 LoggingVerbosity.Warning -> Level.WARNING
                 LoggingVerbosity.Debug -> Level.FINE
-                LoggingVerbosity.Verbose -> Level.FINEST
+                LoggingVerbosity.Verbose -> Level.ALL
             }
         }
 

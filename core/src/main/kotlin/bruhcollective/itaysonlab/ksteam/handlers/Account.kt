@@ -28,9 +28,6 @@ class Account(
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
     private val deviceInfo get() = steamClient.config.deviceInfo
 
-    private val webApi get() = steamClient.getHandler<WebApi>()
-    private val storage get() = steamClient.getHandler<Storage>()
-
     private var pollInfo: PollInfo? = null
     private var authStateWatcher: Job? = null
     private var authState = MutableStateFlow<AuthorizationState>(AuthorizationState.Unauthorized)
@@ -42,7 +39,7 @@ class Account(
      * Also starts a polling session.
      */
     suspend fun getSignInQrCode(): QrCodeData? {
-        val qrData = webApi.execute(
+        val qrData = steamClient.webApi.execute(
             signed = false,
             methodName = "Authentication.BeginAuthSessionViaQR",
             requestAdapter = CAuthentication_BeginAuthSessionViaQR_Request.ADAPTER,
@@ -74,7 +71,7 @@ class Account(
         password: String,
         rememberSession: Boolean = true,
     ): AuthorizationResult {
-        val rsaData = webApi.execute(
+        val rsaData = steamClient.webApi.execute(
             signed = false,
             methodName = "Authentication.GetPasswordRSAPublicKey",
             requestAdapter = CAuthentication_GetPasswordRSAPublicKey_Request.ADAPTER,
@@ -86,7 +83,7 @@ class Account(
             Cryptography.rsaEncrypt(password, rsaData.publickey_mod.orEmpty(), rsaData.publickey_exp.orEmpty())
                 .toByteString().base64().dropLast(1)
 
-        val signInResult = webApi.execute(
+        val signInResult = steamClient.webApi.execute(
             signed = false,
             methodName = "Authentication.BeginAuthSessionViaCredentials",
             requestAdapter = CAuthentication_BeginAuthSessionViaCredentials_Request.ADAPTER,
@@ -136,7 +133,7 @@ class Account(
         require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
 
         (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).let { authState ->
-            webApi.execute(
+            steamClient.webApi.execute(
                 signed = false,
                 methodName = "Authentication.UpdateAuthSessionWithSteamGuardCode",
                 requestAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request.ADAPTER,
@@ -165,10 +162,10 @@ class Account(
         steamId: SteamId? = null
     ): Boolean {
         val accountToSignIn = if (steamId != null) {
-            storage.globalConfiguration.availableAccounts[steamId.id]
+            steamClient.storage.globalConfiguration.availableAccounts[steamId.id]
         } else {
-            storage.globalConfiguration.availableAccounts[storage.globalConfiguration.defaultAccount]
-        } ?: storage.globalConfiguration.availableAccounts.values.firstOrNull()
+            steamClient.storage.globalConfiguration.availableAccounts[steamClient.storage.globalConfiguration.defaultAccount]
+        } ?: steamClient.storage.globalConfiguration.availableAccounts.values.firstOrNull()
 
         return if (accountToSignIn != null) {
             sendClientLogon(steamId = SteamId(accountToSignIn.steamId), token = accountToSignIn.refreshToken)
@@ -217,7 +214,7 @@ class Account(
 
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
         require(pollInfo != null) { "pollInfo should not be null" }
-        return webApi.execute(
+        return steamClient.webApi.execute(
             signed = false,
             methodName = "Authentication.PollAuthSessionStatus",
             requestAdapter = CAuthentication_PollAuthSessionStatus_Request.ADAPTER,
@@ -250,7 +247,7 @@ class Account(
 
             val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
 
-            storage.modifyAccount(steamId) {
+            steamClient.storage.modifyAccount(steamId) {
                 copy(
                     accessToken = pollAnswer.access_token.orEmpty(),
                     refreshToken = pollAnswer.refresh_token.orEmpty(),
