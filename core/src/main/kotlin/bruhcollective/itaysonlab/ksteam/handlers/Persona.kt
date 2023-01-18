@@ -2,13 +2,13 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
-import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
-import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
+import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
+import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import kotlinx.coroutines.flow.*
 import steam.webui.common.*
 
@@ -56,6 +56,13 @@ class Persona(
         return personas.mapNotNull {
             it[id]
         }
+    }
+
+    /**
+     * Returns a Flow with a current user mapped to a [Persona].
+     */
+    fun currentLivePersona() = personas.combine(currentPersona) { personaMap, signedInPersona ->
+        personaMap[signedInPersona.id] ?: Persona.Unknown
     }
 
     private suspend fun requestPersonas(ids: List<SteamId>) {

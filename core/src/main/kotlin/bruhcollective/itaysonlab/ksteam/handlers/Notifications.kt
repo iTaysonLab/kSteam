@@ -2,6 +2,8 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.AppId
+import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.econ.EconItemReference
 import bruhcollective.itaysonlab.ksteam.models.notifications.Notification
 import bruhcollective.itaysonlab.ksteam.models.notifications.NotificationFeed
@@ -73,11 +75,17 @@ class Notifications(
 
                 when (not.notification_type) {
                     SteamNotificationType.Wishlist -> {
+                        val appId = json.decodeFromString<Notification.WishlistSale.Body>(rawJson).appId
+
                         Notification.WishlistSale(
                             timestamp = not.timestamp ?: 0,
                             unread = not.read?.not() ?: false,
                             hidden = not.hidden ?: false,
-                            appId = json.decodeFromString<Notification.WishlistSale.Body>(rawJson).appId
+                            app = if (appId != 0) {
+                                steamClient.store.getApp(AppId(appId))
+                            } else {
+                                null
+                            }
                         )
                     }
 
@@ -96,12 +104,26 @@ class Notifications(
                         Notification.FriendRequest(
                             timestamp = not.timestamp ?: 0,
                             unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false
+                            hidden = not.hidden ?: false,
+                            requestor = steamClient.persona.persona(
+                                SteamId(
+                                    json.decodeFromString<Notification.FriendRequest.Body>(rawJson).steamId.toULong()
+                                )
+                            )
                         )
                     }
 
                     SteamNotificationType.Gift -> {
-                        TODO()
+                        Notification.Gift(
+                            timestamp = not.timestamp ?: 0,
+                            unread = not.read?.not() ?: false,
+                            hidden = not.hidden ?: false,
+                            gifter = steamClient.persona.persona(
+                                SteamId(
+                                    json.decodeFromString<Notification.Gift.Body>(rawJson).steamId.toULong()
+                                )
+                            )
+                        )
                     }
 
                     SteamNotificationType.Promotion -> {
@@ -128,8 +150,6 @@ class Notifications(
                     }
                 }
             }
-
-        // And now request all items, personas, games etc
 
         _notifications.value = NotificationFeed.Loaded(
             notifications = parsedNotifications

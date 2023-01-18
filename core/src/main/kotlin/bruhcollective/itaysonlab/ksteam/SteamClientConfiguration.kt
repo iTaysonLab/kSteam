@@ -17,7 +17,7 @@ class SteamClientConfiguration (
     private val httpProxyPort: Int = 80,
     internal val deviceInfo: DeviceInformation = DeviceInformation(),
     internal val rootFolder: File,
-    internal val language: ELanguage
+    internal val language: ELanguage = ELanguage.English
 ) {
     init {
         rootFolder.mkdirs()

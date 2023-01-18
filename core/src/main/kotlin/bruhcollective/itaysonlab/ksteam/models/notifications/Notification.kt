@@ -1,7 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.models.notifications
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.apps.App
 import bruhcollective.itaysonlab.ksteam.models.econ.EconItemReference
+import bruhcollective.itaysonlab.ksteam.models.persona.Persona
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -31,8 +34,13 @@ sealed class Notification {
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
-        val gifterSteamId: SteamId
-    ): Notification()
+        val gifter: Flow<Persona>
+    ): Notification() {
+        @Serializable
+        class Body(
+            @SerialName("gifter_account") val steamId: Long = 0,
+        )
+    }
 
     /**
      * A user has received a new item(s) in their inventory (through gameplay, trading or buying).
@@ -58,7 +66,13 @@ sealed class Notification {
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
-    ): Notification()
+        val requestor: Flow<Persona>
+    ): Notification() {
+        @Serializable
+        class Body(
+            @SerialName("requestor_id") val steamId: Long = 0,
+        )
+    }
 
     /**
      * One (or multiple) games from a user's wishlish has received a major discount on a sale.
@@ -67,9 +81,9 @@ sealed class Notification {
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
-        val appId: Int
+        val app: App?
     ): Notification() {
-        val isMultipleItemsOnSale get() = appId == 0
+        val isMultipleItemsOnSale get() = app == null
 
         @Serializable
         class Body(

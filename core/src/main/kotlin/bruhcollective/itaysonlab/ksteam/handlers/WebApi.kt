@@ -36,6 +36,10 @@ class WebApi(
             adapter = requestAdapter,
             payload = requestData
         ).apply {
+            if (signed) {
+                (header as SteamPacketHeader.Protobuf).steamId = steamClient.persona.currentPersona.value.id.id
+            }
+
             (header as SteamPacketHeader.Protobuf).targetJobName = "$methodName#1"
         }).getProtoPayload(responseAdapter)
     }

@@ -26,6 +26,15 @@ data class Persona internal constructor(
      */
     val lastSeen: LastSeen,
 ) {
+    companion object {
+        val Unknown = Persona(
+            id = SteamId.Empty,
+            name = "",
+            avatar = AvatarHash(""),
+            lastSeen = LastSeen(0, 0, 0)
+        )
+    }
+
     internal constructor(obj: CMsgClientPersonaState_Friend): this(
         id = SteamId(obj.friendid?.toULong() ?: 0u),
         name = obj.player_name.orEmpty(),
