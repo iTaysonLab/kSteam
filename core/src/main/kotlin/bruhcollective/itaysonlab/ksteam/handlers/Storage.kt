@@ -6,6 +6,8 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.storage.GlobalConfiguration
 import bruhcollective.itaysonlab.ksteam.models.storage.SavedAccount
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.okio.decodeFromBufferedSource
@@ -29,8 +31,12 @@ internal class Storage(
         if (it.exists().not()) it.createNewFile()
     }
 
+    fun storageFor(steamId: SteamId) = File(steamClient.config.rootFolder, steamId.id.toString()).also {
+        it.mkdirs()
+    }
+
     @OptIn(ExperimentalSerializationApi::class)
-    internal var globalConfiguration: GlobalConfiguration = if (globalConfigFile.length() != 0L) {
+    var globalConfiguration: GlobalConfiguration = if (globalConfigFile.length() != 0L) {
         globalConfigFile.source().buffer().use {
             json.decodeFromBufferedSource(it)
         }
@@ -42,7 +48,7 @@ internal class Storage(
             }
         }
 
-    fun modifyAccount(steamId: SteamId, func: SavedAccount.() -> SavedAccount) {
+    suspend fun modifyAccount(steamId: SteamId, func: SavedAccount.() -> SavedAccount) = withContext(Dispatchers.IO) {
         globalConfiguration = globalConfiguration.copy(
             availableAccounts = globalConfiguration.availableAccounts.toMutableMap().apply {
                 put(steamId.id, (globalConfiguration.availableAccounts[steamId.id] ?: SavedAccount(steamId = steamId.id)).let(func))

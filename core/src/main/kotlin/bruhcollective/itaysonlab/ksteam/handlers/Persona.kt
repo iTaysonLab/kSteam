@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import CMsgClientFriendsList
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
@@ -10,9 +9,9 @@ import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
 import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import steam.webui.common.*
+import steam.webui.friendslist.CMsgClientFriendsList
 
 /**
  * Access persona data using this interface.
@@ -22,7 +21,7 @@ import steam.webui.common.*
 class Persona(
     private val steamClient: SteamClient
 ): BaseHandler {
-    private val personas = MutableStateFlow(mutableMapOf<SteamId, Persona>())
+    private val personas = MutableStateFlow<PersonaList>(emptyMap())
 
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
     val currentPersona = _currentPersonaData.asStateFlow()
@@ -30,11 +29,14 @@ class Persona(
     private val _currentPersonaOnlineStatus = MutableStateFlow(EPersonaState.Offline)
     val currentPersonaOnlineStatus = _currentPersonaOnlineStatus.asStateFlow()
 
+    private val _currentFriendList = MutableStateFlow<FriendsList>(emptyMap())
+    val currentFriendList = _currentFriendList.asStateFlow()
+
     private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
         logVerbose("Persona::NewState", "Incoming: ${incoming.joinToString()}")
 
         personas.update { map ->
-            map.apply {
+            map.toMutableMap().apply {
                 incoming.forEach { friend ->
                     put(SteamId(friend.friendid?.toULong() ?: 0u), Persona(friend))
                 }
@@ -86,7 +88,33 @@ class Persona(
         personaMap[signedInPersona.id] ?: Persona.Unknown
     }
 
+    private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) {
+        _currentFriendList.update {
+            // 1. Request persona states
+            requestPersonas(if (newList.bincremental == true) {
+                newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }.map { f -> f.steamId }
+            } else {
+                newList.friends.map { f -> f.steamId }
+            })
+
+            // 2. Update friend-list flow
+            if (newList.bincremental == true) {
+                val parted = newList.friends.partition { friend ->
+                    friend.relationship == EFriendRelationship.None
+                }
+
+                val removedIds = parted.first.map { f -> f.steamId }
+
+                it.filterNot { f -> f.key in removedIds } + parted.second.associate { f -> f.steamId to f.relationship }
+            } else {
+                newList.friends.associate { f -> f.steamId to f.relationship }
+            }
+        }
+    }
+
     suspend fun requestPersonas(ids: List<SteamId>) {
+        if (ids.isEmpty()) return
+
         logDebug("Handlers::Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
 
         steamClient.executeAndForget(SteamPacket.newProto(
@@ -122,7 +150,7 @@ class Persona(
 
             EMsg.k_EMsgClientFriendsList -> {
                 packet.getProtoPayload(CMsgClientFriendsList.ADAPTER).data.let { obj ->
-                    requestPersonas(obj.friends.mapNotNull { it.ulfriendid }.map { SteamId(it.toULong()) })
+                    handleFriendListChanges(obj)
                 }
             }
 
@@ -139,3 +167,6 @@ class Persona(
         }
     }
 }
+
+typealias PersonaList = Map<SteamId, Persona>
+typealias FriendsList = Map<SteamId, EFriendRelationship>

@@ -37,7 +37,7 @@ sealed class Notification {
     ): Notification() {
         @Serializable
         class Body(
-            @SerialName("gifter_account") val steamId: Long = 0,
+            @SerialName("gifter_account") val accountId: Long = 0,
         )
     }
 
@@ -69,7 +69,7 @@ sealed class Notification {
     ): Notification() {
         @Serializable
         class Body(
-            @SerialName("requestor_id") val steamId: Long = 0,
+            @SerialName("requestor_id") val accountId: Long = 0,
         )
     }
 

@@ -16,5 +16,6 @@ internal data class SavedAccount(
     val lastKnownPersonaName: String = "",
     val lastKnownAvatar: String = "",
     val accessToken: String = "",
-    val refreshToken: String = ""
+    val refreshToken: String = "",
+    val sentryFileName: String = ""
 )

@@ -145,7 +145,7 @@ class Account(
                 responseAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Response.ADAPTER,
                 requestData = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request(
                     client_id = pollInfo!!.clientId,
-                    steamid = authState.steamId.id.toLong(),
+                    steamid = authState.steamId.longId,
                     code = code,
                     code_type = authState.sumProtos.filterNot {
                         it == EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation || it == EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation
@@ -191,24 +191,30 @@ class Account(
             )
         }
 
+        val sentryFileHash = steamClient.sentry.sentryHash(steamId)
+
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
                 protocol_version = EnvironmentConstants.PROTOCOL_VERSION,
                 client_package_version = 1671236931,
-                client_language = "english",
+                client_language = steamClient.config.language.vdfName,
                 client_os_type = steamClient.config.deviceInfo.osType.encoded,
                 should_remember_password = true,
                 qos_level = 2,
                 machine_id = steamClient.storage.globalConfiguration.machineId.decodeHex(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
-                eresult_sentryfile = EResult.Fail.encoded,
                 steamguard_dont_remember_computer = false,
                 is_steam_deck = false,
                 is_steam_box = false,
                 client_instance_id = 0L,
                 supports_rate_limit_response = true,
                 access_token = token,
-                sha_sentryfile = null,
+                eresult_sentryfile = if (sentryFileHash != null) {
+                    EResult.OK.encoded
+                } else {
+                    EResult.Fail.encoded
+                },
+                sha_sentryfile = sentryFileHash,
             )
         ).withHeader {
             this.sessionId = 0

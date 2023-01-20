@@ -106,8 +106,8 @@ class Notifications(
                             unread = not.read?.not() ?: false,
                             hidden = not.hidden ?: false,
                             requestor = steamClient.persona.persona(
-                                SteamId(
-                                    json.decodeFromString<Notification.FriendRequest.Body>(rawJson).steamId.toULong()
+                                SteamId.fromAccountId(
+                                    id = json.decodeFromString<Notification.FriendRequest.Body>(rawJson).accountId
                                 )
                             )
                         )
@@ -119,8 +119,8 @@ class Notifications(
                             unread = not.read?.not() ?: false,
                             hidden = not.hidden ?: false,
                             gifter = steamClient.persona.persona(
-                                SteamId(
-                                    json.decodeFromString<Notification.Gift.Body>(rawJson).steamId.toULong()
+                                SteamId.fromAccountId(
+                                    id = json.decodeFromString<Notification.Gift.Body>(rawJson).accountId
                                 )
                             )
                         )

@@ -37,7 +37,8 @@ class SteamClient (
         Persona(this).createAssociation(),
         Notifications(this).createAssociation(),
         Store(this).createAssociation(),
-        Library(this).createAssociation()
+        Library(this).createAssociation(),
+        Sentry(this).createAssociation(),
     )
 
     val connectionStatus get() = cmClient.clientState
