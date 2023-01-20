@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r7"
+version = "r9"
 
 kotlin {
     jvmToolchain(8)

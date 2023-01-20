@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
 import steam.webui.common.CMsgClientPersonaState_Friend
 
 /**
@@ -25,13 +26,18 @@ data class Persona internal constructor(
      * Last seen information
      */
     val lastSeen: LastSeen,
+    /**
+     * Online type
+     */
+    val onlineStatus: EPersonaState
 ) {
     companion object {
         val Unknown = Persona(
             id = SteamId.Empty,
             name = "",
             avatar = AvatarHash(""),
-            lastSeen = LastSeen(0, 0, 0)
+            lastSeen = LastSeen(0, 0, 0),
+            onlineStatus = EPersonaState.Offline
         )
     }
 
@@ -43,7 +49,8 @@ data class Persona internal constructor(
             lastLogOff = obj.last_logoff ?: 0,
             lastLogOn = obj.last_logon ?: 0,
             lastSeenOnline = obj.last_seen_online ?: 0
-        )
+        ),
+        onlineStatus = EPersonaState.byEncoded(obj.persona_state ?: 0)
     )
 
     data class LastSeen internal constructor(

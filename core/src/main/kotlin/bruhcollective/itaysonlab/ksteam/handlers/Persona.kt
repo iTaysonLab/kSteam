@@ -1,14 +1,16 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import CMsgClientFriendsList
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
-import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
 import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import steam.webui.common.*
 
@@ -25,7 +27,12 @@ class Persona(
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
     val currentPersona = _currentPersonaData.asStateFlow()
 
+    private val _currentPersonaOnlineStatus = MutableStateFlow(EPersonaState.Offline)
+    val currentPersonaOnlineStatus = _currentPersonaOnlineStatus.asStateFlow()
+
     private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
+        logVerbose("Persona::NewState", "Incoming: ${incoming.joinToString()}")
+
         personas.update { map ->
             map.apply {
                 incoming.forEach { friend ->
@@ -58,6 +65,20 @@ class Persona(
         }
     }
 
+    suspend fun setOnlineStatus(mode: EPersonaState = EPersonaState.Online) {
+        if (_currentPersonaOnlineStatus.value == mode) return
+        _currentPersonaOnlineStatus.value = mode
+        steamClient.executeAndForget(SteamPacket.newProto(
+            messageId = EMsg.k_EMsgClientChangeStatus,
+            adapter = CMsgClientChangeStatus.ADAPTER,
+            payload = CMsgClientChangeStatus(persona_state = mode.ordinal, persona_state_flags = if (steamClient.config.deviceInfo.gamingDeviceType == EGamingDeviceType.k_EGamingDeviceType_Phone) {
+                EPersonaStateFlag.ClientTypeMobile.mask
+            } else {
+                0
+            })
+        ))
+    }
+
     /**
      * Returns a Flow with a current user mapped to a [Persona].
      */
@@ -65,7 +86,9 @@ class Persona(
         personaMap[signedInPersona.id] ?: Persona.Unknown
     }
 
-    private suspend fun requestPersonas(ids: List<SteamId>) {
+    suspend fun requestPersonas(ids: List<SteamId>) {
+        logDebug("Handlers::Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
+
         steamClient.executeAndForget(SteamPacket.newProto(
             messageId = EMsg.k_EMsgClientRequestFriendData,
             adapter = CMsgClientRequestFriendData.ADAPTER,
@@ -92,6 +115,14 @@ class Persona(
                             country = obj.ip_country ?: "US",
                         )
                     }
+                }
+
+                setOnlineStatus(EPersonaState.Online)
+            }
+
+            EMsg.k_EMsgClientFriendsList -> {
+                packet.getProtoPayload(CMsgClientFriendsList.ADAPTER).data.let { obj ->
+                    requestPersonas(obj.friends.mapNotNull { it.ulfriendid }.map { SteamId(it.toULong()) })
                 }
             }
 
