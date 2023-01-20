@@ -16,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import okio.ByteString
+import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
 import steam.webui.authentication.*
 import steam.webui.common.CMsgClientLogon
@@ -92,12 +93,16 @@ class Account(
                 device_friendly_name = deviceInfo.deviceName,
                 device_details = deviceInfo.toAuthDetails(),
                 platform_type = deviceInfo.platformType,
-                website_id = "Unknown",
+                website_id = if (deviceInfo.platformType == EAuthTokenPlatformType.k_EAuthTokenPlatformType_MobileApp) {
+                    "Mobile"
+                } else {
+                    "Unknown"
+                },
                 remember_login = rememberSession,
                 persistence = if (rememberSession) ESessionPersistence.k_ESessionPersistence_Persistent else ESessionPersistence.k_ESessionPersistence_Ephemeral,
                 account_name = username,
                 encrypted_password = encryptedPassword,
-                encryption_timestamp = rsaData.timestamp
+                encryption_timestamp = rsaData.timestamp,
             )
         )
 
@@ -180,6 +185,12 @@ class Account(
     }
 
     private suspend fun sendClientLogon(token: String, steamId: SteamId) {
+        if (steamClient.storage.globalConfiguration.machineId.isEmpty()) {
+            steamClient.storage.globalConfiguration = steamClient.storage.globalConfiguration.copy(
+                machineId = Random.nextBytes(64).toByteString().hex()
+            )
+        }
+
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
                 protocol_version = EnvironmentConstants.PROTOCOL_VERSION,
@@ -188,7 +199,7 @@ class Account(
                 client_os_type = steamClient.config.deviceInfo.osType.encoded,
                 should_remember_password = true,
                 qos_level = 2,
-                machine_id = Random.nextBytes(64).toByteString(),
+                machine_id = steamClient.storage.globalConfiguration.machineId.decodeHex(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
                 eresult_sentryfile = EResult.Fail.encoded,
                 steamguard_dont_remember_computer = false,
@@ -211,6 +222,10 @@ class Account(
     fun cancelPolling() = authStateWatcher?.cancel()
 
     suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
+
+    fun hasSavedDataForAtLeastOneAccount(): Boolean {
+        return steamClient.storage.globalConfiguration.availableAccounts.isEmpty().not()
+    }
 
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
         require(pollInfo != null) { "pollInfo should not be null" }
