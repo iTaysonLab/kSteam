@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
@@ -47,6 +48,7 @@ internal class CMClient (
 
     private var cellId = 0
     private var clientSessionId = 0
+    private var clientSteamId = SteamId.Empty
 
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
@@ -165,6 +167,7 @@ internal class CMClient (
         if (payloadResult.data.eresult == EResult.OK.encoded) {
             cellId = payloadResult.data.cell_id ?: 0
             clientSessionId = checkedPacket.header.sessionId
+            clientSteamId = SteamId(payloadResult.data.client_supplied_steamid?.toULong() ?: 0u)
             internalScope.startHeartbeat(intervalMs = (payloadResult.data.heartbeat_seconds ?: 9) * 1000L)
             mutableClientState.value = CMClientState.Connected
         }
@@ -217,9 +220,8 @@ internal class CMClient (
     suspend fun execute(packet: SteamPacket): SteamPacket {
         awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
 
-        val processedSourcePacket = packet.apply {
+        val processedSourcePacket = packet.enrichWithClientData().apply {
             header.sourceJobId = ++jobIdCounter
-            header.sessionId = clientSessionId
         }
 
         return incomingPacketsQueue.onSubscription {
@@ -234,8 +236,16 @@ internal class CMClient (
      */
     suspend fun executeAndForget(packet: SteamPacket) {
         awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
-        outgoingPacketsQueue.trySend(packet)
+        outgoingPacketsQueue.trySend(packet.enrichWithClientData())
     }
+
+    private fun SteamPacket.enrichWithClientData() = apply {
+            header.sessionId = clientSessionId
+
+            if (header.steamId == SteamId.Empty.id && clientSteamId.id != SteamId.Empty.id) {
+                header.steamId = clientSteamId.id
+            }
+        }
 
     private fun CoroutineScope.startHeartbeat(intervalMs: Long) {
         val actorJob = Job()
