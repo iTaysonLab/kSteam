@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.models.notifications
 
-import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.apps.App
 import bruhcollective.itaysonlab.ksteam.models.econ.EconItemReference
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona

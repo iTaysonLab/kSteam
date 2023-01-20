@@ -26,10 +26,10 @@ class Notifications(
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _notifications = MutableStateFlow<NotificationFeed>(NotificationFeed.Loading)
-    private val notifications = _notifications.asStateFlow()
+    val notifications = _notifications.asStateFlow()
 
     private val _confirmationCount = MutableStateFlow(0)
-    private val confirmationCount = _confirmationCount.asStateFlow()
+    val confirmationCount = _confirmationCount.asStateFlow()
 
     /**
      * Requests notifications and confirmation count.

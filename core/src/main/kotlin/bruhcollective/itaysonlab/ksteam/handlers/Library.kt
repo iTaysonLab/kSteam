@@ -25,6 +25,31 @@ import steam.webui.steamnotification.SteamNotificationType
 class Library(
     private val steamClient: SteamClient
 ): BaseHandler {
+
+    suspend fun requestLibrary() {
+
+    }
+
+    suspend fun requestOwnedApps() {
+
+    }
+
+    suspend fun editCollection() {
+
+    }
+
+    suspend fun createCollection() {
+
+    }
+
+    suspend fun deleteCollection() {
+
+    }
+
+    fun ownsThisApp(appId: AppId) {
+
+    }
+
     override suspend fun onEvent(packet: SteamPacket) {
         when (packet.messageId) {
             else -> {}
