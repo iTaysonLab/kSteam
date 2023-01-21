@@ -23,8 +23,9 @@ internal class Sentry(
 
     fun sentryFile(steamId: SteamId): File? {
         return steamClient.storage.globalConfiguration.availableAccounts[steamId.id]?.sentryFileName?.let {
+            if (it.isEmpty()) return@let null
             sentryFile(steamId, it)
-        }
+        }?.takeIf(File::exists)
     }
 
     fun sentryHash(steamId: SteamId): ByteString? {

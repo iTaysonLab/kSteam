@@ -16,6 +16,7 @@ import com.squareup.wire.Message
 import com.squareup.wire.ProtoAdapter
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okio.buffer
 import okio.cipherSink
 import okio.sink
@@ -30,7 +31,11 @@ class Guard(
     private val steamClient: SteamClient
 ): BaseHandler {
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
+
     private val sgAddFlow = MutableStateFlow<SgCreationFlowState>(SgCreationFlowState.TryingToAdd)
+    val guardConfigurationFlow = sgAddFlow.asStateFlow()
+
+    fun instanceForCurrentUser() = instanceFor(steamClient.currentSessionSteamId)
 
     /**
      * Request a Steam Guard instance for a [steamId].
