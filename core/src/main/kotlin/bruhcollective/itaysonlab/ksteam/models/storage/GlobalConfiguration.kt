@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 internal data class GlobalConfiguration (
     val availableAccounts: Map<ULong, SavedAccount> = emptyMap(),
     val defaultAccount: ULong = 0u,
-    val machineId: String = ""
+    val machineId: String = "",
+    val clockSyncTz: String = "",
+    val clockSyncDiff: Long = 0,
 )
 
 @Serializable

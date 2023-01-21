@@ -26,7 +26,7 @@ class SteamClient (
 ) {
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
 
-    private val externalWebApi = ExternalWebApi(config.networkClient)
+    internal val externalWebApi = ExternalWebApi(config.networkClient)
     private val serverList = CMList(externalWebApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
@@ -39,6 +39,7 @@ class SteamClient (
         Store(this).createAssociation(),
         Library(this).createAssociation(),
         Sentry(this).createAssociation(),
+        Guard(this).createAssociation(),
     )
 
     val connectionStatus get() = cmClient.clientState

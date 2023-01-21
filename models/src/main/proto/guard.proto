@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option optimize_for = LITE_RUNTIME;
+option java_package = "bruhcollective.itaysonlab.ksteam.proto";
+option java_multiple_files = true;
+
+message GuardConfiguration {
+  bytes shared_secret = 1;
+  fixed64 serial_number = 2;
+  string revocation_code = 3;
+  string uri = 4;
+  uint64 server_time = 5;
+  string account_name = 6;
+  string token_gid = 7;
+  bytes identity_secret = 8;
+  bytes secret_1 = 9;
+  uint64 steam_id = 99; // reserved for future guard model structure updates
+}

@@ -48,6 +48,10 @@ internal class Storage(
             }
         }
 
+    suspend fun modifyConfig(func: GlobalConfiguration.() -> GlobalConfiguration) = withContext(Dispatchers.IO) {
+        globalConfiguration = globalConfiguration.let(func)
+    }
+
     suspend fun modifyAccount(steamId: SteamId, func: SavedAccount.() -> SavedAccount) = withContext(Dispatchers.IO) {
         globalConfiguration = globalConfiguration.copy(
             availableAccounts = globalConfiguration.availableAccounts.toMutableMap().apply {
