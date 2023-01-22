@@ -5,8 +5,8 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.debug.logWarning
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
@@ -15,12 +15,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import okio.ByteString
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
 import steam.webui.authentication.*
 import steam.webui.common.CMsgClientLogon
 import steam.webui.common.CMsgClientLogonResponse
+import steam.webui.common.CMsgIPAddress
+import java.net.InetAddress
+import java.nio.ByteBuffer
 import kotlin.random.Random
 
 class Account(
@@ -157,6 +161,23 @@ class Account(
         return pollAuthStatusInternal()
     }
 
+    suspend fun signInWithAccessToken(
+        accessToken: String, refreshToken: String, steamId: SteamId, accountName: String = "", rememberSession: Boolean = false
+    ) {
+        sendClientLogon(steamId = steamId, token = refreshToken)
+
+        if (rememberSession) {
+            awaitSignIn()
+            steamClient.storage.modifyAccount(steamId) {
+                copy(
+                    accessToken = accessToken,
+                    refreshToken = refreshToken,
+                    accountName = accountName
+                )
+            }
+        }
+    }
+
     /**
      * Tries to sign in using saved session data from [Storage].
      * You can specify your own SteamID to sign in a particular account. If this parameter is null, the "default" SteamID will be selected.
@@ -193,6 +214,18 @@ class Account(
 
         val sentryFileHash = steamClient.sentry.sentryHash(steamId)
 
+        /*
+        Steam apparently does not want an IP address on ClientLogon requests.
+
+        val currentIp = withContext(Dispatchers.IO) {
+            val ipInt = InetAddress.getLocalHost().address.let { ByteBuffer.wrap(it) }.int.toUInt()
+
+            CMsgIPAddress(
+                v4 = (ipInt xor 0xBAADF00D_u).toInt()
+            )
+        }
+        */
+
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
                 protocol_version = EnvironmentConstants.PROTOCOL_VERSION,
@@ -203,6 +236,8 @@ class Account(
                 qos_level = 2,
                 machine_id = steamClient.storage.globalConfiguration.machineId.decodeHex(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
+                //obfuscated_private_ip = currentIp,
+                //deprecated_obfustucated_private_ip = currentIp.v4,
                 steamguard_dont_remember_computer = false,
                 is_steam_deck = false,
                 is_steam_box = false,

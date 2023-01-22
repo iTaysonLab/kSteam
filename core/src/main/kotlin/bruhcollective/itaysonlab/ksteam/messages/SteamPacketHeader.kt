@@ -51,7 +51,7 @@ sealed class SteamPacketHeader private constructor() {
     }
 
     class Protobuf: SteamPacketHeader() {
-        private var protoHeader = CMsgProtoBufHeader(realm = 1)
+        private var protoHeader = CMsgProtoBufHeader()
 
         override var targetJobId: Long
             get() = protoHeader.jobid_target ?: 0L

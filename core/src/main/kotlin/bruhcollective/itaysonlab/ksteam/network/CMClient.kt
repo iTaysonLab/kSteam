@@ -155,6 +155,7 @@ internal class CMClient (
                 if (outgoingPacketsQueue.isEmpty.not()) {
                     val packetToSend = outgoingPacketsQueue.receive()
                     logVerbose("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
+                    logVerbose("CMClient:WsConnection", "> [header] ${packetToSend.header}")
                     send(packetToSend.encode())
                 }
             }

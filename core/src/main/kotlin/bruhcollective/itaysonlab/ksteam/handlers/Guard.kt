@@ -88,6 +88,7 @@ class Guard(
      * This will send a SMS to an phone, from which you need to extract the code and send it to the server.
      */
     suspend fun confirmMove() {
+        // TODO: Use external API due to Steam probably being bugged
         sgAddFlow.value = SgCreationFlowState.AlreadyHasGuard(true)
         sgAddFlow.value = steamClient.webApi.execute(
             methodName = "TwoFactor.RemoveAuthenticatorViaChallengeStart",
@@ -165,11 +166,7 @@ class Guard(
         }
 
         if (guardConfiguration != null) {
-            getGuardFile(steamClient.currentSessionSteamId).apply {
-                if (!exists()) createNewFile()
-            }.sink().buffer().use {
-                GuardConfiguration.ADAPTER.encode(it, guardConfiguration)
-            }
+            writeGuard(steamClient.currentSessionSteamId, guardConfiguration)
 
             GuardInstance(steamClient.currentSessionSteamId, guardConfiguration, GuardClockContextImpl(steamClient)).let { createdInstance ->
                 lazyInstances[steamClient.currentSessionSteamId] = createdInstance
@@ -181,10 +178,13 @@ class Guard(
     }
 
     /**
-     * A special "migration" function created to migrate from Jetisteam pre-alpha to kSteam-based instances.
+     * A special "migration" function which will explicitly add GuardConfiguration.
+     *
+     * WARNING: THIS WILL REPLACE THE CURRENT CONFIG IF IT WAS SUPPLIED!
      */
-    suspend fun tryMigrateFromJetisteam(protoMsg: ByteArray) {
-        // TODO
+    fun tryAddConfig(steamId: SteamId, configuration: GuardConfiguration) {
+        lazyInstances[steamId] = GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient))
+        writeGuard(steamId, configuration)
     }
 
     /**
@@ -192,6 +192,14 @@ class Guard(
      */
     suspend fun tryMigrateFromMafile() {
         // TODO
+    }
+
+    private fun writeGuard(steamId: SteamId, configuration: GuardConfiguration) {
+        getGuardFile(steamId).apply {
+            if (!exists()) createNewFile()
+        }.sink().buffer().use {
+            GuardConfiguration.ADAPTER.encode(it, configuration)
+        }
     }
 
     private fun getGuardFile(steamId: SteamId) = File(steamClient.storage.storageFor(steamId), "guard")

@@ -27,7 +27,11 @@ class DeviceInformation(
      */
     internal val deviceName: String = "kSteam-Client",
     /**
-     * Platform type. Visible in "All sessions" screen.
+     * Platform type for authorizing.
+     *
+     * ALWAYS USE k_EAuthTokenPlatformType_SteamClient!
+     * - k_EAuthTokenPlatformType_MobileApp does not allow you to connect to a CM (JWT does not include "client")
+     * - k_EAuthTokenPlatformType_WebBrowser is unknown, but also not recommended.
      */
     internal val platformType: EAuthTokenPlatformType = EAuthTokenPlatformType.k_EAuthTokenPlatformType_SteamClient,
     /**
