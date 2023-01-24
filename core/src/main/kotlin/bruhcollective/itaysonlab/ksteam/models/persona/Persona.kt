@@ -41,7 +41,7 @@ data class Persona internal constructor(
         )
     }
 
-    internal constructor(obj: CMsgClientPersonaState_Friend): this(
+    internal constructor(obj: CMsgClientPersonaState_Friend) : this(
         id = SteamId(obj.friendid?.toULong() ?: 0u),
         name = obj.player_name.orEmpty(),
         avatar = AvatarHash(obj.avatar_hash?.hex() ?: ""),

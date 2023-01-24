@@ -1,24 +1,20 @@
-package bruhcollective.itaysonlab.ksteam.handlers
+package bruhcollective.itaysonlab.ksteam.handlers.guard
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
 import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
+import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.storage
+import bruhcollective.itaysonlab.ksteam.handlers.webApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
-import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.proto.GuardConfiguration
-import com.squareup.wire.Message
-import com.squareup.wire.ProtoAdapter
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import okio.buffer
-import okio.cipherSink
 import okio.sink
 import okio.source
 import steam.webui.twofactor.*
@@ -29,7 +25,7 @@ import java.io.File
  */
 class Guard(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
 
     private val sgAddFlow = MutableStateFlow<SgCreationFlowState>(SgCreationFlowState.TryingToAdd)
@@ -77,7 +73,12 @@ class Guard(
             if (response.status == EResult.DuplicateRequest.encoded) {
                 SgCreationFlowState.AlreadyHasGuard(false)
             } else {
-                SgCreationFlowState.SmsSent(hint = response.phone_number_hint.orEmpty(), returnedBecauseOfError = false, moving = false, guardConfiguration = response.toConfig(steamClient.currentSessionSteamId))
+                SgCreationFlowState.SmsSent(
+                    hint = response.phone_number_hint.orEmpty(),
+                    returnedBecauseOfError = false,
+                    moving = false,
+                    guardConfiguration = response.toConfig(steamClient.currentSessionSteamId)
+                )
             }
         }
     }
@@ -88,16 +89,16 @@ class Guard(
      * This will send a SMS to an phone, from which you need to extract the code and send it to the server.
      */
     suspend fun confirmMove() {
-        // TODO: Use external API due to Steam probably being bugged
-        sgAddFlow.value = SgCreationFlowState.AlreadyHasGuard(true)
-        sgAddFlow.value = steamClient.webApi.execute(
-            methodName = "TwoFactor.RemoveAuthenticatorViaChallengeStart",
-            requestAdapter = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request.ADAPTER,
-            responseAdapter = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Response.ADAPTER,
-            requestData = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request()
-        ).data.let { response ->
+        steamClient.externalWebApi.requestMove(
+            accessToken = steamClient.storage.globalConfiguration.availableAccounts[steamClient.currentSessionSteamId.id]!!.accessToken
+        ).let { response ->
             if (response.success == true) {
-                SgCreationFlowState.SmsSent(hint = "", returnedBecauseOfError = false, moving = true, guardConfiguration = null)
+                SgCreationFlowState.SmsSent(
+                    hint = "",
+                    returnedBecauseOfError = false,
+                    moving = true,
+                    guardConfiguration = null
+                )
             } else {
                 SgCreationFlowState.Error("RemoveAuthenticatorViaChallengeStart returned false")
             }
@@ -109,7 +110,13 @@ class Guard(
      */
     suspend fun confirmSgConfiguration(code: String) {
         val previous = sgAddFlow.value as SgCreationFlowState.SmsSent
-        val instance = previous.guardConfiguration?.let { GuardInstance(steamClient.currentSessionSteamId, it, GuardClockContextImpl(steamClient)) }
+        val instance = previous.guardConfiguration?.let {
+            GuardInstance(
+                steamClient.currentSessionSteamId,
+                it,
+                GuardClockContextImpl(steamClient)
+            )
+        }
 
         sgAddFlow.value = SgCreationFlowState.Processing
 
@@ -168,7 +175,11 @@ class Guard(
         if (guardConfiguration != null) {
             writeGuard(steamClient.currentSessionSteamId, guardConfiguration)
 
-            GuardInstance(steamClient.currentSessionSteamId, guardConfiguration, GuardClockContextImpl(steamClient)).let { createdInstance ->
+            GuardInstance(
+                steamClient.currentSessionSteamId,
+                guardConfiguration,
+                GuardClockContextImpl(steamClient)
+            ).let { createdInstance ->
                 lazyInstances[steamClient.currentSessionSteamId] = createdInstance
                 sgAddFlow.value = SgCreationFlowState.Success(createdInstance.revocationCode)
             }

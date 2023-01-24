@@ -29,8 +29,8 @@ import kotlin.math.min
  * Generates codes, confirms trading and market sales, returns auth sessions.
  * For creating a instance if it is not created yet, refer to the [Guard] handler.
  */
-class GuardInstance (
-    private val steamId: SteamId,
+class GuardInstance(
+    internal val steamId: SteamId,
     private val configuration: GuardConfiguration,
     private val clockContext: GuardClockContext
 ) {

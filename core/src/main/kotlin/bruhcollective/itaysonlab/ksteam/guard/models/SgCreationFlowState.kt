@@ -9,14 +9,14 @@ sealed class SgCreationFlowState {
     /**
      * Display a full-screen progress.
      */
-    object TryingToAdd: SgCreationFlowState()
+    object TryingToAdd : SgCreationFlowState()
 
     /**
      * This means that the user has set up Steam Guard on another device.
      */
     class AlreadyHasGuard(
         val isProcessingRequest: Boolean = false
-    ): SgCreationFlowState()
+    ) : SgCreationFlowState()
 
     /**
      * This means an SMS was sent and a code must be provided to finish move/addition.
@@ -26,12 +26,12 @@ sealed class SgCreationFlowState {
         val returnedBecauseOfError: Boolean,
         val moving: Boolean,
         val guardConfiguration: GuardConfiguration?
-    ): SgCreationFlowState()
+    ) : SgCreationFlowState()
 
     /**
      * SMS is confirmed, processing the request
      */
-    object Processing: SgCreationFlowState()
+    object Processing : SgCreationFlowState()
 
     /**
      * Steam Guard is configured on this kSteam instance.
@@ -40,9 +40,9 @@ sealed class SgCreationFlowState {
      */
     class Success(
         val recoveryCode: String
-    ): SgCreationFlowState()
+    ) : SgCreationFlowState()
 
     class Error(
         val message: String
-    ): SgCreationFlowState()
+    ) : SgCreationFlowState()
 }

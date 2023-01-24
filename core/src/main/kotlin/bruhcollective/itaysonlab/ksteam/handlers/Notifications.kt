@@ -22,7 +22,7 @@ import steam.webui.steamnotification.SteamNotificationType
  */
 class Notifications(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _notifications = MutableStateFlow<NotificationFeed>(NotificationFeed.Loading)

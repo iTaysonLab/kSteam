@@ -16,10 +16,15 @@ import okio.ByteString.Companion.toByteString
  * packet can be both proto/structure-based
  * proto has a protobuf header + message glued
  */
-class SteamPacket private constructor(val messageId: EMsg, val header: SteamPacketHeader, internal var payload: ByteArray) {
+class SteamPacket private constructor(
+    val messageId: EMsg,
+    val header: SteamPacketHeader,
+    internal var payload: ByteArray
+) {
     companion object {
         // Whitelist of EMsg ID's that can be executed without auth
-        private val anonymousIds = arrayOf(EMsg.k_EMsgClientHello, EMsg.k_EMsgServiceMethodCallFromClientNonAuthed, EMsg.k_EMsgClientLogon)
+        private val anonymousIds =
+            arrayOf(EMsg.k_EMsgClientHello, EMsg.k_EMsgServiceMethodCallFromClientNonAuthed, EMsg.k_EMsgClientLogon)
 
         // Usage: EMsg and ProtobufMask
         private const val ProtobufMask = 0x80000000.toInt()
@@ -38,7 +43,10 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
             val messageIdRaw = packetBuffer.readIntLe()
             val messageId = EMsg.byEncoded(messageIdRaw and ProtobufClearMask)
 
-            logVerbose("SteamPacket:ParseNet", "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})")
+            logVerbose(
+                "SteamPacket:ParseNet",
+                "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})"
+            )
 
             val header: SteamPacketHeader = if ((messageIdRaw and ProtobufMask) != 0) {
                 SteamPacketHeader.Protobuf()
@@ -89,11 +97,13 @@ class SteamPacket private constructor(val messageId: EMsg, val header: SteamPack
     fun <T> getProtoPayload(adapter: ProtoAdapter<T>): Result<T> {
         require(header is SteamPacketHeader.Protobuf) { "Message is not protobuf, but proto decoding requested" }
 
-        return Result(try {
-            adapter.decode(payload)
-        } catch (e: Exception) {
-            null
-        } to header.result)
+        return Result(
+            try {
+                adapter.decode(payload)
+            } catch (e: Exception) {
+                null
+            } to header.result
+        )
     }
 
     fun <T> getBinaryPayload(adapter: SteamBinaryPayloadAdapter<T>): T {

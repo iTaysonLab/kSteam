@@ -14,7 +14,7 @@ import steam.webui.common.*
  */
 class Store(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     private val json = Json { ignoreUnknownKeys = true }
 
     // TODO: make it "compressable" or store in some kind of LRU cache with on-disk

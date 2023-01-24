@@ -20,7 +20,7 @@ import steam.webui.friendslist.CMsgClientFriendsList
  */
 class Persona(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     private val personas = MutableStateFlow<PersonaList>(emptyMap())
 
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
@@ -70,15 +70,20 @@ class Persona(
     suspend fun setOnlineStatus(mode: EPersonaState = EPersonaState.Online) {
         if (_currentPersonaOnlineStatus.value == mode) return
         _currentPersonaOnlineStatus.value = mode
-        steamClient.executeAndForget(SteamPacket.newProto(
-            messageId = EMsg.k_EMsgClientChangeStatus,
-            adapter = CMsgClientChangeStatus.ADAPTER,
-            payload = CMsgClientChangeStatus(persona_state = mode.ordinal, persona_state_flags = if (steamClient.config.deviceInfo.gamingDeviceType == EGamingDeviceType.k_EGamingDeviceType_Phone) {
-                EPersonaStateFlag.ClientTypeMobile.mask
-            } else {
-                0
-            })
-        ))
+        steamClient.executeAndForget(
+            SteamPacket.newProto(
+                messageId = EMsg.k_EMsgClientChangeStatus,
+                adapter = CMsgClientChangeStatus.ADAPTER,
+                payload = CMsgClientChangeStatus(
+                    persona_state = mode.ordinal,
+                    persona_state_flags = if (steamClient.config.deviceInfo.gamingDeviceType == EGamingDeviceType.k_EGamingDeviceType_Phone) {
+                        EPersonaStateFlag.ClientTypeMobile.mask
+                    } else {
+                        0
+                    }
+                )
+            )
+        )
     }
 
     /**

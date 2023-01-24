@@ -11,7 +11,10 @@ object Logging {
         set(value) {
             transport.verbosity = value
             if (value == LoggingVerbosity.Verbose) {
-                transport.printError("KS::Logging", "Verbosity level set to VERBOSE. This exposures message contents, which includes sign in information and other private data. Be careful.")
+                transport.printError(
+                    "KS::Logging",
+                    "Verbosity level set to VERBOSE. This exposures message contents, which includes sign in information and other private data. Be careful."
+                )
             }
         }
 }
@@ -29,7 +32,7 @@ interface LoggingTransport {
     fun printVerbose(tag: String, message: String)
 }
 
-class DefaultLoggingTransport: LoggingTransport {
+class DefaultLoggingTransport : LoggingTransport {
     private val logger = Logger.getLogger("kSteam")
 
     override var verbosity: LoggingVerbosity

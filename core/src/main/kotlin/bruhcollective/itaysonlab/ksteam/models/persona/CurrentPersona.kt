@@ -28,6 +28,7 @@ data class CurrentPersona internal constructor(
     val vanityUrl: String
 ) {
     companion object {
-        val Unknown = CurrentPersona(id = SteamId(0u), name = "", flags = AccountFlags(0), country = "US", vanityUrl = "")
+        val Unknown =
+            CurrentPersona(id = SteamId(0u), name = "", flags = AccountFlags(0), country = "US", vanityUrl = "")
     }
 }

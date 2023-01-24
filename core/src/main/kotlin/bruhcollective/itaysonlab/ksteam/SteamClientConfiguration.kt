@@ -12,7 +12,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import java.io.File
 
-class SteamClientConfiguration (
+class SteamClientConfiguration(
     private val httpProxyIp: String? = null,
     private val httpProxyPort: Int = 80,
     internal val deviceInfo: DeviceInformation = DeviceInformation(),

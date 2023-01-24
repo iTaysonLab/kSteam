@@ -28,16 +28,12 @@ import steam.webui.common.CMsgClientHeartBeat
 import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.common.CMsgMulti
 
-internal class CMClient (
+internal class CMClient(
     private val serverList: CMList,
     private val configuration: SteamClientConfiguration
 ) {
     // A scope used to hold WSS connection
-    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO) { ctx, throwable ->
-        logError("CMClient:Restarter", "WSS error: ${throwable.message} <exception: ${throwable::class.simpleName}>")
-        mutableClientState.value = CMClientState.Connecting
-        // TODO: restart
-    }
+    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO)
 
     private var selectedServer: CMServerEntry? = null
 
@@ -48,7 +44,7 @@ internal class CMClient (
 
     private var cellId = 0
     private var clientSessionId = 0
-    private var clientSteamId = SteamId.Empty
+    internal var clientSteamId = SteamId.Empty
 
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
@@ -76,30 +72,36 @@ internal class CMClient (
         awaitConnection(authRequired = false)
     }
 
-    suspend fun awaitConnection(authRequired: Boolean = true) {
+    private suspend fun awaitConnection(authRequired: Boolean = true) {
         clientState.first {
-            it == if (authRequired) {
-                CMClientState.Connected
+            if (authRequired) {
+                it == CMClientState.Connected
             } else {
-                CMClientState.Logging
+                it == CMClientState.Logging || it == CMClientState.Connected
             }
         }
     }
 
-    private fun launchConnectionCoroutine() {
+    private fun launchConnectionCoroutine(reconnect: Boolean = false) {
         if (clientState.value != CMClientState.Idle) return
 
         internalScope.launch {
+            if (reconnect) {
+                mutableClientState.value = CMClientState.Reconnecting
+                delay(1000L) // don't spam the server
+            } else {
+                mutableClientState.value = CMClientState.Connecting
+            }
+
             connect()
         }.invokeOnCompletion {
             mutableClientState.value = CMClientState.Idle
+            launchConnectionCoroutine(reconnect = true)
         }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun connect() {
-        mutableClientState.value = CMClientState.Connecting
-
         logDebug("CMClient:Start", "Fetching CMList")
         selectedServer = serverList.getBestServer()
 
@@ -111,9 +113,9 @@ internal class CMClient (
 
             send(
                 SteamPacket.newProto(
-                        messageId = EMsg.k_EMsgClientHello,
-                        adapter = CMsgClientHello.ADAPTER,
-                        payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
+                    messageId = EMsg.k_EMsgClientHello,
+                    adapter = CMsgClientHello.ADAPTER,
+                    payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
                 )
             )
 
@@ -124,7 +126,10 @@ internal class CMClient (
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
                     if (packetToReceive is Frame.Binary) {
-                        logVerbose("CMClient:WsConnection", "Received binary message (data: ${packetToReceive.data.toByteString().hex()})")
+                        logVerbose(
+                            "CMClient:WsConnection",
+                            "Received binary message (data: ${packetToReceive.data.toByteString().hex()})"
+                        )
                         // Parse message out from this and add to queue
 
                         val steamPacket = runCatching {
@@ -144,10 +149,16 @@ internal class CMClient (
                                 }
                             }
                         } else {
-                            logError("CMClient:WsConnection", "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}")
+                            logError(
+                                "CMClient:WsConnection",
+                                "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}"
+                            )
                         }
                     } else {
-                        logDebug("CMClient:WsConnection", "Received non-binary message (type: ${packetToReceive.frameType.name})")
+                        logDebug(
+                            "CMClient:WsConnection",
+                            "Received non-binary message (type: ${packetToReceive.frameType.name})"
+                        )
                     }
                 }
 
@@ -185,7 +196,10 @@ internal class CMClient (
             val payload = payloadResult.data
 
             if ((payload.size_unzipped ?: 0) > 0) {
-                logVerbose("SteamPacket:Multi", "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)")
+                logVerbose(
+                    "SteamPacket:Multi",
+                    "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)"
+                )
             } else {
                 logVerbose("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
             }
@@ -241,12 +255,12 @@ internal class CMClient (
     }
 
     private fun SteamPacket.enrichWithClientData() = apply {
-            header.sessionId = clientSessionId
+        header.sessionId = clientSessionId
 
-            if (header.steamId == SteamId.Empty.id && clientSteamId.id != SteamId.Empty.id) {
-                header.steamId = clientSteamId.id
-            }
+        if (header.steamId == SteamId.Empty.id && clientSteamId.id != SteamId.Empty.id) {
+            header.steamId = clientSteamId.id
         }
+    }
 
     private fun CoroutineScope.startHeartbeat(intervalMs: Long) {
         val actorJob = Job()
@@ -255,11 +269,13 @@ internal class CMClient (
             while (true) {
                 logVerbose("CMClient:Heartbeat", "Adding heartbeat packet to queue")
 
-                executeAndForget(SteamPacket.newProto(
-                    messageId = EMsg.k_EMsgClientHeartBeat,
-                    adapter = CMsgClientHeartBeat.ADAPTER,
-                    payload = CMsgClientHeartBeat()
-                ))
+                executeAndForget(
+                    SteamPacket.newProto(
+                        messageId = EMsg.k_EMsgClientHeartBeat,
+                        adapter = CMsgClientHeartBeat.ADAPTER,
+                        payload = CMsgClientHeartBeat()
+                    )
+                )
 
                 delay(intervalMs)
             }

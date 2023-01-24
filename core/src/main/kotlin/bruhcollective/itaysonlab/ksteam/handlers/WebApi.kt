@@ -10,7 +10,7 @@ import com.squareup.wire.ProtoAdapter
 
 class WebApi(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     /**
      * Create a WebAPI request using the Steam network transport
      *
@@ -20,7 +20,7 @@ class WebApi(
      * @param responseAdapter Wire adapter for response body
      * @param requestData request body
      */
-    suspend fun <Request: Message<Request, *>, Response: Message<Response, *>> execute(
+    suspend fun <Request : Message<Request, *>, Response : Message<Response, *>> execute(
         signed: Boolean = true,
         methodName: String,
         requestAdapter: ProtoAdapter<Request>,

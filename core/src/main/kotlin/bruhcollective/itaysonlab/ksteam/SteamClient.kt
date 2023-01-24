@@ -2,7 +2,11 @@ package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.handlers.*
-import bruhcollective.itaysonlab.ksteam.handlers.Storage
+import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
+import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
+import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
+import bruhcollective.itaysonlab.ksteam.handlers.internal.CloudConfiguration
+import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.network.CMClient
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
@@ -21,7 +25,7 @@ import kotlin.reflect.KClass
 /**
  * Main entrypoint for kSteam usage.
  */
-class SteamClient (
+class SteamClient(
     internal val config: SteamClientConfiguration
 ) {
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
@@ -30,6 +34,7 @@ class SteamClient (
     private val serverList = CMList(externalWebApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
+    // TODO: we definitely need some sort of DI
     val handlers = mapOf<KClass<*>, BaseHandler>(
         Account(this).createAssociation(),
         WebApi(this).createAssociation(),
@@ -40,10 +45,15 @@ class SteamClient (
         Library(this).createAssociation(),
         Sentry(this).createAssociation(),
         Guard(this).createAssociation(),
+        GuardManagement(this).createAssociation(),
+        GuardConfirmation(this).createAssociation(),
+        CloudConfiguration(this).createAssociation(),
     )
 
     val connectionStatus get() = cmClient.clientState
     val incomingPacketsFlow get() = cmClient.incomingPacketsQueue
+
+    val currentSessionSteamId get() = cmClient.clientSteamId
 
     suspend fun start() {
         cmClient.tryConnect()
@@ -73,12 +83,14 @@ class SteamClient (
             }.launchIn(eventsScope)
     }
 
-    inline fun <reified T: BaseHandler> getHandler(): T {
-        val handler = handlers[T::class] ?: throw IllegalStateException("No typed handler registered (trying to get: ${T::class.java.simpleName}).")
-        return (handler as? T) ?: throw IllegalStateException("Typed handler registered with incorrect mapping (trying to get: ${T::class.java.simpleName}, got: ${handler::class.java.simpleName}).")
+    inline fun <reified T : BaseHandler> getHandler(): T {
+        val handler = handlers[T::class]
+            ?: throw IllegalStateException("No typed handler registered (trying to get: ${T::class.java.simpleName}).")
+        return (handler as? T)
+            ?: throw IllegalStateException("Typed handler registered with incorrect mapping (trying to get: ${T::class.java.simpleName}, got: ${handler::class.java.simpleName}).")
     }
 
-    private inline fun <reified T: BaseHandler> T.createAssociation() = T::class to this
+    private inline fun <reified T : BaseHandler> T.createAssociation() = T::class to this
 
     suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
     suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)

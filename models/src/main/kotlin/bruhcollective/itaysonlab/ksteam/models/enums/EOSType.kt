@@ -133,6 +133,6 @@ enum class EOSType (val encoded: Int) {
     k_eOSTypeMax(32);
 
     companion object {
-        fun byEncoded(num: Int) = values().firstOrNull { it.encoded == num } ?: k_eOSTypeMax
+        fun byEncoded(num: Int?) = num?.let { n -> values().firstOrNull { it.encoded == n } } ?: k_eOSTypeMax
     }
 }

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r15"
+version = "r18"
 
 kotlin {
     jvmToolchain(8)
@@ -29,6 +29,8 @@ dependencies {
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")
+
+    testImplementation(kotlin("test"))
 }
 
 publishing {

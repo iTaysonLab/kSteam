@@ -22,7 +22,7 @@ import java.io.File
  */
 internal class Storage(
     private val steamClient: SteamClient
-): BaseHandler {
+) : BaseHandler {
     private val json = Json {
         ignoreUnknownKeys = true
     }
@@ -55,7 +55,10 @@ internal class Storage(
     suspend fun modifyAccount(steamId: SteamId, func: SavedAccount.() -> SavedAccount) = withContext(Dispatchers.IO) {
         globalConfiguration = globalConfiguration.copy(
             availableAccounts = globalConfiguration.availableAccounts.toMutableMap().apply {
-                put(steamId.id, (globalConfiguration.availableAccounts[steamId.id] ?: SavedAccount(steamId = steamId.id)).let(func))
+                put(
+                    steamId.id,
+                    (globalConfiguration.availableAccounts[steamId.id] ?: SavedAccount(steamId = steamId.id)).let(func)
+                )
             }, defaultAccount = if (globalConfiguration.defaultAccount == 0u.toULong()) {
                 steamId.id
             } else {

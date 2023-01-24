@@ -13,7 +13,7 @@ sealed class SteamPacketHeader private constructor() {
     abstract var steamId: ULong
     abstract var sessionId: Int
 
-    class Binary: SteamPacketHeader() {
+    class Binary : SteamPacketHeader() {
         private var headerSize: Byte = 36
         private var headerVersion: Int = 2
 
@@ -50,7 +50,7 @@ sealed class SteamPacketHeader private constructor() {
         }
     }
 
-    class Protobuf: SteamPacketHeader() {
+    class Protobuf : SteamPacketHeader() {
         private var protoHeader = CMsgProtoBufHeader()
 
         override var targetJobId: Long

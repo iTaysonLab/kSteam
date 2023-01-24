@@ -15,16 +15,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.withContext
 import okio.ByteString
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
 import steam.webui.authentication.*
 import steam.webui.common.CMsgClientLogon
 import steam.webui.common.CMsgClientLogonResponse
-import steam.webui.common.CMsgIPAddress
-import java.net.InetAddress
-import java.nio.ByteBuffer
 import kotlin.random.Random
 
 class Account(
@@ -119,13 +115,23 @@ class Account(
                     "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
                 )
 
+                val availableInstanceFor = steamClient.guard.instanceFor(SteamId(this.steamid?.toULong() ?: 0u))
+
                 pollInfo = PollInfo(this.client_id!! to this.request_id!!)
                 authState.tryEmit(AuthorizationState.AwaitingTwoFactor(this))
 
                 if (allowed_confirmations.mapNotNull { it.confirmation_type }.let {
-                    it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation) || it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation)
-                }) {
+                        it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation) || it.contains(
+                            EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation
+                        )
+                    }) {
                     createWatcherFlow(this.interval ?: 5f)
+                }
+
+                if (availableInstanceFor != null && allowed_confirmations.mapNotNull { it.confirmation_type }
+                        .contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
+                    logVerbose("Account:SignIn", "This SteamID has a registered Guard instance, we can skip 2FA")
+                    updateCurrentSessionWithCode(availableInstanceFor.generateCodeWithTime().codeString)
                 }
             }
 
@@ -162,7 +168,11 @@ class Account(
     }
 
     suspend fun signInWithAccessToken(
-        accessToken: String, refreshToken: String, steamId: SteamId, accountName: String = "", rememberSession: Boolean = false
+        accessToken: String,
+        refreshToken: String,
+        steamId: SteamId,
+        accountName: String = "",
+        rememberSession: Boolean = false
     ) {
         sendClientLogon(steamId = steamId, token = refreshToken)
 
@@ -198,7 +208,10 @@ class Account(
             true
         } else {
             if (steamId != null) {
-                logWarning("Account:AutoSignIn", "No accounts found on the kSteam database. Please log in manually to use this feature.")
+                logWarning(
+                    "Account:AutoSignIn",
+                    "No accounts found on the kSteam database. Please log in manually to use this feature."
+                )
             }
 
             false
@@ -275,7 +288,10 @@ class Account(
             methodName = "Authentication.PollAuthSessionStatus",
             requestAdapter = CAuthentication_PollAuthSessionStatus_Request.ADAPTER,
             responseAdapter = CAuthentication_PollAuthSessionStatus_Response.ADAPTER,
-            requestData = CAuthentication_PollAuthSessionStatus_Request(client_id = pollInfo!!.clientId, request_id = pollInfo!!.requestId)
+            requestData = CAuthentication_PollAuthSessionStatus_Request(
+                client_id = pollInfo!!.clientId,
+                request_id = pollInfo!!.requestId
+            )
         ).data
     }
 

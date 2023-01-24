@@ -34,7 +34,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val gifter: Flow<Persona>
-    ): Notification() {
+    ) : Notification() {
         @Serializable
         class Body(
             @SerialName("gifter_account") val accountId: Long = 0,
@@ -49,7 +49,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val item: EconItemReference
-    ): Notification() {
+    ) : Notification() {
         @Serializable
         class Body(
             @SerialName("app_id") val appId: Int = 0,
@@ -66,7 +66,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val requestor: Flow<Persona>
-    ): Notification() {
+    ) : Notification() {
         @Serializable
         class Body(
             @SerialName("requestor_id") val accountId: Long = 0,
@@ -81,7 +81,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val app: App?
-    ): Notification() {
+    ) : Notification() {
         val isMultipleItemsOnSale get() = app == null
 
         @Serializable
@@ -101,7 +101,7 @@ sealed class Notification {
         val description: String,
         val iconUrl: String,
         val link: String
-    ): Notification() {
+    ) : Notification() {
         @Serializable
         class Body(
             @SerialName("title") val title: String = "",
@@ -121,5 +121,5 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val rawJsonData: String
-    ): Notification()
+    ) : Notification()
 }

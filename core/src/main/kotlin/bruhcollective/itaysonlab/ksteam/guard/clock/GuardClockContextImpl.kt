@@ -2,7 +2,7 @@ package bruhcollective.itaysonlab.ksteam.guard.clock
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.handlers.storage
-import java.util.TimeZone
+import java.util.*
 
 /**
  * A [GuardClockContext] implementation using native Java API.
@@ -11,7 +11,7 @@ import java.util.TimeZone
  */
 class GuardClockContextImpl(
     private val steamClient: SteamClient
-): GuardClockContext {
+) : GuardClockContext {
     private val currentTzId get() = TimeZone.getDefault().id
 
     override suspend fun provideTimeDifference(): Long {
