@@ -18,7 +18,7 @@ inline val SteamClient.library get() = getHandler<Library>()
 
 inline val SteamClient.guard get() = getHandler<Guard>()
 inline val SteamClient.guardManagement get() = getHandler<GuardManagement>()
-inline val SteamClient.guardConfiguration get() = getHandler<GuardConfirmation>()
+inline val SteamClient.guardConfirmation get() = getHandler<GuardConfirmation>()
 
 //
 
