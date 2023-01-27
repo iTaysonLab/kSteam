@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
 import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.handlers.storage
 import bruhcollective.itaysonlab.ksteam.handlers.webApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -89,20 +90,18 @@ class Guard(
      * This will send a SMS to an phone, from which you need to extract the code and send it to the server.
      */
     suspend fun confirmMove() {
-        steamClient.externalWebApi.requestMove(
-            accessToken = steamClient.storage.globalConfiguration.availableAccounts[steamClient.currentSessionSteamId.id]!!.accessToken
-        ).let { response ->
-            if (response.success == true) {
-                SgCreationFlowState.SmsSent(
-                    hint = "",
-                    returnedBecauseOfError = false,
-                    moving = true,
-                    guardConfiguration = null
-                )
-            } else {
-                SgCreationFlowState.Error("RemoveAuthenticatorViaChallengeStart returned false")
-            }
-        }
+        sgAddFlow.value = SgCreationFlowState.AlreadyHasGuard(true)
+
+        steamClient.externalWebApi.guardMoveStart(
+            accessToken = steamClient.account.getCurrentAccount()!!.accessToken
+        )
+
+        sgAddFlow.value = SgCreationFlowState.SmsSent(
+            hint = "",
+            returnedBecauseOfError = false,
+            moving = true,
+            guardConfiguration = null
+        )
     }
 
     /**
@@ -121,16 +120,14 @@ class Guard(
         sgAddFlow.value = SgCreationFlowState.Processing
 
         val guardConfiguration = if (previous.moving) {
-            steamClient.webApi.execute(
-                methodName = "TwoFactor.RemoveAuthenticatorViaChallengeContinue",
-                requestAdapter = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request.ADAPTER,
-                responseAdapter = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Response.ADAPTER,
-                requestData = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(
+            steamClient.externalWebApi.guardMoveConfirm(
+                accessToken = steamClient.account.getCurrentAccount()!!.accessToken,
+                obj = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(
                     sms_code = code,
                     version = 2,
                     generate_new_token = true
                 )
-            ).data.let {
+            )?.let {
                 if (it.success == true) {
                     it.replacement_token?.toConfig()
                 } else {
@@ -196,6 +193,48 @@ class Guard(
     fun tryAddConfig(steamId: SteamId, configuration: GuardConfiguration) {
         lazyInstances[steamId] = GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient))
         writeGuard(steamId, configuration)
+    }
+
+    /**
+     * Deletes the SG instance from both the Steam servers and local device.
+     *
+     * This will apply a 15-day trade restriction on the account.
+     *
+     * @param code manual code for revocation ("I don't have access to Steam Guard")
+     * @param unsafe force local data deletion even if code was invalid
+     * @return revocation attempts left
+     */
+    suspend fun delete(steamId: SteamId, code: String? = null, unsafe: Boolean = false): Int {
+        val revocationCode = if (code.isNullOrEmpty()) {
+            instanceFor(steamId)?.revocationCode
+        } else {
+            code
+        } ?: return 0
+
+        // TODO: set steamid
+        steamClient.webApi.execute(
+            signed = code == null,
+            methodName = "TwoFactor.FinalizeAddAuthenticator",
+            requestAdapter = CTwoFactor_RemoveAuthenticator_Request.ADAPTER,
+            responseAdapter = CTwoFactor_RemoveAuthenticator_Response.ADAPTER,
+            requestData = CTwoFactor_RemoveAuthenticator_Request(
+                revocation_code = revocationCode,
+                revocation_reason = 1,
+                steamguard_scheme = 1,
+                remove_all_steamguard_cookies = false
+            )
+        ).dataNullable.let {
+            val deleteData = it?.success == true || unsafe
+
+            if (deleteData) {
+                try {
+                    getGuardFile(steamId).delete()
+                    lazyInstances.remove(steamId)
+                } catch (_: Exception) {}
+            }
+
+            return it?.revocation_attempts_remaining ?: 0
+        }
     }
 
     /**

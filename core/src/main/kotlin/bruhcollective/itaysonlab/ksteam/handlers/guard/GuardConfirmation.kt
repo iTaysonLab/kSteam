@@ -20,13 +20,17 @@ class GuardConfirmation(
      * Get a list of confirmations waiting for the response.
      */
     suspend fun getConfirmations(instance: GuardInstance): ConfirmationListState {
-        return instance.confirmationTicket("list").let { sigStamp ->
-            steamClient.externalWebApi.getConfirmations(
-                steamId = instance.steamId.longId,
-                timestamp = sigStamp.generationTime,
-                signature = sigStamp.b64EncodedSignature,
-                platform = steamClient.config.deviceInfo.uuid
-            )
+        return try {
+            instance.confirmationTicket("list").let { sigStamp ->
+                steamClient.externalWebApi.getConfirmations(
+                    steamId = instance.steamId.longId,
+                    timestamp = sigStamp.generationTime,
+                    signature = sigStamp.b64EncodedSignature,
+                    platform = steamClient.config.deviceInfo.uuid
+                )
+            }
+        } catch (e: Exception) {
+            ConfirmationListState.NetworkError(e)
         }
     }
 

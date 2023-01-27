@@ -24,7 +24,7 @@ class GuardManagement(
     /**
      * Creates a Flow which will poll for any new sessions.
      */
-    fun createSessionWatcher(): Flow<AwaitingSession?> {
+    fun createSessionWatcher(): Flow<Long?> {
         return flow {
             coroutineScope {
                 do {
@@ -35,15 +35,13 @@ class GuardManagement(
         }
     }
 
-    suspend fun getSessionQueue(): AwaitingSession? {
+    suspend fun getSessionQueue(): Long? {
         return steamClient.webApi.execute(
             methodName = "Authentication.GetAuthSessionsForAccount",
             requestAdapter = CAuthentication_GetAuthSessionsForAccount_Request.ADAPTER,
             responseAdapter = CAuthentication_GetAuthSessionsForAccount_Response.ADAPTER,
             requestData = CAuthentication_GetAuthSessionsForAccount_Request()
-        ).dataNullable?.client_ids?.firstOrNull()?.let { id ->
-            getActiveSessionInfo(id)
-        }
+        ).dataNullable?.client_ids?.firstOrNull()
     }
 
     suspend fun getActiveSessions(): List<ActiveSession> {

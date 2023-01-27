@@ -34,6 +34,8 @@ class Account(
     private var authState = MutableStateFlow<AuthorizationState>(AuthorizationState.Unauthorized)
     val clientAuthState = authState.asStateFlow()
 
+    internal var tokenRequested = MutableStateFlow(false)
+
     /**
      * Gets all necessary data to generate a sign-in QR code which can be scanned from the mobile app or other kSteam instance.
      *
@@ -348,13 +350,43 @@ class Account(
                         // We are logged in to Steam3 server
                         authStateWatcher?.cancel()
                         authState.value = AuthorizationState.Success
+
+                        updateAccessToken()
+                        tokenRequested.value = true
                     }
                 } else {
                     // Ignore, that's kicked out for inactivity, Restarter should reconnect again
                 }
             }
 
+            EMsg.k_EMsgClientLogOff, EMsg.k_EMsgClientLoggedOff -> {
+                tokenRequested.value = false
+            }
+
             else -> {}
+        }
+    }
+
+    fun getSavedAccounts() = steamClient.storage.globalConfiguration.availableAccounts
+    fun getDefaultAccount() = getSavedAccounts()[steamClient.storage.globalConfiguration.defaultAccount]
+    fun getCurrentAccount() = getSavedAccounts()[steamClient.currentSessionSteamId.id]
+    fun buildSteamLoginSecureCookie() = getCurrentAccount()?.let { "${it.steamId}||${it.accessToken}" }.orEmpty()
+
+    suspend fun updateAccessToken() {
+        steamClient.webApi.execute(
+            methodName = "Authentication.GenerateAccessTokenForApp",
+            requestAdapter = CAuthentication_AccessToken_GenerateForApp_Request.ADAPTER,
+            responseAdapter = CAuthentication_AccessToken_GenerateForApp_Response.ADAPTER,
+            requestData = getCurrentAccount()!!.let { acc ->
+                CAuthentication_AccessToken_GenerateForApp_Request(
+                    refresh_token = acc.refreshToken,
+                    steamid = acc.steamId.toLong()
+                )
+            }
+        ).dataNullable?.access_token?.let {
+            steamClient.storage.modifyAccount(steamClient.currentSessionSteamId) {
+                copy(accessToken = it)
+            }
         }
     }
 
