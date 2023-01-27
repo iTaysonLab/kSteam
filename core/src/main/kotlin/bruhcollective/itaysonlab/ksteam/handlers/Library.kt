@@ -55,6 +55,10 @@ class Library(
         ).dataNullable?.games?.map(::OwnedGame).orEmpty().also { libraryCache[steamId] = it }
     }
 
+    suspend fun getCollection(id: String) {
+
+    }
+
     suspend fun editCollection() {
 
     }
