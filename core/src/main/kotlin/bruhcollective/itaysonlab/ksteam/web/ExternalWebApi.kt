@@ -9,15 +9,17 @@ import bruhcollective.itaysonlab.ksteam.web.models.QueryTimeData
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
-import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeStart_Response
+import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request
+import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Response
 
 internal class ExternalWebApi(
-    private val httpClient: HttpClient
+    private val httpClient: HttpClient,
+    private val apiClient: HttpClient,
 ) {
     internal suspend fun getCmList(): List<CMServerEntry> {
         return httpClient.get(
@@ -34,7 +36,7 @@ internal class ExternalWebApi(
     }
 
     internal suspend fun getServerTime(): QueryTimeData {
-        return httpClient.post(
+        return apiClient.post(
             URLBuilder(EnvironmentConstants.WEB_API_BASE).appendPathSegments(
                 "ITwoFactorService",
                 "QueryTime",
@@ -45,8 +47,8 @@ internal class ExternalWebApi(
         ).body<WebApiBoxedResponse<QueryTimeData>>().response
     }
 
-    internal suspend fun requestMove(accessToken: String): CTwoFactor_RemoveAuthenticatorViaChallengeStart_Response {
-        return httpClient.post(
+    internal suspend fun guardMoveStart(accessToken: String) {
+        apiClient.post(
             URLBuilder(EnvironmentConstants.WEB_API_BASE).appendPathSegments(
                 "ITwoFactorService",
                 "RemoveAuthenticatorViaChallengeStart",
@@ -54,11 +56,25 @@ internal class ExternalWebApi(
             ).apply {
                 parameters["access_token"] = accessToken
             }.build()
-        ).readBytes().let { CTwoFactor_RemoveAuthenticatorViaChallengeStart_Response.ADAPTER.decode(it) }
+        )
     }
 
-    private val json = Json {
-        classDiscriminator = "success"
+    internal suspend fun guardMoveConfirm(accessToken: String, obj: CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request): CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Response? {
+        return try {
+            apiClient.submitForm(url = EnvironmentConstants.WEB_API_BASE, formParameters = Parameters.build {
+                append("input_protobuf_encoded", obj.encodeByteString().base64().dropLast(1))
+            }) {
+                url {
+                    appendPathSegments("ITwoFactorService", "RemoveAuthenticatorViaChallengeContinue", "v1")
+                    parameters.append("access_token", accessToken)
+                }
+            }.body<ByteArray>().let {
+                CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Response.ADAPTER.decode(it)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     internal suspend fun getConfirmations(
@@ -69,7 +85,7 @@ internal class ExternalWebApi(
         m: String = "react",
         tag: String = "list"
     ): ConfirmationListState {
-        return httpClient.get(
+        return apiClient.get(
             URLBuilder(EnvironmentConstants.COMMUNITY_API_BASE).appendPathSegments(
                 "mobileconf",
                 "getlist"
@@ -97,7 +113,7 @@ internal class ExternalWebApi(
         ck: String,
         signature: String,
     ): MobileConfResult {
-        return httpClient.get(
+        return apiClient.get(
             URLBuilder(EnvironmentConstants.COMMUNITY_API_BASE).appendPathSegments(
                 "mobileconf",
                 "ajaxop"

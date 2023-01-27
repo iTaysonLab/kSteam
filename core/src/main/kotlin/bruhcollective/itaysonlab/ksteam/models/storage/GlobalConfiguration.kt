@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.storage
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal data class GlobalConfiguration(
+data class GlobalConfiguration(
     val availableAccounts: Map<ULong, SavedAccount> = emptyMap(),
     val defaultAccount: ULong = 0u,
     val machineId: String = "",
@@ -12,7 +12,7 @@ internal data class GlobalConfiguration(
 )
 
 @Serializable
-internal data class SavedAccount(
+data class SavedAccount(
     val steamId: ULong = 0u,
     val accountName: String = "",
     val lastKnownPersonaName: String = "",

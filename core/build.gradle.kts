@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r18"
+version = "r21"
 
 kotlin {
     jvmToolchain(8)
@@ -18,12 +18,13 @@ java {
 dependencies {
     implementation(project(":models"))
 
-    implementation("io.ktor:ktor-serialization:2.2.1")
-    implementation("io.ktor:ktor-client-core:2.2.1")
-    implementation("io.ktor:ktor-client-websockets:2.2.1")
-    implementation("io.ktor:ktor-client-content-negotiation:2.2.1")
-    implementation("io.ktor:ktor-client-cio:2.2.1")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.1")
+    implementation("io.ktor:ktor-serialization:2.2.2")
+    implementation("io.ktor:ktor-client-core:2.2.2")
+    implementation("io.ktor:ktor-client-websockets:2.2.2")
+    implementation("io.ktor:ktor-client-content-negotiation:2.2.2")
+    implementation("io.ktor:ktor-client-cio:2.2.2")
+    implementation("io.ktor:ktor-client-okhttp:2.2.2")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.2")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
 

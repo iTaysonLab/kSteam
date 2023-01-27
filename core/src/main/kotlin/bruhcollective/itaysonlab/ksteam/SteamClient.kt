@@ -12,14 +12,14 @@ import bruhcollective.itaysonlab.ksteam.network.CMClient
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
 import bruhcollective.itaysonlab.ksteam.web.ExternalWebApi
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.*
 import kotlin.reflect.KClass
 
 /**
@@ -30,7 +30,7 @@ class SteamClient(
 ) {
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
 
-    internal val externalWebApi = ExternalWebApi(config.networkClient)
+    internal val externalWebApi = ExternalWebApi(config.networkClient, config.apiClient)
     private val serverList = CMList(externalWebApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
@@ -60,6 +60,17 @@ class SteamClient(
     }
 
     init {
+        config.apiClient.plugin(HttpSend).intercept { request ->
+            execute(request.writeSteamData()).let { response ->
+                if (response.response.status == HttpStatusCode.Unauthorized) {
+                    account.updateAccessToken()
+                    execute(request.writeSteamData())
+                } else {
+                    response
+                }
+            }
+        }
+
         connectionStatus
             .onEach {
                 if (it == CMClientState.Logging) {
@@ -91,6 +102,16 @@ class SteamClient(
     }
 
     private inline fun <reified T : BaseHandler> T.createAssociation() = T::class to this
+
+    private suspend fun HttpRequestBuilder.writeSteamData() = apply {
+        account.tokenRequested.first { it }
+
+        if (host == "api.steampowered.com") {
+            parameter("access_token", account.getCurrentAccount()?.accessToken.orEmpty())
+        } else {
+            header("Cookie", "mobileClient=android; mobileClientVersion=777777 3.0.0; steamLoginSecure=${account.buildSteamLoginSecureCookie()};")
+        }
+    }
 
     suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
     suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)
