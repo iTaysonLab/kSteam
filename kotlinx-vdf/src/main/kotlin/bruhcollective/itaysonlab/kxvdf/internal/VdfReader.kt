@@ -40,6 +40,10 @@ internal open class VdfReader(private val vdf: Vdf, private val decoder: VdfDeco
         }
 
         return when (val tag = decoder.nextTag()) {
+            is VdfDecoder.VdfTag.EndOfFile -> {
+                return CompositeDecoder.DECODE_DONE
+            }
+
             is VdfDecoder.VdfTag.NodeStart -> {
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
 
@@ -159,6 +163,11 @@ internal class VdfDecoder(private val source: BufferedSource) {
                 return VdfTag.NodeEnd(nodeseption.removeLast())
             }
 
+            0 -> {
+                // EOF
+                return VdfTag.EndOfFile
+            }
+
             else -> error("Unknown control point: ${peekUtf8CodePoint()}")
         }
     }
@@ -186,5 +195,6 @@ internal class VdfDecoder(private val source: BufferedSource) {
         class NodeStart (val name: String): VdfTag()
         class NodeElement (val name: String, val value: String): VdfTag()
         class NodeEnd (val name: String): VdfTag()
+        object EndOfFile: VdfTag()
     }
 }
