@@ -15,7 +15,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
         private const val CONSUMED_UNKNOWN = -4
     }
 
-    private var lastKnownTag: VdfTag.NodeElement? = null
+    private var lastKnownTag: VdfReader.VdfTag.NodeElement? = null
 
     override val serializersModule: SerializersModule
         get() = vdf.serializersModule
@@ -40,18 +40,18 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
         }
 
         return when (val tag = reader.nextTag()) {
-            is VdfTag.NodeEnd, is VdfTag.EndOfFile -> {
+            is VdfReader.VdfTag.NodeEnd, is VdfReader.VdfTag.EndOfFile -> {
                 CompositeDecoder.DECODE_DONE
             }
 
-            is VdfTag.NodeStart -> {
+            is VdfReader.VdfTag.NodeStart -> {
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
 
                 return if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
                     if (vdf.ignoreUnknownKeys) {
                         // consume all
                         while (true) {
-                            if ((reader.nextTag() as? VdfTag.NodeEnd)?.name == tag.name) break
+                            if ((reader.nextTag() as? VdfReader.VdfTag.NodeEnd)?.name == tag.name) break
                         }
 
                         CONSUMED_UNKNOWN
@@ -63,7 +63,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
                 }
             }
 
-            is VdfTag.NodeElement -> {
+            is VdfReader.VdfTag.NodeElement -> {
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
 
                 if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
@@ -115,7 +115,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
         value.toShort()
     }
 
-    private fun <T> requireTag(ifExists: VdfTag.NodeElement.() -> T): T {
+    private fun <T> requireTag(ifExists: VdfReader.VdfTag.NodeElement.() -> T): T {
         return lastKnownTag?.let(ifExists) ?: error("requireTag called but last tag is null")
     }
 }
@@ -185,5 +185,12 @@ internal class VdfReader(private val source: BufferedSource) {
             // Also consume the "
             source.readUtf8CodePoint()
         }
+    }
+
+    sealed class VdfTag {
+        class NodeStart (val name: String): VdfTag()
+        class NodeElement (val name: String, val value: String): VdfTag()
+        class NodeEnd (val name: String): VdfTag()
+        object EndOfFile: VdfTag()
     }
 }
