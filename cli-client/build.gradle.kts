@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization")
     application
 }
 
@@ -25,6 +26,7 @@ application {
 dependencies {
     implementation(project(":core"))
     implementation(project(":models"))
+    implementation(project(":kotlinx-vdf"))
 
     implementation("com.squareup.okio:okio:3.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")

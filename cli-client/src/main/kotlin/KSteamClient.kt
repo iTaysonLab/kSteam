@@ -1,16 +1,14 @@
+
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.Logging
 import bruhcollective.itaysonlab.ksteam.debug.LoggingTransport
 import bruhcollective.itaysonlab.ksteam.debug.LoggingVerbosity
-import bruhcollective.itaysonlab.ksteam.handlers.Account
 import bruhcollective.itaysonlab.ksteam.handlers.WebApi
+import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import kotlinx.coroutines.*
-import steam.messages.inventory.CInventory_GetInventory_Request
-import steam.messages.inventory.CInventory_Response
 import steam.webui.common.CMsgClientChangeStatus
 import steam.webui.econ.CEcon_GetInventoryItemsWithDescriptions_Request
 import steam.webui.econ.CEcon_GetInventoryItemsWithDescriptions_Response
@@ -47,7 +45,7 @@ class KSteamClient: CoroutineScope by CoroutineScope(SupervisorJob() + Dispatche
             }
 
             steamClient.start()
-            steamClient.getHandler<Account>().awaitSignIn()
+            steamClient.account.awaitSignIn()
 
             delay(2000L)
 

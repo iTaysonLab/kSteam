@@ -2,6 +2,7 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `maven-publish`
+    id("app.cash.sqldelight") version "2.0.0-SNAPSHOT"
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
@@ -27,6 +28,8 @@ dependencies {
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.2")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
+
+    implementation("app.cash.sqldelight:async-extensions:2.0.0-SNAPSHOT")
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")
