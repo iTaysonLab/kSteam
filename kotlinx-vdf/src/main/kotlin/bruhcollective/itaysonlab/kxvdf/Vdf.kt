@@ -1,8 +1,11 @@
 package bruhcollective.itaysonlab.kxvdf
 
 import bruhcollective.itaysonlab.kxvdf.internal.VdfDecoder
+import bruhcollective.itaysonlab.kxvdf.internal.VdfEncoder
 import bruhcollective.itaysonlab.kxvdf.internal.VdfReader
+import bruhcollective.itaysonlab.kxvdf.internal.VdfWriter
 import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.StringFormat
 import kotlinx.serialization.modules.EmptySerializersModule
@@ -16,54 +19,59 @@ import okio.Buffer
  * - supports only "valid" VDFs (all strings are separated by " sign)
  * - support only KeyValues format (the use case is for Steam Network which apparently only uses KV format)
  */
-public sealed class Vdf (
+@ExperimentalSerializationApi
+sealed class Vdf (
     internal val encodeDefaults: Boolean,
     internal val ignoreUnknownKeys: Boolean,
     override val serializersModule: SerializersModule
 ): StringFormat {
-    public companion object Default : Vdf(false, false, EmptySerializersModule())
+    companion object Default : Vdf(false, false, EmptySerializersModule())
 
     override fun <T> encodeToString(serializer: SerializationStrategy<T>, value: T): String {
-        TODO("Not yet implemented")
+        return Buffer().also { buffer ->
+            VdfEncoder(this, VdfWriter(buffer)).encodeSerializableValue(serializer, value)
+        }.readString(Charsets.UTF_8)
     }
 
     override fun <T> decodeFromString(deserializer: DeserializationStrategy<T>, string: String): T {
-        return VdfReader(this, VdfDecoder(
+        return VdfDecoder(this, VdfReader(
             Buffer().apply { writeString(string, Charsets.UTF_8) }
         )).decodeSerializableValue(deserializer)
     }
 }
 
+@ExperimentalSerializationApi
 private class VdfImpl(
     encodeDefaults: Boolean, ignoreUnknownKeys: Boolean, serializersModule: SerializersModule
 ): Vdf(encodeDefaults, ignoreUnknownKeys, serializersModule)
 
-public fun Vdf(from: Vdf = Vdf, builderAction: VdfBuilder.() -> Unit): Vdf {
+@ExperimentalSerializationApi
+fun Vdf(from: Vdf = Vdf, builderAction: VdfBuilder.() -> Unit): Vdf {
     return VdfBuilder(from).apply(builderAction).let { builder ->
         VdfImpl(builder.encodeDefaults, builder.ignoreUnknownKeys, builder.serializersModule)
     }
 }
 
-
 /**
  * Builder of the [VdfBuilder] instance provided by `Cbor` factory function.
  */
-public class VdfBuilder internal constructor(vdf: Vdf) {
+@ExperimentalSerializationApi
+class VdfBuilder internal constructor(vdf: Vdf) {
 
     /**
      * Specifies whether default values of Kotlin properties should be encoded.
      */
-    public var encodeDefaults: Boolean = vdf.encodeDefaults
+    var encodeDefaults: Boolean = vdf.encodeDefaults
 
     /**
      * Specifies whether encounters of unknown properties in the input CBOR
      * should be ignored instead of throwing [SerializationException].
      * `false` by default.
      */
-    public var ignoreUnknownKeys: Boolean = vdf.ignoreUnknownKeys
+    var ignoreUnknownKeys: Boolean = vdf.ignoreUnknownKeys
 
     /**
      * Module with contextual and polymorphic serializers to be used in the resulting [Vdf] instance.
      */
-    public var serializersModule: SerializersModule = vdf.serializersModule
+    var serializersModule: SerializersModule = vdf.serializersModule
 }

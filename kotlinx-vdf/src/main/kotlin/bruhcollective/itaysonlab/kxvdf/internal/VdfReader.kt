@@ -9,19 +9,19 @@ import kotlinx.serialization.encoding.CompositeDecoder
 import kotlinx.serialization.modules.SerializersModule
 import okio.BufferedSource
 
-@OptIn(ExperimentalSerializationApi::class)
-internal open class VdfReader(private val vdf: Vdf, private val decoder: VdfDecoder): AbstractDecoder() {
+@ExperimentalSerializationApi
+internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfReader): AbstractDecoder() {
     companion object {
         private const val CONSUMED_UNKNOWN = -4
     }
 
-    private var lastKnownTag: VdfDecoder.VdfTag.NodeElement? = null
+    private var lastKnownTag: VdfTag.NodeElement? = null
 
     override val serializersModule: SerializersModule
         get() = vdf.serializersModule
 
     override fun decodeElementIndex(descriptor: SerialDescriptor): Int {
-        if (decoder.exhausted()) {
+        if (reader.exhausted()) {
             return CompositeDecoder.DECODE_DONE
         } else {
             while (true) {
@@ -35,23 +35,23 @@ internal open class VdfReader(private val vdf: Vdf, private val decoder: VdfDeco
     }
 
     private fun decodeElementIndexInternal(descriptor: SerialDescriptor): Int {
-        if (decoder.exhausted()) {
+        if (reader.exhausted()) {
             return CompositeDecoder.DECODE_DONE
         }
 
-        return when (val tag = decoder.nextTag()) {
-            is VdfDecoder.VdfTag.EndOfFile -> {
-                return CompositeDecoder.DECODE_DONE
+        return when (val tag = reader.nextTag()) {
+            is VdfTag.NodeEnd, is VdfTag.EndOfFile -> {
+                CompositeDecoder.DECODE_DONE
             }
 
-            is VdfDecoder.VdfTag.NodeStart -> {
+            is VdfTag.NodeStart -> {
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
 
                 return if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
                     if (vdf.ignoreUnknownKeys) {
                         // consume all
                         while (true) {
-                            if ((decoder.nextTag() as? VdfDecoder.VdfTag.NodeEnd)?.name == tag.name) break
+                            if ((reader.nextTag() as? VdfTag.NodeEnd)?.name == tag.name) break
                         }
 
                         CONSUMED_UNKNOWN
@@ -63,7 +63,7 @@ internal open class VdfReader(private val vdf: Vdf, private val decoder: VdfDeco
                 }
             }
 
-            is VdfDecoder.VdfTag.NodeElement -> {
+            is VdfTag.NodeElement -> {
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
 
                 if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
@@ -77,16 +77,12 @@ internal open class VdfReader(private val vdf: Vdf, private val decoder: VdfDeco
                     return indexInDescriptor
                 }
             }
-
-            is VdfDecoder.VdfTag.NodeEnd -> {
-                CompositeDecoder.DECODE_DONE
-            }
         }
     }
 
     override fun beginStructure(descriptor: SerialDescriptor): AbstractDecoder {
         return when (descriptor.kind) {
-            is StructureKind.CLASS -> VdfReader(vdf, decoder)
+            is StructureKind.CLASS -> VdfDecoder(vdf, reader)
             else -> this
         }
     }
@@ -119,12 +115,12 @@ internal open class VdfReader(private val vdf: Vdf, private val decoder: VdfDeco
         value.toShort()
     }
 
-    private fun <T> requireTag(ifExists: VdfDecoder.VdfTag.NodeElement.() -> T): T {
+    private fun <T> requireTag(ifExists: VdfTag.NodeElement.() -> T): T {
         return lastKnownTag?.let(ifExists) ?: error("requireTag called but last tag is null")
     }
 }
 
-internal class VdfDecoder(private val source: BufferedSource) {
+internal class VdfReader(private val source: BufferedSource) {
     private var nodeseption = ArrayDeque<String>()
 
     private fun consumeWhitespace() {
@@ -189,12 +185,5 @@ internal class VdfDecoder(private val source: BufferedSource) {
             // Also consume the "
             source.readUtf8CodePoint()
         }
-    }
-
-    sealed class VdfTag {
-        class NodeStart (val name: String): VdfTag()
-        class NodeElement (val name: String, val value: String): VdfTag()
-        class NodeEnd (val name: String): VdfTag()
-        object EndOfFile: VdfTag()
     }
 }

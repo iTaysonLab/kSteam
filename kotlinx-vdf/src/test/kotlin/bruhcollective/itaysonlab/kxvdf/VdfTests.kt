@@ -1,10 +1,13 @@
 package bruhcollective.itaysonlab.kxvdf
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+@OptIn(ExperimentalSerializationApi::class)
 class VdfTests {
     private val openVdf = Vdf {
         ignoreUnknownKeys = true
@@ -61,6 +64,32 @@ class VdfTests {
         ).apply {
             assertEquals(rootnode.value, "Hello!")
         }
+    }
+
+    //
+
+    @Test
+    fun `Encodes complex VDF`() {
+        assertEquals(Vdf.encodeToString<AppInfo>(AppInfo(
+            appinfo = AppInfo.AppInfoRootNode(
+                appid = 727,
+                common = AppInfo.AppInfoRootNode.CommonNode(
+                    name = "Game Name",
+                    type = "Game"
+                )
+            )
+        )), """
+"appinfo"
+{
+	"appid"		"727"
+	"common"
+	{
+		"name"		"Game Name"
+		"type"		"Game"
+	}
+}
+
+            """.trimIndent())
     }
 
     //

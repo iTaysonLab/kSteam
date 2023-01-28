@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.kxvdf.internal
 
 internal object ControlPoints {
+    const val HorizontalTab = 0x9
     const val NewLine = 0xA
 
     const val Quote = 0x22
