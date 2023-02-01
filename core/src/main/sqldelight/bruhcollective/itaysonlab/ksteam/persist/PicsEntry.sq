@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS PicsEntry(
+    id INTEGER PRIMARY KEY NOT NULL,
+    type TEXT NOT NULL,
+    accessToken INTEGER,
+    changeNumber INTEGER NOT NULL
+);
+
+insert:
+INSERT INTO PicsEntry (id, type, accessToken, changeNumber) VALUES (?, ?, ?, ?);
+
+selectLatest:
+SELECT * FROM PicsEntry WHERE type = ? AND changeNumber = (SELECT MAX(changeNumber) FROM PicsEntry) LIMIT 1;
+
+selectEverything:
+SELECT * FROM PicsEntry WHERE type = ?;
+
+updateAccessToken:
+UPDATE PicsEntry SET accessToken = ? WHERE id = ?;
+
+updateChangeNumber:
+UPDATE PicsEntry SET changeNumber = ? WHERE id = ?;

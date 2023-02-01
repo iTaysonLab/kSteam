@@ -48,6 +48,7 @@ class SteamClient(
         GuardManagement(this).createAssociation(),
         GuardConfirmation(this).createAssociation(),
         CloudConfiguration(this).createAssociation(),
+        Pics(this).createAssociation(),
     )
 
     val connectionStatus get() = cmClient.clientState
@@ -114,5 +115,6 @@ class SteamClient(
     }
 
     suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
+    suspend fun subscribe(packet: SteamPacket) = cmClient.subscribe(packet)
     suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)
 }

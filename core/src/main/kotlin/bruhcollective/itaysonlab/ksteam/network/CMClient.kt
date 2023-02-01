@@ -12,11 +12,11 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.util.send
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
-import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
@@ -233,6 +233,13 @@ internal class CMClient(
      * Add a packet to a outgoing queue and then awaits for a response with the attached job ID.
      */
     suspend fun execute(packet: SteamPacket): SteamPacket {
+        return subscribe(packet).first()
+    }
+
+    /**
+     * Add a packet to a outgoing queue and then awaits for a (multiple) responses with the attached job ID.
+     */
+    suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> {
         awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
 
         val processedSourcePacket = packet.enrichWithClientData().apply {
@@ -243,7 +250,7 @@ internal class CMClient(
             outgoingPacketsQueue.trySend(processedSourcePacket)
         }.filter { incomingPacket ->
             incomingPacket.header.targetJobId == processedSourcePacket.header.sourceJobId
-        }.first()
+        }
     }
 
     /**

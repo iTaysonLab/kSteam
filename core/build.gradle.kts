@@ -18,6 +18,7 @@ java {
 
 dependencies {
     implementation(project(":models"))
+    implementation(project(":kotlinx-vdf"))
 
     implementation("io.ktor:ktor-serialization:2.2.2")
     implementation("io.ktor:ktor-client-core:2.2.2")
@@ -46,6 +47,14 @@ publishing {
                 url.set("https://github.com/itaysonlab/ksteam")
                 from(components.findByName("java"))
             }
+        }
+    }
+}
+
+sqldelight {
+    databases {
+        create("Database") {
+            packageName.set("bruhcollective.itaysonlab.ksteam.persist")
         }
     }
 }

@@ -1,0 +1,35 @@
+-- Describes a PICS app metadata saved to DB
+-- Note: it contains only "basic" info required to show in library grids. Also, a gzipped version is saved as a BLOB in case of migrations/UI.
+CREATE TABLE IF NOT EXISTS PicsApp (
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    -- Basic Metadata
+    supportedOs TEXT NOT NULL,
+    released INTEGER NOT NULL,
+    controllerSupport TEXT NOT NULL,
+    deckSupportCategory INTEGER NOT NULL,
+    masterSubAppId INTEGER,
+    -- Format: "1:2:3:4:", specially for searching LIKE "%ID%:"
+    tags TEXT NOT NULL,
+    categories TEXT NOT NULL,
+    genres TEXT NOT NULL,
+    -- Images
+    imageHeaderFileName TEXT NOT NULL,
+    imageCapsuleFileName TEXT NOT NULL,
+    -- Data used for "own folders"
+    franchise TEXT,
+    developers TEXT,
+    publishers TEXT,
+    releaseDate INTEGER NOT NULL,
+    steamReleaseDate INTEGER NOT NULL,
+    reviewScore INTEGER NOT NULL,
+    reviewPercentage INTEGER NOT NULL,
+    -- PICS metadata
+    rawPicsMetadata BLOB NOT NULL
+);
+
+selectAll:
+SELECT * FROM PicsApp;
+
+insert:
+INSERT OR REPLACE INTO PicsApp (id, name, supportedOs, released, controllerSupport, deckSupportCategory, masterSubAppId, tags, categories, genres, imageCapsuleFileName, imageHeaderFileName, franchise, developers, publishers, releaseDate, steamReleaseDate, reviewScore, reviewPercentage, rawPicsMetadata) VALUES ?;

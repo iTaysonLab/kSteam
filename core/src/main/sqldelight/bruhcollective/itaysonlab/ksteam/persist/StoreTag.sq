@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS StoreTag (
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    localized TEXT NOT NULL
+);
+
+selectAll:
+SELECT * FROM PicsApp;
+
+insert:
+INSERT INTO StoreTag (id, name, localized) VALUES (?, ?, ?);

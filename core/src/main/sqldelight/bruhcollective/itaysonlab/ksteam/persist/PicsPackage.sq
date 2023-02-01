@@ -1,0 +1,14 @@
+-- Describes a PICS package metadata saved to DB
+CREATE TABLE IF NOT EXISTS PicsPackage (
+    id INTEGER PRIMARY KEY NOT NULL,
+    includedAppIds TEXT NOT NULL
+);
+
+selectAll:
+SELECT * FROM PicsPackage;
+
+insert:
+INSERT INTO PicsPackage (id, includedAppIds) VALUES (?, ?);
+
+updateAppIds:
+UPDATE PicsPackage SET includedAppIds = ? WHERE id = ?;
