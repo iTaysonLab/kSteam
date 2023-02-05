@@ -17,6 +17,8 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
         private const val CONSUMED_UNKNOWN = -4
     }
 
+    open fun acquireNodeIndex(descriptor: SerialDescriptor, name: String) = descriptor.getElementIndex(name)
+
     override val serializersModule: SerializersModule
         get() = vdf.serializersModule
 
@@ -63,7 +65,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
             }
 
             is VdfTag.NodeElementName -> {
-                val indexInDescriptor = descriptor.getElementIndex(tag.name)
+                val indexInDescriptor = acquireNodeIndex(descriptor, tag.name)
 
                 if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
                     if (vdf.ignoreUnknownKeys.not()) {
@@ -86,6 +88,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
     override fun beginStructure(descriptor: SerialDescriptor): AbstractDecoder {
         return when (descriptor.kind) {
             is StructureKind.CLASS -> VdfDecoder(vdf, reader)
+            is StructureKind.MAP -> VdfMapDecoder(vdf, reader)
             else -> this
         }
     }
@@ -114,8 +117,57 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
     override fun decodeLong() = requireTag(String::toLong)
     override fun decodeShort() = requireTag(String::toShort)
 
-    private fun <T> requireTag(ifExists: String.() -> T): T {
+    open fun <T> requireTag(ifExists: String.() -> T): T {
         return reader.readValue().let(ifExists) ?: error("requireTag called but last tag is not NodeElementValue")
+    }
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+internal class VdfMapDecoder(vdf: Vdf, private val reader: VdfReader): VdfDecoder(vdf, reader) {
+    private var indexInMap = 0
+    private var values = mutableListOf<String>()
+
+    override fun decodeElementIndex(descriptor: SerialDescriptor): Int {
+        return if (reader.exhausted()) {
+            CompositeDecoder.DECODE_DONE
+        } else {
+            decodeElementIndexInternal(descriptor)
+        }
+    }
+
+    private fun decodeElementIndexInternal(descriptor: SerialDescriptor): Int {
+        if (reader.exhausted()) {
+            return CompositeDecoder.DECODE_DONE
+        }
+
+        return when (val tag = reader.nextTag()) {
+            is VdfTag.NodeEnd, is VdfTag.EndOfFile -> {
+                CompositeDecoder.DECODE_DONE
+            }
+
+            is VdfTag.NodeStart -> {
+                values.add("")
+                acquireNodeIndex(descriptor, tag.name)
+            }
+
+            is VdfTag.NodeElementName -> {
+                values.add(tag.name)
+                acquireNodeIndex(descriptor, tag.name)
+            }
+
+            is VdfTag.NodeElementValue -> {
+                values.add(tag.value)
+                acquireNodeIndex(descriptor, "")
+            }
+        }
+    }
+
+    override fun <T> requireTag(ifExists: String.() -> T): T {
+        return values.last().let(ifExists)
+    }
+
+    override fun acquireNodeIndex(descriptor: SerialDescriptor, name: String): Int {
+        return indexInMap++
     }
 }
 
