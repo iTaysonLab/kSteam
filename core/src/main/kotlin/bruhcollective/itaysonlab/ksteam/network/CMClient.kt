@@ -19,7 +19,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import okio.Buffer
-import okio.ByteString.Companion.toByteString
 import okio.Source
 import okio.buffer
 import okio.gzip
@@ -126,10 +125,12 @@ internal class CMClient(
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
                     if (packetToReceive is Frame.Binary) {
-                        logVerbose(
+                        // TODO: Forward to dumper
+                        /*logVerbose(
                             "CMClient:WsConnection",
                             "Received binary message (data: ${packetToReceive.data.toByteString().hex()})"
-                        )
+                        )*/
+
                         // Parse message out from this and add to queue
 
                         val steamPacket = runCatching {
@@ -215,7 +216,8 @@ internal class CMClient(
             do {
                 val packetSize = payloadBuffer.readIntLe()
                 val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
-                logVerbose("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
+                // TODO: Forward to dumper
+                //logVerbose("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
                 val packetParsed = SteamPacket.ofNetworkPacket(packetContent)
 
                 if (packetParsed.messageId == EMsg.k_EMsgClientLogOnResponse) {

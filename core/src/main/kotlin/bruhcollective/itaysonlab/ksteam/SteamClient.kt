@@ -92,6 +92,7 @@ class SteamClient(
                 }
             }.catch { throwable ->
                 logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${throwable.message}")
+                throwable.printStackTrace()
             }.launchIn(eventsScope)
     }
 

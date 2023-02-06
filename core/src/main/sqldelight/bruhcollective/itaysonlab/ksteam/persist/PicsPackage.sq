@@ -1,14 +1,18 @@
 -- Describes a PICS package metadata saved to DB
 CREATE TABLE IF NOT EXISTS PicsPackage (
     id INTEGER PRIMARY KEY NOT NULL,
-    includedAppIds TEXT NOT NULL
+    picsRawData BLOB NOT NULL,
+    picsChangeNumber INTEGER NOT NULL
 );
 
 selectAll:
 SELECT * FROM PicsPackage;
 
 insert:
-INSERT INTO PicsPackage (id, includedAppIds) VALUES (?, ?);
+INSERT INTO PicsPackage (id, picsRawData, picsChangeNumber) VALUES (?, ?, ?);
 
-updateAppIds:
-UPDATE PicsPackage SET includedAppIds = ? WHERE id = ?;
+updatePics:
+UPDATE PicsPackage SET picsRawData = ? AND picsChangeNumber = ? WHERE id = ?;
+
+selectLatest:
+SELECT * FROM PicsPackage WHERE picsChangeNumber = (SELECT MAX(picsChangeNumber) FROM PicsApp) LIMIT 1;

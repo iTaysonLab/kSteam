@@ -6,7 +6,6 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.util.buffer
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
-import okio.ByteString.Companion.toByteString
 
 /**
  * Structure:
@@ -58,7 +57,8 @@ class SteamPacket private constructor(
 
             val payload = packetBuffer.readByteArray()
 
-            logVerbose("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
+            // TODO: Forward to dumper
+            //logVerbose("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
 
             return SteamPacket(
                 messageId = messageId,

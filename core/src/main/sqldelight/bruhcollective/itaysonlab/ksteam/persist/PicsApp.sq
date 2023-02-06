@@ -3,9 +3,10 @@
 CREATE TABLE IF NOT EXISTS PicsApp (
     id INTEGER PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
+    type TEXT NOT NULL,
     -- Basic Metadata
     supportedOs TEXT NOT NULL,
-    released INTEGER NOT NULL,
+    released TEXT NOT NULL,
     controllerSupport TEXT NOT NULL,
     deckSupportCategory INTEGER NOT NULL,
     masterSubAppId INTEGER,
@@ -13,9 +14,12 @@ CREATE TABLE IF NOT EXISTS PicsApp (
     tags TEXT NOT NULL,
     categories TEXT NOT NULL,
     genres TEXT NOT NULL,
-    -- Images
+    -- Localized Assets
+    -- Format: english=text.png:ukrainian=text_ua.png
+    -- "text.png" part will be URL-encoded
     imageHeaderFileName TEXT NOT NULL,
     imageCapsuleFileName TEXT NOT NULL,
+    localizedNames TEXT NOT NULL,
     -- Data used for "own folders"
     franchise TEXT,
     developers TEXT,
@@ -24,12 +28,18 @@ CREATE TABLE IF NOT EXISTS PicsApp (
     steamReleaseDate INTEGER NOT NULL,
     reviewScore INTEGER NOT NULL,
     reviewPercentage INTEGER NOT NULL,
+    metacriticScore INTEGER,
+    metacriticUrl TEXT,
     -- PICS metadata
-    rawPicsMetadata BLOB NOT NULL
+    picsChangeNumber INTEGER NOT NULL,
+    picsRawData BLOB NOT NULL
 );
 
 selectAll:
 SELECT * FROM PicsApp;
 
 insert:
-INSERT OR REPLACE INTO PicsApp (id, name, supportedOs, released, controllerSupport, deckSupportCategory, masterSubAppId, tags, categories, genres, imageCapsuleFileName, imageHeaderFileName, franchise, developers, publishers, releaseDate, steamReleaseDate, reviewScore, reviewPercentage, rawPicsMetadata) VALUES ?;
+INSERT OR REPLACE INTO PicsApp (id, name, type, supportedOs, released, controllerSupport, deckSupportCategory, masterSubAppId, tags, categories, genres, imageCapsuleFileName, imageHeaderFileName, localizedNames, franchise, developers, publishers, releaseDate, steamReleaseDate, reviewScore, reviewPercentage, metacriticScore, metacriticUrl, picsChangeNumber, picsRawData) VALUES ?;
+
+selectLatest:
+SELECT * FROM PicsApp WHERE picsChangeNumber = (SELECT MAX(picsChangeNumber) FROM PicsApp) LIMIT 1;
