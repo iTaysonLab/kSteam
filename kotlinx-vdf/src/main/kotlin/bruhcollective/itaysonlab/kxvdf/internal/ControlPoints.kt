@@ -5,6 +5,7 @@ internal object ControlPoints {
     const val NewLine = 0xA
 
     const val Quote = 0x22
+    const val Escape = 0x5C
 
     const val BracketOpen = 0x7B
     const val BracketClose = 0x7D
