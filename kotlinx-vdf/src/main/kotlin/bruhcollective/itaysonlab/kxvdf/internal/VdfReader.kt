@@ -249,8 +249,21 @@ internal sealed class VdfReader (internal val source: BufferedSource) {
          */
         private fun readStringToControlPoint(): String {
             return StringBuilder().apply {
-                while (peekUtf8CodePoint() != ControlPoints.Quote) {
-                    appendCodePoint(source.readUtf8CodePoint())
+                while (true) {
+                    when (peekUtf8CodePoint()) {
+                        ControlPoints.Quote -> {
+                            break
+                        }
+
+                        ControlPoints.Escape -> {
+                            appendCodePoint(source.readUtf8CodePoint())
+                            appendCodePoint(source.readUtf8CodePoint())
+                        }
+
+                        else -> {
+                            appendCodePoint(source.readUtf8CodePoint())
+                        }
+                    }
                 }
             }.toString().also {
                 // Also consume the "
