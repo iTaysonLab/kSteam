@@ -8,7 +8,6 @@ import bruhcollective.itaysonlab.ksteam.persist.PicsApp
 import bruhcollective.itaysonlab.ksteam.pics.PicsDatabase
 import bruhcollective.itaysonlab.ksteam.pics.model.AppInfo
 import bruhcollective.itaysonlab.ksteam.pics.model.PackageInfo
-import bruhcollective.itaysonlab.ksteam.util.compress
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
@@ -59,7 +58,6 @@ class Pics(
         }
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
         logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
         processedLicenses += licenses
@@ -76,6 +74,13 @@ class Pics(
 
         logVerbose("Pics:HandleLicenses", "Require update: ${requiresUpdate.size}")
 
+        if (requiresUpdate.isNotEmpty()) {
+            requestPicsMetadataForLicenses(requiresUpdate)
+        }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private suspend fun requestPicsMetadataForLicenses(requiresUpdate: List<CMsgClientLicenseList_License>) {
         val appIds = dispatchListParsing(loadPackageInfo(requiresUpdate)) { pkgInfo ->
             vdfBinary.decodeFromBufferedSource<PackageInfo>(RootNodeSkipperDeserializationStrategy(), Buffer().also { buffer ->
                 buffer.write(pkgInfo.buffer ?: return@dispatchListParsing null)
@@ -86,7 +91,7 @@ class Pics(
         // However, we should have been used saved access tokens
 
         val appInfos = dispatchListParsing(loadAppsInfo(appIds)) { appInfo ->
-            println(appInfo.toString())
+            // println(appInfo.toString())
 
             try {
                 vdfText.decodeFromBufferedSource<AppInfo>(
@@ -101,7 +106,6 @@ class Pics(
                 null
             }
         }.also { saveAppsToDatabase(it) }
-
     }
 
     private fun savePackagesToDatabase(info: List<Triple<PackageInfo, Int, ByteString>>) {
@@ -145,7 +149,7 @@ class Pics(
                         metacriticScore = appInfo.first.common.metacriticScore.toLong(),
                         metacriticUrl = appInfo.first.common.metacriticUrl,
                         picsChangeNumber = appInfo.second.toLong(),
-                        picsRawData = appInfo.third.compress()
+                        picsRawData = appInfo.third.toByteArray()
                     )
                 )
             }
