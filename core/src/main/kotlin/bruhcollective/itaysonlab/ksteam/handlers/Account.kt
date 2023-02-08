@@ -2,6 +2,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.debug.logWarning
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -15,12 +16,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 import okio.ByteString
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
 import steam.webui.authentication.*
 import steam.webui.common.CMsgClientLogon
 import steam.webui.common.CMsgClientLogonResponse
+import steam.webui.common.CMsgIPAddress
+import java.net.InetAddress
+import java.nio.ByteBuffer
 import kotlin.random.Random
 
 class Account(
@@ -229,17 +234,17 @@ class Account(
 
         val sentryFileHash = steamClient.sentry.sentryHash(steamId)
 
-        /*
-        Steam apparently does not want an IP address on ClientLogon requests.
+        val currentIp = when (steamClient.config.authPrivateIpLogic) {
+            SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp -> {
+                withContext(Dispatchers.IO) {
+                    // TODO: support IPv6
+                    val ipInt = InetAddress.getLocalHost().address.let { ByteBuffer.wrap(it) }.int.toUInt()
+                    CMsgIPAddress(v4 = (ipInt xor 0xBAADF00D_u).toInt())
+                }
+            }
 
-        val currentIp = withContext(Dispatchers.IO) {
-            val ipInt = InetAddress.getLocalHost().address.let { ByteBuffer.wrap(it) }.int.toUInt()
-
-            CMsgIPAddress(
-                v4 = (ipInt xor 0xBAADF00D_u).toInt()
-            )
+            SteamClientConfiguration.AuthPrivateIpLogic.None -> null
         }
-        */
 
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
@@ -251,8 +256,8 @@ class Account(
                 qos_level = 2,
                 machine_id = steamClient.storage.globalConfiguration.machineId.decodeHex(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
-                //obfuscated_private_ip = currentIp,
-                //deprecated_obfustucated_private_ip = currentIp.v4,
+                obfuscated_private_ip = currentIp,
+                deprecated_obfustucated_private_ip = currentIp?.v4,
                 steamguard_dont_remember_computer = false,
                 is_steam_deck = false,
                 is_steam_box = false,
