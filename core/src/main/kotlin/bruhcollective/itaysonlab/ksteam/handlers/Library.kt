@@ -67,29 +67,59 @@ class Library(
         ).dataNullable?.games?.map(::OwnedGame).orEmpty().also { libraryCache[steamId] = it }
     }
 
+    /**
+     * Requests a list of apps to show in "Play Next" shelf
+     */
     suspend fun getPlayNextQueue() {
 
     }
 
-    suspend fun getCollection(id: String) {
-
+    /**
+     * Queries a collection by its [id].
+     *
+     * @return a [Flow] of [PicsApp] which is changed by collection editing
+     */
+    suspend fun getAppsInCollection(id: String) = collections.mapNotNull { list ->
+        list.firstOrNull { it.id == id }
+    }.map { collection ->
+        if (collection.filterSpec != null) {
+            emptyList() // TODO
+        } else {
+            steamClient.pics.getPicsAppIds(collection.added)
+        }
     }
 
+    /**
+     * Edit a collection.
+     *
+     * This will trigger [collections] change.
+     */
     suspend fun editCollection() {
 
     }
 
+    /**
+     * Creates a new collection.
+     *
+     * This will trigger [collections] change.
+     */
     suspend fun createCollection() {
 
     }
 
-    suspend fun deleteCollection() {
+    /**
+     * Deletes a collection.
+     *
+     * This will trigger [collections] change.
+     */
+    suspend fun deleteCollection(id: String) {
 
     }
 
-    fun ownsThisApp(appId: AppId) {
-
-    }
+    /**
+     * Checks if a current user is actually owning an [appId].
+     */
+    fun ownsThisApp(appId: AppId) = steamClient.pics.appIds.contains(appId)
 
     private suspend fun startCollector() {
         // Collect WebUI info (if collector is not started)

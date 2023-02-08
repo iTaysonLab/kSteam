@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.persist.PicsApp
 import bruhcollective.itaysonlab.ksteam.pics.PicsDatabase
@@ -29,8 +30,11 @@ class Pics(
     private val steamClient: SteamClient
 ) : BaseHandler {
     private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
-
     private val database = PicsDatabase(steamClient)
+
+    // TODO: filter based on owning package ids
+    internal var appIds = emptyList<AppId>()
+        private set
 
     @OptIn(ExperimentalSerializationApi::class)
     private val vdfBinary = Vdf {
@@ -42,6 +46,10 @@ class Pics(
     @OptIn(ExperimentalSerializationApi::class)
     private val vdfText = Vdf {
         ignoreUnknownKeys = true
+    }
+
+    suspend fun getPicsAppIds(ids: List<AppId>): List<PicsApp> = withContext(Dispatchers.IO) {
+        database.picsAppQueries.selectById(ids.map(AppId::asLong)).executeAsList()
     }
 
     /**
@@ -77,6 +85,8 @@ class Pics(
         if (requiresUpdate.isNotEmpty()) {
             requestPicsMetadataForLicenses(requiresUpdate)
         }
+
+        appIds = database.picsAppQueries.selectIds().executeAsList().map { AppId(it.toInt()) }
     }
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -90,7 +100,7 @@ class Pics(
         // We will just assume that any changed packages means that all games are updated
         // However, we should have been used saved access tokens
 
-        val appInfos = dispatchListParsing(loadAppsInfo(appIds)) { appInfo ->
+        dispatchListParsing(loadAppsInfo(appIds)) { appInfo ->
             // println(appInfo.toString())
 
             try {
