@@ -32,7 +32,10 @@ internal class CMClient(
     private val configuration: SteamClientConfiguration
 ) {
     // A scope used to hold WSS connection
-    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO)
+    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO) { _, _ ->
+        mutableClientState.value = CMClientState.Idle
+        launchConnectionCoroutine(reconnect = true)
+    }
 
     private var selectedServer: CMServerEntry? = null
 
@@ -93,9 +96,6 @@ internal class CMClient(
             }
 
             connect()
-        }.invokeOnCompletion {
-            mutableClientState.value = CMClientState.Idle
-            launchConnectionCoroutine(reconnect = true)
         }
     }
 
