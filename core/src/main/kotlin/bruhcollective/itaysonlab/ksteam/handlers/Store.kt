@@ -1,7 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.App
 import kotlinx.serialization.json.Json
@@ -22,6 +21,8 @@ class Store(
 
     /**
      * Gets app details from Store.
+     *
+     * This request will be cached in a temporary "DB" which will be reset at kSteam relaunch.
      */
     suspend fun getApps(appIds: List<AppId>): Map<AppId, App> {
         val appIdsParts = appIds.partition {
@@ -65,10 +66,4 @@ class Store(
     }
 
     suspend fun getApp(appId: AppId): App = getApps(listOf(appId)).values.first()
-
-    override suspend fun onEvent(packet: SteamPacket) {
-        when (packet.messageId) {
-            else -> {}
-        }
-    }
 }

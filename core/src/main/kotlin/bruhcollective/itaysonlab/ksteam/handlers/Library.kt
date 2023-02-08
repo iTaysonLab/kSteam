@@ -9,6 +9,7 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
+import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
 import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import kotlinx.coroutines.*
@@ -35,17 +36,19 @@ class Library(
 
     private val libraryCache = mutableMapOf<SteamId, List<OwnedGame>>()
 
-    //private val _apps = MutableSharedFlow<>()
-    //private val _shelves = MutableSharedFlow<>()
-
     private val _collections = MutableStateFlow<List<LibraryCollection>>(emptyList())
     val collections = _collections.asStateFlow()
+
+    private val _shelves = MutableStateFlow<List<LibraryShelf>>(emptyList())
+    val shelves = _shelves.asStateFlow()
 
     private val _playtime = MutableStateFlow<Map<AppId, CPlayer_GetLastPlayedTimes_Response_Game>>(emptyMap())
     val playtime = _playtime.asStateFlow()
 
     /**
-     * Requests
+     * Requests a library of a specific [steamId].
+     *
+     * It is not recommended to use this method to get user's library - use collections API instead.
      */
     suspend fun requestLibrary(steamId: SteamId = steamClient.currentSessionSteamId): List<OwnedGame> {
         libraryCache[steamId]?.let {
@@ -62,6 +65,10 @@ class Library(
                 include_extended_appinfo = true
             )
         ).dataNullable?.games?.map(::OwnedGame).orEmpty().also { libraryCache[steamId] = it }
+    }
+
+    suspend fun getPlayNextQueue() {
+
     }
 
     suspend fun getCollection(id: String) {
@@ -129,8 +136,6 @@ class Library(
     private suspend fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
         // -- User Collections --
         entries.filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull {
-            println(it)
-
             val entry = json.decodeFromString<LibraryCollection.CollectionModel>(it.value_ ?: return@mapNotNull null)
 
             LibraryCollection(
@@ -144,6 +149,22 @@ class Library(
             )
         }.let { collections ->
             _collections.value = collections
+        }
+
+        entries.filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("showcase") }.mapNotNull {
+            val entry = json.decodeFromString<LibraryShelf.LibraryShelfRemote>(it.value_ ?: return@mapNotNull null)
+
+            LibraryShelf(
+                id = entry.id,
+                linkedCollection = entry.linkedCollection,
+                sortBy = entry.sortBy,
+                lastChangedMs = entry.lastChangedMs,
+                orderTimestamp = entry.orderTimestamp,
+                version = it.version ?: 0,
+                remoteTimestamp = it.timestamp ?: 0
+            )
+        }.let { shelves ->
+            _shelves.value = shelves
         }
     }
 
