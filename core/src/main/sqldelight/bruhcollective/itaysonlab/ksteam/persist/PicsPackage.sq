@@ -9,7 +9,7 @@ selectAll:
 SELECT * FROM PicsPackage;
 
 insert:
-INSERT INTO PicsPackage (id, picsRawData, picsChangeNumber) VALUES (?, ?, ?);
+INSERT OR REPLACE INTO PicsPackage (id, picsRawData, picsChangeNumber) VALUES (?, ?, ?);
 
 updatePics:
 UPDATE PicsPackage SET picsRawData = ? AND picsChangeNumber = ? WHERE id = ?;

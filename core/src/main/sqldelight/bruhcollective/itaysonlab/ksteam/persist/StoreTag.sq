@@ -8,4 +8,4 @@ selectAll:
 SELECT * FROM PicsApp;
 
 insert:
-INSERT INTO StoreTag (id, name, localized) VALUES (?, ?, ?);
+INSERT OR REPLACE INTO StoreTag (id, name, localized) VALUES (?, ?, ?);
