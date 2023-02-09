@@ -18,11 +18,10 @@ import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_
 import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Response
 
 internal class ExternalWebApi(
-    private val httpClient: HttpClient,
     private val apiClient: HttpClient,
 ) {
     internal suspend fun getCmList(): List<CMServerEntry> {
-        return httpClient.get(
+        return apiClient.get(
             URLBuilder(EnvironmentConstants.WEB_API_BASE).appendPathSegments(
                 "ISteamDirectory",
                 "GetCMListForConnect",

@@ -30,7 +30,7 @@ class SteamClient(
 ) {
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
 
-    internal val externalWebApi = ExternalWebApi(config.networkClient, config.apiClient)
+    internal val externalWebApi = ExternalWebApi(config.apiClient)
     private val serverList = CMList(externalWebApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
