@@ -11,6 +11,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
 import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
+import bruhcollective.itaysonlab.ksteam.persist.PicsApp
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -79,13 +80,15 @@ class Library(
      *
      * @return a [Flow] of [PicsApp] which is changed by collection editing
      */
-    suspend fun getAppsInCollection(id: String) = collections.mapNotNull { list ->
-        list.firstOrNull { it.id == id }
-    }.map { collection ->
-        if (collection.filterSpec != null) {
-            emptyList() // TODO
-        } else {
-            steamClient.pics.getPicsAppIds(collection.added)
+    fun getAppsInCollection(id: String): Flow<List<PicsApp>> {
+        return collections.mapNotNull { list ->
+            list.firstOrNull { it.id == id }
+        }.map { collection ->
+            if (collection.filterSpec != null) {
+                emptyList() // TODO
+            } else {
+                steamClient.pics.getPicsAppIds(collection.added)
+            }
         }
     }
 
@@ -163,7 +166,7 @@ class Library(
         }
     }
 
-    private suspend fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
+    private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
         // -- User Collections --
         entries.filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull {
             val entry = json.decodeFromString<LibraryCollection.CollectionModel>(it.value_ ?: return@mapNotNull null)
