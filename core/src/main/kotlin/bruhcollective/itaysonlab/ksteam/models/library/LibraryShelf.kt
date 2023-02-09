@@ -14,7 +14,6 @@ data class LibraryShelf (
 ) {
     @Serializable
     data class LibraryShelfRemote (
-        @SerialName("nShowcaseId") val id: String,
         @SerialName("strCollectionId") val linkedCollection: String,
         @SerialName("eSortBy") val sortBy: Int = 1,
         @SerialName("nLastChangedMS") val lastChangedMs: Long = 0L,

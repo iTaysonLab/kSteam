@@ -2,18 +2,25 @@ package bruhcollective.itaysonlab.ksteam.pics
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.persist.Database
-import bruhcollective.itaysonlab.ksteam.persist.PicsAppQueries
-import bruhcollective.itaysonlab.ksteam.persist.PicsPackageQueries
-import bruhcollective.itaysonlab.ksteam.persist.StoreTagQueries
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.Executors
 
 internal class PicsDatabase (steamClient: SteamClient) {
+    private val scopeDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    private val scope = CoroutineScope(scopeDispatcher)
+
     private val appSchema = Database(steamClient.config.sqlDriver)
 
     init {
-        Database.Schema.create(steamClient.config.sqlDriver)
+        scope.launch {
+            Database.Schema.create(steamClient.config.sqlDriver).await()
+        }
     }
 
-    val picsAppQueries: PicsAppQueries get() = appSchema.picsAppQueries
-    val picsPackageQueries: PicsPackageQueries get() = appSchema.picsPackageQueries
-    val storeTagQueries: StoreTagQueries get() = appSchema.storeTagQueries
+    suspend fun <T> runOnDatabase(block: suspend Database.() -> T) = withContext(scopeDispatcher) {
+        block(appSchema)
+    }
 }

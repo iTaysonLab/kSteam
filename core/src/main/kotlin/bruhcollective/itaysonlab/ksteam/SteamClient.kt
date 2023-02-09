@@ -62,12 +62,16 @@ class SteamClient(
 
     init {
         config.apiClient.plugin(HttpSend).intercept { request ->
-            execute(request.writeSteamData()).let { response ->
-                if (response.response.status == HttpStatusCode.Unauthorized) {
-                    account.updateAccessToken()
-                    execute(request.writeSteamData())
-                } else {
-                    response
+            if (request.url.pathSegments[request.url.pathSegments.lastIndex - 1] == "GetCMListForConnect") {
+                execute(request)
+            } else {
+                execute(request.writeSteamData()).let { response ->
+                    if (response.response.status == HttpStatusCode.Unauthorized) {
+                        account.updateAccessToken()
+                        execute(request.writeSteamData())
+                    } else {
+                        response
+                    }
                 }
             }
         }

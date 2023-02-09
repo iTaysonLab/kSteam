@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import app.cash.sqldelight.async.coroutines.awaitAsList
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -48,8 +49,8 @@ class Pics(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getPicsAppIds(ids: List<AppId>): List<PicsApp> = withContext(Dispatchers.IO) {
-        database.picsAppQueries.selectById(ids.map(AppId::asLong)).executeAsList()
+    suspend fun getPicsAppIds(ids: List<AppId>): List<PicsApp> = database.runOnDatabase {
+        picsAppQueries.selectById(ids.map(AppId::asLong)).awaitAsList()
     }
 
     /**
@@ -70,8 +71,8 @@ class Pics(
         logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
         processedLicenses += licenses
 
-        val allDatabasePackages = withContext(Dispatchers.IO) {
-            database.picsPackageQueries.selectAll().executeAsList().associateBy { it.id }
+        val allDatabasePackages = database.runOnDatabase {
+            picsPackageQueries.selectAll().awaitAsList().associateBy { it.id }
         }
 
         val requiresUpdate = licenses.filter { sLicense ->
@@ -86,7 +87,9 @@ class Pics(
             requestPicsMetadataForLicenses(requiresUpdate)
         }
 
-        appIds = database.picsAppQueries.selectIds().executeAsList().map { AppId(it.toInt()) }
+        appIds = database.runOnDatabase {
+            picsAppQueries.selectIds().awaitAsList().map { AppId(it.toInt()) }
+        }
     }
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -118,50 +121,54 @@ class Pics(
         }.also { saveAppsToDatabase(it) }
     }
 
-    private fun savePackagesToDatabase(info: List<Triple<PackageInfo, Int, ByteString>>) {
-        database.picsPackageQueries.transaction {
-            info.forEach { packageInfo ->
-                database.picsPackageQueries.insert(
-                    id = packageInfo.first.packageId.toLong(),
-                    picsChangeNumber = packageInfo.second.toLong(),
-                    picsRawData = packageInfo.third.toByteArray()
-                )
+    private suspend fun savePackagesToDatabase(info: List<Triple<PackageInfo, Int, ByteString>>) {
+        database.runOnDatabase {
+            picsPackageQueries.transaction {
+                info.forEach { packageInfo ->
+                    picsPackageQueries.insert(
+                        id = packageInfo.first.packageId.toLong(),
+                        picsChangeNumber = packageInfo.second.toLong(),
+                        picsRawData = packageInfo.third.toByteArray()
+                    )
+                }
             }
         }
     }
 
-    private fun saveAppsToDatabase(info: List<Triple<AppInfo, Int, ByteString>>) {
-        database.picsAppQueries.transaction {
-            info.forEach { appInfo ->
-                database.picsAppQueries.insert(
-                    PicsApp(
-                        id = appInfo.first.appId.toLong(),
-                        name = appInfo.first.common.name,
-                        type = appInfo.first.common.type,
-                        supportedOs = appInfo.first.common.osList,
-                        released = appInfo.first.common.releaseState,
-                        controllerSupport = appInfo.first.common.controllerSupport,
-                        deckSupportCategory = appInfo.first.common.steamDeckCompat.category.toLong(),
-                        masterSubAppId = appInfo.first.common.masterSubPackageId.toLong(),
-                        tags = appInfo.first.common.tags.joinToDatabaseString(),
-                        categories = appInfo.first.common.category.filter { it.value }.keys.joinToDatabaseString { it.removePrefix("category_") },
-                        genres = appInfo.first.common.genres.joinToDatabaseString(),
-                        imageHeaderFileName = appInfo.first.common.headerImages.joinToDatabaseString(),
-                        imageCapsuleFileName = appInfo.first.common.smallCapsule.joinToDatabaseString(),
-                        localizedNames = appInfo.first.common.nameLocalized.joinToDatabaseString(),
-                        franchise = appInfo.first.common.associations.filter { it.type == "franchise" }.joinToString { it.name },
-                        developers = appInfo.first.common.associations.filter { it.type == "developer" }.joinToString { it.name },
-                        publishers = appInfo.first.common.associations.filter { it.type == "publisher" }.joinToString { it.name },
-                        releaseDate = appInfo.first.common.releaseDate,
-                        steamReleaseDate = appInfo.first.common.steamReleaseDate,
-                        reviewScore = appInfo.first.common.reviewScore.toLong(),
-                        reviewPercentage = appInfo.first.common.reviewPercentage.toLong(),
-                        metacriticScore = appInfo.first.common.metacriticScore.toLong(),
-                        metacriticUrl = appInfo.first.common.metacriticUrl,
-                        picsChangeNumber = appInfo.second.toLong(),
-                        picsRawData = appInfo.third.toByteArray()
+    private suspend fun saveAppsToDatabase(info: List<Triple<AppInfo, Int, ByteString>>) {
+        database.runOnDatabase {
+            picsAppQueries.transaction {
+                info.forEach { appInfo ->
+                    picsAppQueries.insert(
+                        PicsApp(
+                            id = appInfo.first.appId.toLong(),
+                            name = appInfo.first.common.name,
+                            type = appInfo.first.common.type,
+                            supportedOs = appInfo.first.common.osList,
+                            released = appInfo.first.common.releaseState,
+                            controllerSupport = appInfo.first.common.controllerSupport,
+                            deckSupportCategory = appInfo.first.common.steamDeckCompat.category.toLong(),
+                            masterSubAppId = appInfo.first.common.masterSubPackageId.toLong(),
+                            tags = appInfo.first.common.tags.joinToDatabaseString(),
+                            categories = appInfo.first.common.category.filter { it.value }.keys.joinToDatabaseString { it.removePrefix("category_") },
+                            genres = appInfo.first.common.genres.joinToDatabaseString(),
+                            imageHeaderFileName = appInfo.first.common.headerImages.joinToDatabaseString(),
+                            imageCapsuleFileName = appInfo.first.common.smallCapsule.joinToDatabaseString(),
+                            localizedNames = appInfo.first.common.nameLocalized.joinToDatabaseString(),
+                            franchise = appInfo.first.common.associations.filter { it.type == "franchise" }.joinToString { it.name },
+                            developers = appInfo.first.common.associations.filter { it.type == "developer" }.joinToString { it.name },
+                            publishers = appInfo.first.common.associations.filter { it.type == "publisher" }.joinToString { it.name },
+                            releaseDate = appInfo.first.common.releaseDate,
+                            steamReleaseDate = appInfo.first.common.steamReleaseDate,
+                            reviewScore = appInfo.first.common.reviewScore.toLong(),
+                            reviewPercentage = appInfo.first.common.reviewPercentage.toLong(),
+                            metacriticScore = appInfo.first.common.metacriticScore.toLong(),
+                            metacriticUrl = appInfo.first.common.metacriticUrl,
+                            picsChangeNumber = appInfo.second.toLong(),
+                            picsRawData = appInfo.third.toByteArray()
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -220,6 +227,7 @@ class Pics(
         )
     }
 
+    @OptIn(FlowPreview::class)
     private suspend fun <T> requestDataFromPics(request: CMsgClientPICSProductInfoRequest, emitter: (CMsgClientPICSProductInfoResponse) -> List<T>): List<T> {
         return steamClient.subscribe(SteamPacket.newProto(
             messageId = EMsg.k_EMsgClientPICSProductInfoRequest,

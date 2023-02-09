@@ -37,8 +37,14 @@ class Library(
 
     private val libraryCache = mutableMapOf<SteamId, List<OwnedGame>>()
 
-    private val _collections = MutableStateFlow<List<LibraryCollection>>(emptyList())
-    val collections = _collections.asStateFlow()
+    private val _userCollections = MutableStateFlow<List<LibraryCollection>>(emptyList())
+    val userCollections = _userCollections.asStateFlow()
+
+    private val _favoriteCollection = MutableStateFlow<LibraryCollection?>(null)
+    val favoriteCollection = _favoriteCollection.asStateFlow()
+
+    private val _hiddenCollection = MutableStateFlow<LibraryCollection?>(null)
+    val hiddenCollection = _hiddenCollection.asStateFlow()
 
     private val _shelves = MutableStateFlow<List<LibraryShelf>>(emptyList())
     val shelves = _shelves.asStateFlow()
@@ -81,9 +87,11 @@ class Library(
      * @return a [Flow] of [PicsApp] which is changed by collection editing
      */
     fun getAppsInCollection(id: String): Flow<List<PicsApp>> {
-        return collections.mapNotNull { list ->
+        return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }.map { collection ->
+            println(collection)
+
             if (collection.filterSpec != null) {
                 emptyList() // TODO
             } else {
@@ -168,7 +176,7 @@ class Library(
 
     private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
         // -- User Collections --
-        entries.filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull {
+        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull {
             val entry = json.decodeFromString<LibraryCollection.CollectionModel>(it.value_ ?: return@mapNotNull null)
 
             LibraryCollection(
@@ -180,15 +188,33 @@ class Library(
                 timestamp = it.timestamp ?: 0,
                 version = it.version ?: 0
             )
-        }.let { collections ->
-            _collections.value = collections
+        }.filter {
+            when (it.id) {
+                "favorite" -> {
+                    _favoriteCollection.value = it
+                    false
+                }
+
+                "hidden" -> {
+                    _hiddenCollection.value = it
+                    false
+                }
+
+                else -> {
+                    true
+                }
+            }
+        }.sortedWith { o1, o2 ->
+            o1.name.compareTo(o2.name, ignoreCase = true)
+        }.toList().let { collections ->
+            _userCollections.value = collections
         }
 
-        entries.filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("showcase") }.mapNotNull {
+        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("showcase") }.mapNotNull {
             val entry = json.decodeFromString<LibraryShelf.LibraryShelfRemote>(it.value_ ?: return@mapNotNull null)
 
             LibraryShelf(
-                id = entry.id,
+                id = it.key ?: return@mapNotNull null,
                 linkedCollection = entry.linkedCollection,
                 sortBy = entry.sortBy,
                 lastChangedMs = entry.lastChangedMs,
@@ -196,7 +222,9 @@ class Library(
                 version = it.version ?: 0,
                 remoteTimestamp = it.timestamp ?: 0
             )
-        }.let { shelves ->
+        }.sortedByDescending {
+            it.orderTimestamp
+        }.toList().let { shelves ->
             _shelves.value = shelves
         }
     }

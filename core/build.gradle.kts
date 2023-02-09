@@ -31,6 +31,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
 
     implementation("app.cash.sqldelight:async-extensions:2.0.0-SNAPSHOT")
+    implementation("app.cash.sqldelight:coroutines-extensions:2.0.0-SNAPSHOT")
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")
@@ -55,6 +56,7 @@ sqldelight {
     databases {
         create("Database") {
             packageName.set("bruhcollective.itaysonlab.ksteam.persist")
+            generateAsync.set(true)
         }
     }
 }
