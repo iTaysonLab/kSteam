@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.models.pics.asPicsDb
 import bruhcollective.itaysonlab.ksteam.persist.PicsApp
 import bruhcollective.itaysonlab.ksteam.pics.PicsDatabase
 import bruhcollective.itaysonlab.ksteam.pics.model.AppInfo
@@ -13,7 +14,6 @@ import bruhcollective.itaysonlab.ksteam.pics.model.PackageInfo
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
-import io.ktor.http.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.flatMapConcat
@@ -104,8 +104,6 @@ class Pics(
         // However, we should have been used saved access tokens
 
         dispatchListParsing(loadAppsInfo(appIds)) { appInfo ->
-            // println(appInfo.toString())
-
             try {
                 vdfText.decodeFromBufferedSource<AppInfo>(
                     RootNodeSkipperDeserializationStrategy(),
@@ -115,7 +113,7 @@ class Pics(
             } catch (mfe: Exception) {
                 // Some of appids might NOT be the games
                 // In kSteam scope, this is not required (as we are not building a full Steam replacement client and probably no one will do it)
-                println(appInfo.buffer?.hex())
+                logVerbose("Pics:Unknown", appInfo.buffer?.hex().orEmpty() )
                 null
             }
         }.also { saveAppsToDatabase(it) }
@@ -140,53 +138,14 @@ class Pics(
             picsAppQueries.transaction {
                 info.forEach { appInfo ->
                     picsAppQueries.insert(
-                        PicsApp(
-                            id = appInfo.first.appId.toLong(),
-                            name = appInfo.first.common.name,
-                            type = appInfo.first.common.type,
-                            supportedOs = appInfo.first.common.osList,
-                            released = appInfo.first.common.releaseState,
-                            controllerSupport = appInfo.first.common.controllerSupport,
-                            deckSupportCategory = appInfo.first.common.steamDeckCompat.category.toLong(),
-                            masterSubAppId = appInfo.first.common.masterSubPackageId.toLong(),
-                            tags = appInfo.first.common.tags.joinToDatabaseString(),
-                            categories = appInfo.first.common.category.filter { it.value }.keys.joinToDatabaseString { it.removePrefix("category_") },
-                            genres = appInfo.first.common.genres.joinToDatabaseString(),
-                            imageHeaderFileName = appInfo.first.common.headerImages.joinToDatabaseString(),
-                            imageCapsuleFileName = appInfo.first.common.smallCapsule.joinToDatabaseString(),
-                            localizedNames = appInfo.first.common.nameLocalized.joinToDatabaseString(),
-                            franchise = appInfo.first.common.associations.filter { it.type == "franchise" }.joinToString { it.name },
-                            developers = appInfo.first.common.associations.filter { it.type == "developer" }.joinToString { it.name },
-                            publishers = appInfo.first.common.associations.filter { it.type == "publisher" }.joinToString { it.name },
-                            releaseDate = appInfo.first.common.releaseDate,
-                            steamReleaseDate = appInfo.first.common.steamReleaseDate,
-                            reviewScore = appInfo.first.common.reviewScore.toLong(),
-                            reviewPercentage = appInfo.first.common.reviewPercentage.toLong(),
-                            metacriticScore = appInfo.first.common.metacriticScore.toLong(),
-                            metacriticUrl = appInfo.first.common.metacriticUrl,
-                            picsChangeNumber = appInfo.second.toLong(),
-                            picsRawData = appInfo.third.toByteArray()
+                        appInfo.first.asPicsDb(
+                            changeNumber = appInfo.second.toLong(),
+                            rawData = appInfo.third.toByteArray()
                         )
                     )
                 }
             }
         }
-    }
-
-    private fun <T> Iterable<T>.joinToDatabaseString(transform: ((T) -> CharSequence)? = null): String {
-        return joinToString(separator = ":", postfix = ":", transform = transform).let {
-            if (it.first() == ':') {
-                ""
-            } else {
-                it
-            }
-        }
-    }
-
-    private fun Map<String, String>.joinToDatabaseString(): String {
-        return map {
-            it.key + "=" + it.value.encodeURLParameter()
-        }.joinToString(separator = ":")
     }
 
     private suspend fun loadPackageInfo(licenses: List<CMsgClientLicenseList_License>): List<CMsgClientPICSProductInfoResponse_PackageInfo> {

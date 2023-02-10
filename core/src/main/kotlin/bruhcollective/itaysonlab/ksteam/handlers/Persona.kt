@@ -33,7 +33,7 @@ class Persona(
     val currentFriendList = _currentFriendList.asStateFlow()
 
     private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
-        logVerbose("Persona::NewState", "Incoming: ${incoming.joinToString()}")
+        logVerbose("Persona:NewState", "Incoming: ${incoming.joinToString()}")
 
         personas.update { map ->
             map.toMutableMap().apply {
@@ -120,7 +120,7 @@ class Persona(
     suspend fun requestPersonas(ids: List<SteamId>) {
         if (ids.isEmpty()) return
 
-        logDebug("Handlers::Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
+        logDebug("Handlers:Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
 
         steamClient.executeAndForget(SteamPacket.newProto(
             messageId = EMsg.k_EMsgClientRequestFriendData,

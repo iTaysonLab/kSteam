@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.debug.logError
+import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
@@ -11,7 +12,9 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
 import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
+import bruhcollective.itaysonlab.ksteam.models.pics.asAppInfo
 import bruhcollective.itaysonlab.ksteam.persist.PicsApp
+import bruhcollective.itaysonlab.ksteam.pics.model.AppInfo
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -36,6 +39,9 @@ class Library(
     private val json = Json { ignoreUnknownKeys = true }
 
     private val libraryCache = mutableMapOf<SteamId, List<OwnedGame>>()
+
+    private val _loadingLibrary = MutableStateFlow(LibraryLoad(false to false))
+    val loadingLibrary = _loadingLibrary.asStateFlow()
 
     private val _userCollections = MutableStateFlow<List<LibraryCollection>>(emptyList())
     val userCollections = _userCollections.asStateFlow()
@@ -86,16 +92,20 @@ class Library(
      *
      * @return a [Flow] of [PicsApp] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String): Flow<List<PicsApp>> {
+    fun getAppsInCollection(id: String): Flow<List<AppInfo>> {
         return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }.map { collection ->
-            println(collection)
-
-            if (collection.filterSpec != null) {
+            (if (collection.filterSpec != null) {
                 emptyList() // TODO
             } else {
-                steamClient.pics.getPicsAppIds(collection.added)
+                withContext(Dispatchers.IO) {
+                    steamClient.pics.getPicsAppIds(collection.added).map {
+                        it.asAppInfo()
+                    }
+                }
+            }).sortedBy {
+                it.common.name
             }
         }
     }
@@ -142,7 +152,7 @@ class Library(
                 cloudCollector = null
 
                 if (it != null && it !is CancellationException) {
-                    logError("Library::Collector", "Error occurred when collecting library data: ${it.message}")
+                    logError("Library:Collector", "Error occurred when collecting library data: ${it.message}")
                     it.printStackTrace()
 
                     delay(1000L)
@@ -157,7 +167,7 @@ class Library(
         if (userPlayTimesCollector == null || userPlayTimesCollector?.isCompleted == true) {
             userPlayTimesCollector = scope.launch {
                 while (true) {
-                    logDebug("Library::Collector", "Requesting last played times")
+                    logDebug("Library:Collector", "Requesting last played times")
 
                     _playtime.update {
                         steamClient.webApi.execute(
@@ -175,6 +185,10 @@ class Library(
     }
 
     private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
+        entries.forEach { entry ->
+            logVerbose("Library:Cloud", entry.toString())
+        }
+
         // -- User Collections --
         entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull {
             val entry = json.decodeFromString<LibraryCollection.CollectionModel>(it.value_ ?: return@mapNotNull null)
@@ -187,7 +201,9 @@ class Library(
                 filterSpec = entry.filterSpec,
                 timestamp = it.timestamp ?: 0,
                 version = it.version ?: 0
-            )
+            ).also { c ->
+                logVerbose("Library:Collection", c.toString())
+            }
         }.filter {
             when (it.id) {
                 "favorite" -> {
@@ -250,5 +266,11 @@ class Library(
     value class Library(private val packed: Pair<Int, List<OwnedGame>>) {
         val count get() = packed.first
         val list get() = packed.second
+    }
+
+    @JvmInline
+    value class LibraryLoad(private val packed: Pair<Boolean, Boolean>) {
+        val picsReady get() = packed.first
+        val cloudReady get() = packed.second
     }
 }
