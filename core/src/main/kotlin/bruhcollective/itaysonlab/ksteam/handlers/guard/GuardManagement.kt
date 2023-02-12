@@ -8,11 +8,9 @@ import bruhcollective.itaysonlab.ksteam.handlers.guard
 import bruhcollective.itaysonlab.ksteam.handlers.webApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.isActive
 import steam.webui.authentication.*
 
 /**
@@ -26,11 +24,9 @@ class GuardManagement(
      */
     fun createSessionWatcher(): Flow<Long?> {
         return flow {
-            coroutineScope {
-                do {
-                    emit(getSessionQueue())
-                    delay(5000L)
-                } while (coroutineContext.isActive)
+            while (true) {
+                emit(getSessionQueue())
+                delay(5000L)
             }
         }
     }

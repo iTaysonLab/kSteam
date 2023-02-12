@@ -12,7 +12,7 @@ import steam.webui.common.CMsgIPAddress
 /**
  * Represents a session which is approved to access Steam.
  */
-data class ActiveSession(
+class ActiveSession private constructor(
     val id: Long,
     val deviceName: String,
     val timeUpdated: Int,
@@ -23,8 +23,16 @@ data class ActiveSession(
     val gamingDeviceType: EGamingDeviceType,
     val firstSeen: UsageData?,
     val lastSeen: UsageData?,
-    val osType: EOSType
+    val osType: EOSType,
+    @Suppress("PropertyName") private val _proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
 ) {
+    /**
+     * Get a [ByteString] of the CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription protobuf.
+     *
+     * Useful for using as a argument in Android Navigation
+     */
+    fun protoBytes() = _proto.encodeByteString()
+
     data class UsageData(
         val time: Int,
         val ip: CMsgIPAddress,
@@ -57,6 +65,7 @@ data class ActiveSession(
         gamingDeviceType = EGamingDeviceType.byEncoded(proto.gaming_device_type),
         firstSeen = proto.first_seen?.let { UsageData(it) },
         lastSeen = proto.last_seen?.let { UsageData(it) },
-        osType = EOSType.byEncoded(proto.os_type)
+        osType = EOSType.byEncoded(proto.os_type),
+        _proto = proto
     )
 }
