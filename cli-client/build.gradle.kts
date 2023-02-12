@@ -28,6 +28,9 @@ dependencies {
     implementation(project(":models"))
     implementation(project(":kotlinx-vdf"))
 
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.0-RC")
+    implementation("app.cash.sqldelight:sqlite-driver:2.0.0-SNAPSHOT")
+
     implementation("com.squareup.okio:okio:3.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
     implementation("org.slf4j:slf4j-simple:2.0.6")
