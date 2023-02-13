@@ -3,11 +3,14 @@ package bruhcollective.itaysonlab.ksteam.handlers.guard
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
+import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfResult
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfirmationItem
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
 import java.net.URLEncoder
 
 /**
@@ -22,12 +25,19 @@ class GuardConfirmation(
     suspend fun getConfirmations(instance: GuardInstance): ConfirmationListState {
         return try {
             instance.confirmationTicket("list").let { sigStamp ->
-                steamClient.externalWebApi.getConfirmations(
-                    steamId = instance.steamId.longId,
-                    timestamp = sigStamp.generationTime,
-                    signature = sigStamp.b64EncodedSignature,
-                    platform = steamClient.config.deviceInfo.uuid
-                )
+                steamClient.externalWebApi.ajaxGet(
+                    path = listOf("mobileconf", "getlist"),
+                    parameters = mapOf(
+                        "p" to steamClient.config.deviceInfo.uuid,
+                        "a" to instance.steamId.longId.toString(),
+                        "t" to sigStamp.generationTime.toString(),
+                        "k" to sigStamp.b64EncodedSignature,
+                        "m" to "react",
+                        "tag" to "list"
+                    )
+                ).bodyAsText().let {
+                    ConfirmationListState.Decoder.decodeFromString(it)
+                }
             }
         } catch (e: Exception) {
             ConfirmationListState.NetworkError(e)
@@ -53,15 +63,19 @@ class GuardConfirmation(
         }
 
         return instance.confirmationTicket(tag).let { sigStamp ->
-            steamClient.externalWebApi.runConfOperation(
-                steamId = instance.steamId.longId,
-                timestamp = sigStamp.generationTime,
-                signature = sigStamp.b64EncodedSignature,
-                platform = steamClient.config.deviceInfo.uuid,
-                cid = item.id,
-                ck = item.nonce,
-                tag = tag,
-                operation = operation
+            steamClient.externalWebApi.ajaxGetTyped<MobileConfResult>(
+                path = listOf("mobileconf", "ajaxop"),
+                parameters = mapOf(
+                    "p" to steamClient.config.deviceInfo.uuid,
+                    "a" to instance.steamId.longId.toString(),
+                    "t" to sigStamp.generationTime.toString(),
+                    "k" to sigStamp.b64EncodedSignature,
+                    "m" to "react",
+                    "tag" to tag,
+                    "op" to operation,
+                    "cid" to item.id,
+                    "ck" to item.nonce
+                )
             ).success
         }
     }
