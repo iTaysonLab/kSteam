@@ -1,5 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.models.enums
 
-enum class EPartner {
-    
+enum class EPartner (internal val internalValue: Double) {
+    EASubscription(4e3);
+
+    companion object {
+        fun byIndex(num: Int) = values().firstOrNull { it.internalValue == num.toDouble() }
+    }
 }

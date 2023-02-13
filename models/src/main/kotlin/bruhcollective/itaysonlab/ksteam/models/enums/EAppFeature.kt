@@ -15,5 +15,9 @@ enum class EAppFeature {
     SteamDeckVerified,
     SteamDeckPlayable,
     SteamDeckUnknown,
-    SteamDeckUnsupported
+    SteamDeckUnsupported;
+
+    companion object {
+        fun byIndex(index: Int) = values().getOrNull(index + 1)
+    }
 }

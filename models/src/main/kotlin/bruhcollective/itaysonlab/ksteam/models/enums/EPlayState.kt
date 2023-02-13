@@ -5,5 +5,9 @@ enum class EPlayState {
     ReadyToPlay,
     PlayedPreviously,
     PlayedNever,
-    ValidPlatform
+    ValidPlatform;
+
+    companion object {
+        fun byIndex(index: Int) = values().getOrNull(index + 1)
+    }
 }
