@@ -1,5 +1,4 @@
 
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.Logging
@@ -14,7 +13,6 @@ import kotlin.time.Duration.Companion.seconds
 class KSteamClient: CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default) {
     private val steamClient = SteamClient(config = SteamClientConfiguration(
         rootFolder = File(Paths.get("").toAbsolutePath().toString(), "ksteam"),
-        sqlDriver = JdbcSqliteDriver("jdbc:sqlite:${File(File(Paths.get("").toAbsolutePath().toString(), "ksteam"), "database")}")
     ))
 
     fun start() {

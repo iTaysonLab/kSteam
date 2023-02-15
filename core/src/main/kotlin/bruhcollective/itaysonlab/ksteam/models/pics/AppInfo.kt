@@ -1,4 +1,4 @@
-package bruhcollective.itaysonlab.ksteam.pics.model
+package bruhcollective.itaysonlab.ksteam.models.pics
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

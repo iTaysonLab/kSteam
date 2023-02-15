@@ -2,11 +2,10 @@ plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
     `maven-publish`
-    id("app.cash.sqldelight") version "2.0.0-SNAPSHOT"
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r21"
+version = "r22"
 
 kotlin {
     jvmToolchain(8)
@@ -30,8 +29,11 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
 
-    implementation("app.cash.sqldelight:async-extensions:2.0.0-SNAPSHOT")
-    implementation("app.cash.sqldelight:coroutines-extensions:2.0.0-SNAPSHOT")
+    implementation("org.jetbrains.exposed:exposed-core:0.41.1")
+    implementation("org.jetbrains.exposed:exposed-dao:0.41.1")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
+    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.41.1")
+    implementation("com.h2database:h2:2.1.214")
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")
@@ -48,15 +50,6 @@ publishing {
                 url.set("https://github.com/itaysonlab/ksteam")
                 from(components.findByName("java"))
             }
-        }
-    }
-}
-
-sqldelight {
-    databases {
-        create("Database") {
-            packageName.set("bruhcollective.itaysonlab.ksteam.persist")
-            generateAsync.set(true)
         }
     }
 }

@@ -35,7 +35,7 @@ class Store(
                 requestAdapter = CStoreBrowse_GetItems_Request.ADAPTER,
                 responseAdapter = CStoreBrowse_GetItems_Response.ADAPTER,
                 requestData = CStoreBrowse_GetItems_Request(
-                    ids = appIdsParts.second.map { StoreItemID(appid = it.id) },
+                    ids = appIdsParts.second.map { StoreItemID(appid = it.id.toInt()) },
                     context = StoreBrowseContext(
                         language = steamClient.config.language.vdfName,
                         country_code = steamClient.persona.currentPersona.value.country

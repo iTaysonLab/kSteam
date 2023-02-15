@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam
 
+import bruhcollective.itaysonlab.ksteam.database.KSteamDatabase
 import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
@@ -31,8 +32,10 @@ class SteamClient(
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
 
     internal val externalWebApi = ExternalWebApi(config.apiClient)
+
     private val serverList = CMList(externalWebApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
+    private val database = KSteamDatabase(this)
 
     // TODO: we definitely need some sort of DI
     val handlers = mapOf<KClass<*>, BaseHandler>(
@@ -48,7 +51,7 @@ class SteamClient(
         GuardManagement(this).createAssociation(),
         GuardConfirmation(this).createAssociation(),
         CloudConfiguration(this).createAssociation(),
-        Pics(this).createAssociation(),
+        Pics(this, database).createAssociation(),
     )
 
     val connectionStatus get() = cmClient.clientState
@@ -56,7 +59,15 @@ class SteamClient(
 
     val currentSessionSteamId get() = cmClient.clientSteamId
 
+    /**
+     * Main function, which you need to call before doing anything with kSteam.
+     *
+     * This will establish connection with Steam Network servers.
+     */
     suspend fun start() {
+        // 1. Initialize kSteam database
+        database.tryInitializeDatabase()
+        // 2. Start CMClient connection
         cmClient.tryConnect()
     }
 

@@ -12,9 +12,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
 import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
-import bruhcollective.itaysonlab.ksteam.models.pics.asAppInfo
-import bruhcollective.itaysonlab.ksteam.persist.PicsApp
-import bruhcollective.itaysonlab.ksteam.pics.model.AppInfo
+import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -88,25 +86,35 @@ class Library(
     }
 
     /**
-     * Queries a collection by its [id].
+     * Queries eligible apps in a collection by its [id].
      *
-     * @return a [Flow] of [PicsApp] which is changed by collection editing
+     * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
     fun getAppsInCollection(id: String): Flow<List<AppInfo>> {
         return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }.map { collection ->
             (if (collection.filterSpec != null) {
-                emptyList() // TODO
+                collection.filterSpec.parseFilters().let { filters ->
+                    // TODO
+                    emptyList()
+                }
             } else {
                 withContext(Dispatchers.IO) {
-                    steamClient.pics.getPicsAppIds(collection.added).map {
-                        it.asAppInfo()
-                    }
+                    steamClient.pics.getAppIdsAsInfos(collection.added)
                 }
             }).sortedBy {
                 it.common.name
             }
+        }
+    }
+
+    /**
+     * Queries a collection by its [id].
+     */
+    fun getCollection(id: String): Flow<LibraryCollection> {
+        return userCollections.mapNotNull { list ->
+            list.firstOrNull { it.id == id }
         }
     }
 

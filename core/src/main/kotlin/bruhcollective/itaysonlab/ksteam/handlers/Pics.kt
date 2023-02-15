@@ -1,16 +1,15 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import app.cash.sqldelight.async.coroutines.awaitAsList
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.database.KSteamDatabase
+import bruhcollective.itaysonlab.ksteam.database.entities.PicsApp
+import bruhcollective.itaysonlab.ksteam.database.entities.PicsPackage
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.pics.asPicsDb
-import bruhcollective.itaysonlab.ksteam.persist.PicsApp
-import bruhcollective.itaysonlab.ksteam.pics.PicsDatabase
-import bruhcollective.itaysonlab.ksteam.pics.model.AppInfo
-import bruhcollective.itaysonlab.ksteam.pics.model.PackageInfo
+import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
+import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
@@ -20,18 +19,22 @@ import kotlinx.coroutines.flow.flatMapConcat
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.flow.transformWhile
 import kotlinx.serialization.ExperimentalSerializationApi
-import okio.Buffer
-import okio.ByteString
+import okio.*
 import steam.webui.common.*
 
 /**
  * A handler to access the PICS infrastructure
  */
-class Pics(
-    private val steamClient: SteamClient
+class Pics internal constructor(
+    private val steamClient: SteamClient,
+    private val database: KSteamDatabase
 ) : BaseHandler {
+    @OptIn(ExperimentalSerializationApi::class)
+    private val vdfAppInfo = Vdf {
+        ignoreUnknownKeys = true
+    }
+
     private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
-    private val database = PicsDatabase(steamClient)
 
     // TODO: filter based on owning package ids
     internal var appIds = emptyList<AppId>()
@@ -49,8 +52,13 @@ class Pics(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getPicsAppIds(ids: List<AppId>): List<PicsApp> = database.runOnDatabase {
-        picsAppQueries.selectById(ids.map(AppId::asLong)).awaitAsList()
+    @OptIn(ExperimentalSerializationApi::class)
+    suspend fun getAppIdsAsInfos(ids: List<AppId>): List<AppInfo> = database.withDatabase {
+        PicsApp.getVdfByAppId(this, ids)
+    }.map { blob ->
+        blob.inputStream.source().buffer().use { source ->
+            vdfAppInfo.decodeFromBufferedSource(RootNodeSkipperDeserializationStrategy(), source)
+        }
     }
 
     /**
@@ -71,13 +79,13 @@ class Pics(
         logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
         processedLicenses += licenses
 
-        val allDatabasePackages = database.runOnDatabase {
-            picsPackageQueries.selectAll().awaitAsList().associateBy { it.id }
+        val allDatabasePackages = database.withDatabase {
+            PicsPackage.selectAllAsMap(this)
         }
 
         val requiresUpdate = licenses.filter { sLicense ->
-            allDatabasePackages[sLicense.package_id!!.toLong()].let { dLicense ->
-                dLicense == null || sLicense.change_number!!.toLong() > dLicense.picsChangeNumber
+            allDatabasePackages[sLicense.package_id!!.toUInt()].let { dLicense ->
+                dLicense == null || sLicense.change_number!!.toUInt() > dLicense
             }
         }
 
@@ -87,8 +95,8 @@ class Pics(
             requestPicsMetadataForLicenses(requiresUpdate)
         }
 
-        appIds = database.runOnDatabase {
-            picsAppQueries.selectIds().awaitAsList().map { AppId(it.toInt()) }
+        appIds = database.withDatabase {
+            PicsApp.getAppIds(this)
         }
     }
 
@@ -97,8 +105,10 @@ class Pics(
         val appIds = dispatchListParsing(loadPackageInfo(requiresUpdate)) { pkgInfo ->
             vdfBinary.decodeFromBufferedSource<PackageInfo>(RootNodeSkipperDeserializationStrategy(), Buffer().also { buffer ->
                 buffer.write(pkgInfo.buffer ?: return@dispatchListParsing null)
-            }).let { Triple(it, pkgInfo.change_number ?: 0, pkgInfo.buffer ?: ByteString.EMPTY) }
-        }.also { savePackagesToDatabase(it) }.map { it.first.appIds }.flatten()
+            }).let {
+                PicsPackage.PicsPackageVdfRepresentation(Triple(it, (pkgInfo.change_number ?: 0).toUInt(), pkgInfo.buffer ?: ByteString.EMPTY))
+            }
+        }.also { savePackagesToDatabase(it) }.map { it.packageInfo.appIds }.flatten()
 
         // We will just assume that any changed packages means that all games are updated
         // However, we should have been used saved access tokens
@@ -109,7 +119,9 @@ class Pics(
                     RootNodeSkipperDeserializationStrategy(),
                     Buffer().also { buffer ->
                         buffer.write(appInfo.buffer ?: return@dispatchListParsing null)
-                    }).let { Triple(it, appInfo.change_number ?: 0, appInfo.buffer ?: ByteString.EMPTY) }
+                    }).let {
+                        PicsApp.PicsAppVdfRepresentation(Triple(it, (appInfo.change_number ?: 0).toUInt(), appInfo.buffer ?: ByteString.EMPTY))
+                    }
             } catch (mfe: Exception) {
                 // Some of appids might NOT be the games
                 // In kSteam scope, this is not required (as we are not building a full Steam replacement client and probably no one will do it)
@@ -119,32 +131,15 @@ class Pics(
         }.also { saveAppsToDatabase(it) }
     }
 
-    private suspend fun savePackagesToDatabase(info: List<Triple<PackageInfo, Int, ByteString>>) {
-        database.runOnDatabase {
-            picsPackageQueries.transaction {
-                info.forEach { packageInfo ->
-                    picsPackageQueries.insert(
-                        id = packageInfo.first.packageId.toLong(),
-                        picsChangeNumber = packageInfo.second.toLong(),
-                        picsRawData = packageInfo.third.toByteArray()
-                    )
-                }
-            }
+    private suspend fun savePackagesToDatabase(info: List<PicsPackage.PicsPackageVdfRepresentation>) {
+        database.withDatabase {
+            PicsPackage.insertAll(this, info)
         }
     }
 
-    private suspend fun saveAppsToDatabase(info: List<Triple<AppInfo, Int, ByteString>>) {
-        database.runOnDatabase {
-            picsAppQueries.transaction {
-                info.forEach { appInfo ->
-                    picsAppQueries.insert(
-                        appInfo.first.asPicsDb(
-                            changeNumber = appInfo.second.toLong(),
-                            rawData = appInfo.third.toByteArray()
-                        )
-                    )
-                }
-            }
+    private suspend fun saveAppsToDatabase(info: List<PicsApp.PicsAppVdfRepresentation>) {
+        database.withDatabase {
+            PicsApp.insertAll(this, info)
         }
     }
 

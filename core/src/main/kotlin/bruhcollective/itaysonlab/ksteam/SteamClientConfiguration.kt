@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam
 
-import app.cash.sqldelight.db.SqlDriver
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
@@ -28,18 +27,12 @@ class SteamClientConfiguration(
     internal val deviceInfo: DeviceInformation = DeviceInformation(),
     /**
      * Specifies a folder where kSteam will store session data.
-     *
-     * Does not affect database which is set in [sqlDriver].
      */
     internal val rootFolder: File,
     /**
      * Specifies a language used in some Steam Web API requests.
      */
     internal var language: ELanguage = ELanguage.English,
-    /**
-     * An SQLDelight SQL driver used for item caching.
-     */
-    internal val sqlDriver: SqlDriver,
     /**
      * Specifies logic used in Login ID usage when signing in.
      */
