@@ -27,10 +27,10 @@ internal class KSteamDatabase (
 
     suspend fun tryInitializeDatabase() = withContext(Dispatchers.IO) {
         if (::database.isInitialized.not()) {
-            database = Database.connect("jdbc:h2:${File(steamClient.config.rootFolder, "ksteam.db").absolutePath}")
+            database = Database.connect("jdbc:h2:${File(steamClient.config.rootFolder, "ksteam").absolutePath}")
         }
 
-        newSuspendedTransaction {
+        newSuspendedTransaction(db = database) {
             SchemaUtils.createMissingTablesAndColumns(PicsApp, PicsPackage, StoreTag, inBatch = true)
         }
     }

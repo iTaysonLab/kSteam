@@ -35,6 +35,8 @@ data class AppInfo(
         @SerialName("steam_release_date") val steamReleaseDate: Long = 0,
         @SerialName("metacritic_score") val metacriticScore: Int = 0,
         @SerialName("metacritic_fullurl") val metacriticUrl: String = "",
+        @SerialName("icon") val iconId: String = "",
+        @SerialName("logo") val logoId: String = "",
     ) {
         @Serializable
         data class SteamDeckCompatibility(

@@ -9,5 +9,5 @@ class H2Compress(
     compressWhat: ExposedBlob,
     useDeflate: Boolean = false
 ): CustomFunction<ExposedBlob>(
-    functionName = "COMPRESS", columnType = BlobColumnType(), LiteralOp(BlobColumnType(), compressWhat), stringParam(if (useDeflate) "DEFLATE" else "LZF")
+    functionName = "COMPRESS", columnType = BlobColumnType(), QueryParameter(compressWhat, BlobColumnType()), stringParam(if (useDeflate) "DEFLATE" else "LZF")
 )

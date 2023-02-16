@@ -76,17 +76,20 @@ internal object PicsApp: IdTable<UInt>(name = "pics_apps") {
         PicsApp.batchInsert(info, shouldReturnGeneratedValues = false) { triple ->
             this[PicsApp.id] = triple.appInfo.appId.toUInt()
             this[name] = triple.appInfo.common.name
-            this[PicsApp.type] = EAppType.values().first { it.name.equals(triple.appInfo.common.type, ignoreCase = true) }
+            this[PicsApp.type] = EAppType.values().firstOrNull { it.name.equals(triple.appInfo.common.type, ignoreCase = true) } ?: EAppType.Invalid
 
             this[supportedOs] = triple.appInfo.common.osList
             this[releaseState] = triple.appInfo.common.releaseState
-            this[controllerSupport] = EAppControllerSupportLevel.values().first { it.name.equals(triple.appInfo.common.controllerSupport, ignoreCase = true) }
-            this[deckSupport] = ESteamDeckSupport.values().first { it.ordinal == triple.appInfo.common.steamDeckCompat.category }
+            this[controllerSupport] = EAppControllerSupportLevel.values().firstOrNull { it.name.equals(triple.appInfo.common.controllerSupport, ignoreCase = true) } ?: EAppControllerSupportLevel.None
+            this[deckSupport] = ESteamDeckSupport.values().firstOrNull { it.ordinal == triple.appInfo.common.steamDeckCompat.category } ?: ESteamDeckSupport.Unknown
             this[masterSubAppId] = triple.appInfo.common.masterSubPackageId.toUInt()
 
             this[tags] = triple.appInfo.common.tags.sortedBy { it }.toTypedArray()
             this[categories] = triple.appInfo.common.category.filter { it.value }.keys.map { it.removePrefix("category_").toInt() }.sortedBy { it }.toTypedArray()
             this[genres] = triple.appInfo.common.genres.sortedBy { it }.toTypedArray()
+
+            this[iconFileId] = triple.appInfo.common.iconId
+            this[logoFileId] = triple.appInfo.common.logoId
 
             this[localizedHeaderImages] = triple.appInfo.common.headerImages.joinToDatabaseString()
             this[localizedSmallCapsules] = triple.appInfo.common.smallCapsule.joinToDatabaseString()
@@ -99,7 +102,7 @@ internal object PicsApp: IdTable<UInt>(name = "pics_apps") {
             this[releaseDate] = Instant.fromEpochSeconds(triple.appInfo.common.releaseDate)
             this[steamReleaseDate] = Instant.fromEpochSeconds(triple.appInfo.common.steamReleaseDate)
 
-            this[reviewScore] = EUserReviewScore.values().first { it.ordinal == triple.appInfo.common.reviewScore }
+            this[reviewScore] = EUserReviewScore.values().firstOrNull { it.ordinal == triple.appInfo.common.reviewScore } ?: EUserReviewScore.None
             this[reviewPercentage] = triple.appInfo.common.reviewPercentage.toShort()
             this[metacriticScore] = triple.appInfo.common.metacriticScore.toShort()
             this[metacriticUrl] = triple.appInfo.common.metacriticUrl
