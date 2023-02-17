@@ -2,8 +2,9 @@ package bruhcollective.itaysonlab.ksteam.database.entities
 
 import bruhcollective.itaysonlab.ksteam.database.exposed.H2Compress
 import bruhcollective.itaysonlab.ksteam.database.exposed.array
-import bruhcollective.itaysonlab.ksteam.database.exposed.equalsAny
+import bruhcollective.itaysonlab.ksteam.database.exposed.arrayContains
 import bruhcollective.itaysonlab.ksteam.database.exposed.expand
+import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
@@ -75,6 +76,8 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
     }
 
     suspend fun getVdfByFilter(db: Database, filters: DynamicFilters) = newSuspendedTransaction(db = db) {
+        logVerbose("PicsApp:getVdfByFilter", "Incoming filters: $filters")
+
         picsRawData.expand().let { rawData ->
             PicsApp.slice(rawData).let { set ->
                 createAllFilters(filters).let { op ->
@@ -133,7 +136,7 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
 
     private fun createAllFilters(filters: DynamicFilters) = listOfNotNull(
         createAppTypeFilter(filters),
-        /* TODO */
+        /* TODO Do an inner join once we will save playtimes in a database */
         createAppFeatureFilter(filters),
         createGenreFilter(filters),
         createStoreTagFilter(filters),
@@ -143,16 +146,18 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
         null
     }?.reduce { op, nextOp -> op and nextOp }
 
-    private fun createAppTypeFilter(filters: DynamicFilters) = createFilterOp(filters.byAppType) { appType ->
+    private fun createAppTypeFilter(filters: DynamicFilters) = createFilterOp(filters.byAppType, ifEmptyPlaceholder = {
+        listOf(EAppType.Game)
+    }) { appType ->
         type eq appType
     }
 
     private fun createGenreFilter(filters: DynamicFilters) = createFilterOp(filters.byGenre) { genre ->
-        genres equalsAny genre.tagNumber
+        tags arrayContains genre.tagNumber
     }
 
     private fun createStoreTagFilter(filters: DynamicFilters) = createFilterOp(filters.byStoreTag) { tag ->
-        genres equalsAny tag
+        tags arrayContains tag
     }
 
     private fun createPartnerFilter(filters: DynamicFilters) = createFilterOp(filters.byPartner) { partner ->
@@ -163,47 +168,47 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
     private fun createAppFeatureFilter(filters: DynamicFilters) = createFilterOp(filters.byAppFeature) { feature ->
         when (feature) {
             EAppFeature.FullControllerSupport -> {
-                (controllerSupport eq EAppControllerSupportLevel.Full) or (categories equalsAny 28)
+                (controllerSupport eq EAppControllerSupportLevel.Full) or (categories arrayContains 28)
             }
 
             EAppFeature.PartialControllerSupport -> {
-                (controllerSupport eq EAppControllerSupportLevel.Full) or (categories equalsAny 28) or (controllerSupport eq EAppControllerSupportLevel.Partial) or (categories equalsAny 18)
+                (controllerSupport eq EAppControllerSupportLevel.Full) or (categories arrayContains 28) or (controllerSupport eq EAppControllerSupportLevel.Partial) or (categories arrayContains 18)
             }
 
             EAppFeature.VRSupport -> {
-                categories equalsAny 31
+                categories arrayContains 31
             }
 
             EAppFeature.TradingCards -> {
-                categories equalsAny 29
+                categories arrayContains 29
             }
 
             EAppFeature.Workshop -> {
-                categories equalsAny 30
+                categories arrayContains 30
             }
 
             EAppFeature.Achievements -> {
-                categories equalsAny 22
+                categories arrayContains 22
             }
 
             EAppFeature.SinglePlayer -> {
-                categories equalsAny 2
+                categories arrayContains 2
             }
 
             EAppFeature.MultiPlayer -> {
-                (categories equalsAny 36) or (categories equalsAny 37) or (categories equalsAny 20) or (categories equalsAny 24) or (categories equalsAny 27) or (categories equalsAny 1)
+                (categories arrayContains 36) or (categories arrayContains 37) or (categories arrayContains 20) or (categories arrayContains 24) or (categories arrayContains 27) or (categories arrayContains 1)
             }
 
             EAppFeature.CoOp -> {
-                (categories equalsAny 9) or (categories equalsAny 38) or (categories equalsAny 39)
+                (categories arrayContains 9) or (categories arrayContains 38) or (categories arrayContains 39)
             }
 
             EAppFeature.Cloud -> {
-                categories equalsAny 23
+                categories arrayContains 23
             }
 
             EAppFeature.RemotePlayTogether -> {
-                categories equalsAny 44
+                categories arrayContains 44
             }
 
             EAppFeature.SteamDeckVerified -> {
@@ -224,15 +229,16 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
         }
     }
 
-    private fun <T> createFilterOp(dfEntry: DfEntry<T>, mapper: (T) -> Op<Boolean>) = dfEntry.entries.map(mapper).ifEmpty {
-        null
-    }?.reduce { op, nextOp ->
-        if (dfEntry.acceptsUnion) {
-            op or nextOp
-        } else {
-            op and nextOp
+    private fun <T> createFilterOp(dfEntry: DfEntry<T>, ifEmptyPlaceholder: () -> List<T>? = { null }, mapper: (T) -> Op<Boolean>) = dfEntry.entries
+        .ifEmpty(ifEmptyPlaceholder)
+        ?.map(mapper)
+        ?.reduce { op, nextOp ->
+            if (dfEntry.acceptsUnion) {
+                op or nextOp
+            } else {
+                op and nextOp
+            }
         }
-    }
 
     // endregion
 

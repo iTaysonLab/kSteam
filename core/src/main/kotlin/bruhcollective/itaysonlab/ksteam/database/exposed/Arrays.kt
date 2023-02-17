@@ -3,11 +3,11 @@ package bruhcollective.itaysonlab.ksteam.database.exposed
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.api.PreparedStatementApi
 import org.jetbrains.exposed.sql.statements.jdbc.JdbcPreparedStatementImpl
-import java.io.Serializable
 import kotlin.Array
 import java.sql.Array as SQLArray
 
 // Taken from https://gist.github.com/DRSchlaubi/cb146ee2b4d94d1c89b17b358187c612 with some details improved
+// Tweaked to support specific H2 Database features
 
 /**
  * Creates an array column with [name].
@@ -18,33 +18,22 @@ internal fun <T : Comparable<T>> Column<T>.array(size: Int? = null): Column<Arra
     return table.replaceColumn(this, Column(table, name, ArrayColumnType(columnType.sqlType(), size)))
 }
 
-/**
- * Checks whether this string is in the [other] expression.
- *
- * Example:
- * ```kotlin
- * productService.find { "tag" eqAny ProductsTable.tags }
- * ```
- *
- * @see any
- */
-internal infix fun Expression<Array<String>>.equalsAny(other: String): EqOp =
-    stringLiteral(other) eqAny this
+internal infix fun Expression<Array<Int>>.arrayContains(other: Int) = arrayContains(intLiteral(other))
+internal infix fun Expression<Array<String>>.arrayContains(other: String) = arrayContains(stringLiteral(other))
+internal infix fun <T> Expression<Array<T>>.arrayContains(other: LiteralOp<T>) = ArrayContains(this, other)
 
-internal infix fun Expression<Array<Int>>.equalsAny(other: Int): EqOp =
-    intLiteral(other) eqAny this
-
-/**
- * Invokes the `ANY` function on [expression].
- */
-internal fun <T : Serializable> any(
-    expression: Expression<Array<T>>,
-): ExpressionWithColumnType<String?> = CustomStringFunction("ANY", expression)
-
-internal fun <T> arrayLiteral(value: Array<T>): LiteralOp<Array<T>> = LiteralOp(ULongColumnType(), value)
-
-
-private infix fun <T : Serializable> Expression<T>.eqAny(other: Expression<Array<T>>): EqOp = EqOp(this, any(other))
+internal class ArrayContains <T> (
+    private val targetArray: Expression<Array<T>>,
+    private val containsWhat: Expression<T>,
+): Op<Boolean>() {
+    override fun toQueryBuilder(queryBuilder: QueryBuilder) = queryBuilder {
+        append("ARRAY_CONTAINS(")
+        append(targetArray)
+        append(", ")
+        append(containsWhat)
+        append(")")
+    }
+}
 
 /**
  * Implementation of [ColumnType] for the SQL `ARRAY` type.
