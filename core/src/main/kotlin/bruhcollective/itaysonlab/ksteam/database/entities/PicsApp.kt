@@ -76,8 +76,6 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
     }
 
     suspend fun getVdfByFilter(db: Database, filters: DynamicFilters) = newSuspendedTransaction(db = db) {
-        logVerbose("PicsApp:getVdfByFilter", "Incoming filters: $filters")
-
         picsRawData.expand().let { rawData ->
             PicsApp.slice(rawData).let { set ->
                 createAllFilters(filters).let { op ->

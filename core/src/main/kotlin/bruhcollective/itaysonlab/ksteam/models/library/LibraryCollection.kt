@@ -30,7 +30,7 @@ data class LibraryCollection(
             @SerialName("bAcceptUnion") val acceptUnion: Boolean
         )
 
-        fun parseFilters() = DynamicFilters(
+        internal fun parseFilters() = DynamicFilters(
             byAppType = DfEntry(mapOptions(0, EAppType::byBitMask) to acceptsUnion(0)),
             byPlayState = DfEntry(mapOptions(1, EPlayState::byIndex) to acceptsUnion(1)),
             byAppFeature = DfEntry(mapOptions(2, EAppFeature::byIndex) to acceptsUnion(2)),
