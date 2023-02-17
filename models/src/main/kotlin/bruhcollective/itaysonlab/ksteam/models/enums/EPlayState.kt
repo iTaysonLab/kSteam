@@ -8,6 +8,6 @@ enum class EPlayState {
     ValidPlatform;
 
     companion object {
-        fun byIndex(index: Int) = values().getOrNull(index + 1)
+        fun byIndex(index: Int) = values().getOrNull(index - 1)
     }
 }
