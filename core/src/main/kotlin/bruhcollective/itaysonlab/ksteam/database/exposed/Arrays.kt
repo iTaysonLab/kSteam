@@ -28,8 +28,11 @@ internal fun <T : Comparable<T>> Column<T>.array(size: Int? = null): Column<Arra
  *
  * @see any
  */
-internal infix fun String.equalsAny(other: Expression<Array<String>>): EqOp =
-    stringLiteral(this) eqAny other
+internal infix fun Expression<Array<String>>.equalsAny(other: String): EqOp =
+    stringLiteral(other) eqAny this
+
+internal infix fun Expression<Array<Int>>.equalsAny(other: Int): EqOp =
+    intLiteral(other) eqAny this
 
 /**
  * Invokes the `ANY` function on [expression].
@@ -37,6 +40,9 @@ internal infix fun String.equalsAny(other: Expression<Array<String>>): EqOp =
 internal fun <T : Serializable> any(
     expression: Expression<Array<T>>,
 ): ExpressionWithColumnType<String?> = CustomStringFunction("ANY", expression)
+
+internal fun <T> arrayLiteral(value: Array<T>): LiteralOp<Array<T>> = LiteralOp(ULongColumnType(), value)
+
 
 private infix fun <T : Serializable> Expression<T>.eqAny(other: Expression<Array<T>>): EqOp = EqOp(this, any(other))
 

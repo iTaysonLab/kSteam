@@ -13,4 +13,10 @@ data class DynamicFilters (
     val byFriend: DfEntry<SteamId>
 )
 
-typealias DfEntry <T> = Pair<List<T>, Boolean>
+@JvmInline
+value class DfEntry <T> (
+    private val packed: Pair<List<T>, Boolean>
+) {
+    val entries: List<T> get() = packed.first
+    val acceptsUnion: Boolean get() = packed.second
+}

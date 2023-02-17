@@ -1,9 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models
 
 @JvmInline
-value class AppId(val id: UInt) {
-    internal val asInt get() = id.toInt()
+value class AppId(val id: Int) {
     internal val asLong get() = id.toLong()
 }
-
-fun AppId(id: Int): AppId = AppId(id.toUInt())

@@ -8,6 +8,7 @@ import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
@@ -38,8 +39,13 @@ class Library(
 
     private val libraryCache = mutableMapOf<SteamId, List<OwnedGame>>()
 
-    private val _loadingLibrary = MutableStateFlow(LibraryLoad(false to false))
-    val loadingLibrary = _loadingLibrary.asStateFlow()
+    //
+    private val _isLoadingLibrary = MutableStateFlow(false)
+    val isLoadingLibrary = _isLoadingLibrary.asStateFlow()
+
+    private val _isLoadingPlayTimes = MutableStateFlow(false)
+    val isLoadingPlayTimes = _isLoadingPlayTimes.asStateFlow()
+    //
 
     private val _userCollections = MutableStateFlow<List<LibraryCollection>>(emptyList())
     val userCollections = _userCollections.asStateFlow()
@@ -94,17 +100,35 @@ class Library(
         return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }.map { collection ->
-            (if (collection.filterSpec != null) {
-                collection.filterSpec.parseFilters().let { filters ->
-                    // TODO
-                    emptyList()
-                }
+            val collectionFilters = collection.filterSpec?.parseFilters()
+            val hasPlayState = collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedNever) == true || collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedPreviously) == true
+
+            val playTime = if (hasPlayState) {
+                _playtime.first() // Await playtime
             } else {
-                withContext(Dispatchers.IO) {
-                    steamClient.pics.getAppIdsAsInfos(collection.added)
+                null
+            }
+
+            withContext(Dispatchers.IO) {
+                (collectionFilters?.let { filters ->
+                    steamClient.pics.getAppIdsFiltered(filters).let { appInfoList ->
+                        if (hasPlayState) {
+                            val neverPlayed = filters.byPlayState.entries.contains(EPlayState.PlayedNever)
+
+                            appInfoList.filter {
+                                if (neverPlayed) {
+                                    (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) == 0
+                                } else {
+                                    (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) != 0
+                                }
+                            }
+                        } else {
+                            appInfoList
+                        }
+                    }
+                } ?: steamClient.pics.getAppIdsAsInfos(collection.added)).sortedBy {
+                    it.common.name
                 }
-            }).sortedBy {
-                it.common.name
             }
         }
     }
@@ -174,6 +198,8 @@ class Library(
 
         if (userPlayTimesCollector == null || userPlayTimesCollector?.isCompleted == true) {
             userPlayTimesCollector = scope.launch {
+                _isLoadingPlayTimes.value = false
+
                 while (true) {
                     logDebug("Library:Collector", "Requesting last played times")
 
@@ -186,6 +212,8 @@ class Library(
                         ).dataNullable?.games?.associateBy { AppId(it.appid ?: 0) }.orEmpty()
                     }
 
+                    _isLoadingPlayTimes.value = true
+
                     delay(30.minutes) // Steam client approximately requests this data every 30 minutes
                 }
             }
@@ -193,6 +221,8 @@ class Library(
     }
 
     private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
+        _isLoadingLibrary.value = false
+
         entries.forEach { entry ->
             logVerbose("Library:Cloud", entry.toString())
         }
@@ -251,6 +281,8 @@ class Library(
         }.toList().let { shelves ->
             _shelves.value = shelves
         }
+
+        _isLoadingLibrary.value = true
     }
 
     override suspend fun onEvent(packet: SteamPacket) {
@@ -274,11 +306,5 @@ class Library(
     value class Library(private val packed: Pair<Int, List<OwnedGame>>) {
         val count get() = packed.first
         val list get() = packed.second
-    }
-
-    @JvmInline
-    value class LibraryLoad(private val packed: Pair<Boolean, Boolean>) {
-        val picsReady get() = packed.first
-        val cloudReady get() = packed.second
     }
 }

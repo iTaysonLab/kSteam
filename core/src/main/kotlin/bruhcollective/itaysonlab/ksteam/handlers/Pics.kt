@@ -8,16 +8,14 @@ import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.asFlow
-import kotlinx.coroutines.flow.flatMapConcat
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.flow.transformWhile
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.ExperimentalSerializationApi
 import okio.*
 import steam.webui.common.*
@@ -35,6 +33,9 @@ class Pics internal constructor(
     }
 
     private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
+
+    private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
+    val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
     // TODO: filter based on owning package ids
     internal var appIds = emptyList<AppId>()
@@ -55,6 +56,15 @@ class Pics internal constructor(
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun getAppIdsAsInfos(ids: List<AppId>): List<AppInfo> = database.withDatabase {
         PicsApp.getVdfByAppId(this, ids)
+    }.map { blob ->
+        blob.inputStream.source().buffer().use { source ->
+            vdfAppInfo.decodeFromBufferedSource(RootNodeSkipperDeserializationStrategy(), source)
+        }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    suspend fun getAppIdsFiltered(filters: DynamicFilters): List<AppInfo> = database.withDatabase {
+        PicsApp.getVdfByFilter(this, filters)
     }.map { blob ->
         blob.inputStream.source().buffer().use { source ->
             vdfAppInfo.decodeFromBufferedSource(RootNodeSkipperDeserializationStrategy(), source)
@@ -83,6 +93,8 @@ class Pics internal constructor(
             PicsPackage.selectAllAsMap(this)
         }
 
+        // TODO: get latest update number and compare changes
+
         val requiresUpdate = licenses.filter { sLicense ->
             allDatabasePackages[sLicense.package_id!!.toUInt()].let { dLicense ->
                 dLicense == null || sLicense.change_number!!.toUInt() > dLicense
@@ -92,12 +104,17 @@ class Pics internal constructor(
         logVerbose("Pics:HandleLicenses", "Require update: ${requiresUpdate.size}")
 
         if (requiresUpdate.isNotEmpty()) {
+            _isPicsAvailable.value = PicsState.Updating
             requestPicsMetadataForLicenses(requiresUpdate)
         }
+
+        // TODO: check integrity and update if not all ids are present
 
         appIds = database.withDatabase {
             PicsApp.getAppIds(this)
         }
+
+        _isPicsAvailable.value = PicsState.Ready
     }
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -204,5 +221,14 @@ class Pics internal constructor(
                 transformer(it)
             }
         }.awaitAll().filterNotNull()
+    }
+
+    enum class PicsState {
+        // 1. Requesting information from the server
+        Initialization,
+        // 2. Updating PICS information
+        Updating,
+        // 3. PICS is ready to use
+        Ready
     }
 }

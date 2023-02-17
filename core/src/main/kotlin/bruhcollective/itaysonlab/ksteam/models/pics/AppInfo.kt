@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.pics
 
+import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -57,3 +58,8 @@ data class AppInfo(
         )
     }
 }
+
+//
+
+val AppInfo.iconUrl get() = CommunityAppImageUrl(appId to common.iconId)
+val AppInfo.logoUrl get() = CommunityAppImageUrl(appId to common.logoId)

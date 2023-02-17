@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.enums
 
-enum class EGenre (internal val tagNumber: Int) {
+enum class EGenre (val tagNumber: Int) {
     Action(19),
     Adventure(21),
     Casual(597),
