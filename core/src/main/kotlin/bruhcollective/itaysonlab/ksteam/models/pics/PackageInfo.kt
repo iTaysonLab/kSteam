@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class PackageInfo(
+data class PackageInfo internal constructor(
     @SerialName("packageid") val packageId: Int,
     @SerialName("billingtype") val billingType: Int,
     @SerialName("licensetype") val licenseType: Int,
@@ -14,7 +14,7 @@ data class PackageInfo(
     @SerialName("depotids") val depotIds: List<Int> = emptyList()
 ) {
     @Serializable
-    data class PackageInfoExtended(
+    data class PackageInfoExtended internal constructor(
         @SerialName("allowcrossregiontradingandgifting") val allowInternationalGifting: Boolean = false
     )
 }

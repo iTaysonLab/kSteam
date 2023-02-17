@@ -20,7 +20,7 @@ import java.io.File
 /**
  * Manages Steam Guard, sessions and caches per-account
  */
-internal class Storage(
+internal class Storage internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     private val json = Json {

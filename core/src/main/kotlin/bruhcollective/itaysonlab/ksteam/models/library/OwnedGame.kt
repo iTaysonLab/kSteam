@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.library
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import steam.webui.player.CPlayer_GetOwnedGames_Response_Game
 
-data class OwnedGame(
+data class OwnedGame internal constructor(
     val id: AppId,
     val name: String,
     val recentPlaytime: Int,
@@ -23,7 +23,7 @@ data class OwnedGame(
     val contentDescriptors: List<Int>,
     val sortAs: String
 ) {
-    constructor(proto: CPlayer_GetOwnedGames_Response_Game) : this(
+    internal constructor(proto: CPlayer_GetOwnedGames_Response_Game) : this(
         id = AppId(proto.appid ?: 0),
         name = proto.name.orEmpty(),
         recentPlaytime = proto.playtime_2weeks ?: 0,

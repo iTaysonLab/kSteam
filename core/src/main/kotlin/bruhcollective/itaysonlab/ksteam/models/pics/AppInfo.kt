@@ -5,12 +5,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AppInfo(
+data class AppInfo internal constructor(
     @SerialName("appid") val appId: Int,
     val common: AppInfoCommon = AppInfoCommon()
 ) {
     @Serializable
-    data class AppInfoCommon(
+    data class AppInfoCommon internal constructor(
         val name: String = "",
         val type: String = "",
         @SerialName("oslist") val osList: String = "",
@@ -40,19 +40,19 @@ data class AppInfo(
         @SerialName("logo") val logoId: String = "",
     ) {
         @Serializable
-        data class SteamDeckCompatibility(
+        data class SteamDeckCompatibility internal constructor(
             val category: Int = 0,
             val tests: List<SteamDeckCompatTestEntry> = emptyList()
         ) {
             @Serializable
-            data class SteamDeckCompatTestEntry(
+            data class SteamDeckCompatTestEntry internal constructor(
                 val display: Int = 0,
                 val token: String = ""
             )
         }
 
         @Serializable
-        data class AppInfoAssociation(
+        data class AppInfoAssociation internal constructor(
             val type: String = "",
             val name: String = ""
         )

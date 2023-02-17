@@ -9,7 +9,7 @@ sealed class AuthorizationState {
 
     object Success : AuthorizationState()
 
-    class AwaitingTwoFactor(
+    class AwaitingTwoFactor internal constructor(
         val steamId: SteamId,
         val supportedConfirmationMethods: List<ConfirmationMethod>,
         internal val sumProtos: List<EAuthSessionGuardType>

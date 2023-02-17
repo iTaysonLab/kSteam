@@ -3,9 +3,9 @@ package bruhcollective.itaysonlab.ksteam.database.exposed
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 
-fun ExpressionWithColumnType<ExposedBlob>.expand() = function("EXPAND")
+internal fun ExpressionWithColumnType<ExposedBlob>.expand() = function("EXPAND")
 
-class H2Compress(
+internal class H2Compress(
     compressWhat: ExposedBlob,
     useDeflate: Boolean = false
 ): CustomFunction<ExposedBlob>(

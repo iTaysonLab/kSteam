@@ -11,7 +11,7 @@ import bruhcollective.itaysonlab.ksteam.models.news.NewsCalendarResponse
 /**
  * Access Steam news using this handler.
  */
-class News(
+class News internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     /**

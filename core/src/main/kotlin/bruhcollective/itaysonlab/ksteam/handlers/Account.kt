@@ -28,7 +28,7 @@ import java.net.InetAddress
 import java.nio.ByteBuffer
 import kotlin.random.Random
 
-class Account(
+class Account internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }

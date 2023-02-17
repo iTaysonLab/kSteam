@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.library
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 
-data class DynamicFilters (
+internal data class DynamicFilters (
     val byAppType: DfEntry<EAppType>,
     val byPlayState: DfEntry<EPlayState>,
     val byAppFeature: DfEntry<EAppFeature>,
@@ -14,9 +14,11 @@ data class DynamicFilters (
 )
 
 @JvmInline
-value class DfEntry <T> (
+internal value class DfEntry <T> (
     private val packed: Pair<List<T>, Boolean>
 ) {
     val entries: List<T> get() = packed.first
     val acceptsUnion: Boolean get() = packed.second
+
+    override fun toString() = "DfEntry[union = ${acceptsUnion}, entries = ${entries.joinToString()}]"
 }

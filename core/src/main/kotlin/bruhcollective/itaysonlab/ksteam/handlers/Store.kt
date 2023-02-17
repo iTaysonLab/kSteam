@@ -11,7 +11,7 @@ import steam.webui.common.*
  *
  * All data will be kept inside the in-memory cache.
  */
-class Store(
+class Store internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     private val json = Json { ignoreUnknownKeys = true }

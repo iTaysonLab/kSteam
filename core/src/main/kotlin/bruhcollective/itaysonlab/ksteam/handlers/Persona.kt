@@ -18,7 +18,7 @@ import steam.webui.friendslist.CMsgClientFriendsList
  *
  * All data will be kept inside the in-memory cache.
  */
-class Persona(
+class Persona internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     private val personas = MutableStateFlow<PersonaList>(emptyMap())

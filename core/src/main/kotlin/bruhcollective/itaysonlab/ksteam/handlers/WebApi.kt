@@ -8,7 +8,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import com.squareup.wire.Message
 import com.squareup.wire.ProtoAdapter
 
-class WebApi(
+class WebApi internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     /**

@@ -63,7 +63,7 @@ class Pics internal constructor(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    suspend fun getAppIdsFiltered(filters: DynamicFilters): List<AppInfo> = database.withDatabase {
+    internal suspend fun getAppIdsFiltered(filters: DynamicFilters): List<AppInfo> = database.withDatabase {
         PicsApp.getVdfByFilter(this, filters)
     }.map { blob ->
         blob.inputStream.source().buffer().use { source ->

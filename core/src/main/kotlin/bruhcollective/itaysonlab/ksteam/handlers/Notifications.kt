@@ -20,7 +20,7 @@ import steam.webui.steamnotification.SteamNotificationType
  *
  * All data will be kept inside the in-memory cache.
  */
-class Notifications(
+class Notifications internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     private val json = Json { ignoreUnknownKeys = true }

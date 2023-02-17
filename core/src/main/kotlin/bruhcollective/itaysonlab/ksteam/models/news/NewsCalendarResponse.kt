@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.news
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class NewsCalendarResponse (
+data class NewsCalendarResponse internal constructor(
     val success: Int,
     val apps: List<NewsCalendarResponseApp> = emptyList(),
     val backwardComplete: Boolean,

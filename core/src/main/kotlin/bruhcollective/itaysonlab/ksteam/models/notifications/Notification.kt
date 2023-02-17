@@ -29,7 +29,7 @@ sealed class Notification {
     /**
      * A user has received a gift from another user.
      */
-    class Gift(
+    class Gift internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
@@ -44,7 +44,7 @@ sealed class Notification {
     /**
      * A user has received a new item(s) in their inventory (through gameplay, trading or buying).
      */
-    class Item(
+    class Item internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
@@ -61,7 +61,7 @@ sealed class Notification {
     /**
      * A user has received a friend request.
      */
-    class FriendRequest(
+    class FriendRequest internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
@@ -76,7 +76,7 @@ sealed class Notification {
     /**
      * One (or multiple) games from a user's wishlish has received a major discount on a sale.
      */
-    class WishlistSale(
+    class WishlistSale internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
@@ -93,7 +93,7 @@ sealed class Notification {
     /**
      * A promotion message.
      */
-    class Promotion(
+    class Promotion internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
@@ -116,7 +116,7 @@ sealed class Notification {
      *
      * Data is provided in raw form if you want to implement support before kSteam does.
      */
-    class Unknown(
+    class Unknown internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,

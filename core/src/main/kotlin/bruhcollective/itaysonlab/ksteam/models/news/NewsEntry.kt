@@ -5,7 +5,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class NewsEntry(
+data class NewsEntry internal constructor(
     @SerialName("announcement_body")
     val announcementBody: AnnouncementBody,
     @SerialName("appid")
