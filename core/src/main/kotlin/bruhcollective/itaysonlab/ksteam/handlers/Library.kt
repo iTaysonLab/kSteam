@@ -276,8 +276,14 @@ class Library(
                 version = it.version ?: 0,
                 remoteTimestamp = it.timestamp ?: 0
             )
+        }.filter {
+            it.linkedCollection.isNotEmpty()
         }.sortedByDescending {
-            it.orderTimestamp
+            if (it.orderTimestamp != 0L) {
+                it.orderTimestamp
+            } else {
+                it.id.removePrefix("showcases.").toLongOrNull() ?: 0L
+            }
         }.toList().let { shelves ->
             _shelves.value = shelves
         }
