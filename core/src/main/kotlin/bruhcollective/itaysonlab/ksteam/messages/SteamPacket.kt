@@ -57,9 +57,6 @@ class SteamPacket private constructor(
 
             val payload = packetBuffer.readByteArray()
 
-            // TODO: Forward to dumper
-            //logVerbose("SteamPacket:ParseNet", "> [payload] ${payload.toByteString().hex()}")
-
             return SteamPacket(
                 messageId = messageId,
                 header = header,

@@ -2,6 +2,7 @@ package bruhcollective.itaysonlab.ksteam.network
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
+import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
@@ -48,6 +49,8 @@ internal class CMClient(
     private var cellId = 0
     private var clientSessionId = 0
     internal var clientSteamId = SteamId.Empty
+
+    internal val dumper = PacketDumper(configuration.rootFolder)
 
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
@@ -126,12 +129,6 @@ internal class CMClient(
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
                     if (packetToReceive is Frame.Binary) {
-                        // TODO: Forward to dumper
-                        /*logVerbose(
-                            "CMClient:WsConnection",
-                            "Received binary message (data: ${packetToReceive.data.toByteString().hex()})"
-                        )*/
-
                         // Parse message out from this and add to queue
 
                         val steamPacket = runCatching {
@@ -143,6 +140,8 @@ internal class CMClient(
                                 if (checkedPacket.messageId == EMsg.k_EMsgMulti) {
                                     handleMultiPacket(checkedPacket)
                                 } else {
+                                    dumper.onPacket(checkedPacket, false)
+
                                     if (checkedPacket.messageId == EMsg.k_EMsgClientLogOnResponse) {
                                         handleClientLogOn(checkedPacket)
                                     }
@@ -169,6 +168,7 @@ internal class CMClient(
                     val packetToSend = outgoingPacketsQueue.receive()
                     logVerbose("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
                     logVerbose("CMClient:WsConnection", "> [header] ${packetToSend.header}")
+                    dumper.onPacket(packetToSend, true)
                     send(packetToSend.encode())
                 }
             }
@@ -217,9 +217,9 @@ internal class CMClient(
             do {
                 val packetSize = payloadBuffer.readIntLe()
                 val packetContent = payloadBuffer.readByteArray(packetSize.toLong())
-                // TODO: Forward to dumper
-                //logVerbose("SteamPacket:Multi", "> ${packetContent.toByteString().hex()}")
                 val packetParsed = SteamPacket.ofNetworkPacket(packetContent)
+
+                dumper.onPacket(packetParsed, false)
 
                 if (packetParsed.messageId == EMsg.k_EMsgClientLogOnResponse) {
                     handleClientLogOn(packetParsed)
