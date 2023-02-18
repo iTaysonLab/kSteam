@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers.internal
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.webApi
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -20,12 +21,12 @@ internal class CloudConfiguration(
             downloadAndSet(namespace)
         }
 
-        return currentState.map {
-            it[namespace]?.entries ?: emptyList()
+        return currentState.map { namespaces ->
+            namespaces[namespace]?.entries ?: emptyList()
         }
     }
 
-    private suspend fun downloadAndSet(namespace: Int) {
+    private suspend fun downloadAndSet(namespace: Int, version: Long = 0) {
         steamClient.webApi.execute(
             methodName = "CloudConfigStore.Download",
             requestAdapter = CCloudConfigStore_Download_Request.ADAPTER,
@@ -34,7 +35,7 @@ internal class CloudConfiguration(
                 versions = listOf(
                     CCloudConfigStore_NamespaceVersion(
                         enamespace = namespace,
-                        version = 0
+                        version = version
                     )
                 )
             ),
@@ -43,18 +44,21 @@ internal class CloudConfiguration(
                 map.toMutableMap().apply {
                     put(
                         namespace,
-                        newNamespace ?: CCloudConfigStore_NamespaceData(
-                            version = 0L,
-                            enamespace = namespace,
-                            horizon = 0L
-                        )
+                        newNamespace ?: CCloudConfigStore_NamespaceData(version = version, enamespace = namespace, horizon = 0L)
                     )
                 }
             }
         }
     }
 
-    override suspend fun onEvent(packet: SteamPacket) {
-
+    override suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) {
+        if (rpcMethod == "CloudConfigStoreClient.NotifyChange#1") {
+            packet.getProtoPayload(CCloudConfigStore_Change_Notification.ADAPTER).dataNullable?.let { notification ->
+                notification.versions.forEach { updatedNamespace ->
+                    logDebug("CloudConfig:Rpc", "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}")
+                    downloadAndSet(updatedNamespace.enamespace ?: return@forEach, updatedNamespace.version ?: return@forEach)
+                }
+            }
+        }
     }
 }
