@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.database.KSteamDatabase
+import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
@@ -55,9 +56,17 @@ class SteamClient(
     )
 
     val connectionStatus get() = cmClient.clientState
-    val incomingPacketsFlow get() = cmClient.incomingPacketsQueue
 
     val currentSessionSteamId get() = cmClient.clientSteamId
+
+    /**
+     * Manages [PacketDumper] mode.
+     *
+     * A mode of [PacketDumper.DumpMode.Full] will dump all packets to the "dumps" folder of the kSteam configuration folder.
+     */
+    var dumperMode: PacketDumper.DumpMode
+        get() = cmClient.dumper.dumpMode
+        set(value) { cmClient.dumper.dumpMode = value }
 
     /**
      * Main function, which you need to call before doing anything with kSteam.
@@ -97,7 +106,7 @@ class SteamClient(
                 logError("SteamClient:EventFlow", "Error occurred when collecting a client state: ${throwable.message}")
             }.launchIn(eventsScope)
 
-        incomingPacketsFlow
+        cmClient.incomingPacketsQueue
             .filter { packet ->
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
