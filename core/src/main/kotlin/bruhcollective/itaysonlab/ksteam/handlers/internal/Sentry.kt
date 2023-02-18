@@ -37,15 +37,16 @@ internal class Sentry(
     private suspend fun writeSentryFile(packetHeader: SteamPacketHeader, data: CMsgClientUpdateMachineAuth) =
         withContext(Dispatchers.IO) {
             val currentId = steamClient.persona.currentPersona.value.id
+            val filename = data.filename.let { if (it.isNullOrEmpty()) "sentry" else it }
 
             steamClient.storage.modifyAccount(currentId) {
-                copy(sentryFileName = data.filename.orEmpty())
+                copy(sentryFileName = filename)
             }
 
-            sentryFile(currentId)?.apply {
+            sentryFile(currentId, filename).apply {
                 if (exists()) delete()
                 createNewFile()
-            }?.sink()?.buffer()?.use { sink ->
+            }.sink().buffer().use { sink ->
                 sink.write(
                     byteString = data.bytes ?: ByteString.EMPTY,
                     byteCount = data.cubtowrite ?: data.bytes?.size ?: 0,
@@ -53,16 +54,14 @@ internal class Sentry(
                 )
             }
 
-            val hash = sentryHash(currentId)
-
             steamClient.executeAndForget(SteamPacket.newProto(
                 EMsg.k_EMsgClientUpdateMachineAuthResponse,
                 CMsgClientUpdateMachineAuthResponse.ADAPTER,
                 CMsgClientUpdateMachineAuthResponse(
-                    filename = data.filename,
+                    filename = filename,
                     eresult = EResult.OK.encoded,
                     filesize = sentryFile(currentId)?.length()?.toInt(),
-                    sha_file = hash,
+                    sha_file = sentryHash(currentId),
                     offset = data.offset,
                     cubwrote = data.cubtowrite,
                 )
