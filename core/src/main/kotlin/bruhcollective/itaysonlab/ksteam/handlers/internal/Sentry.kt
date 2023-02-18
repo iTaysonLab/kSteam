@@ -21,7 +21,7 @@ internal class Sentry(
 ) : BaseHandler {
     private fun sentryFile(steamId: SteamId, fileName: String) = File(steamClient.storage.storageFor(steamId), fileName)
 
-    fun sentryFile(steamId: SteamId): File? {
+    private fun sentryFile(steamId: SteamId): File? {
         return steamClient.storage.globalConfiguration.availableAccounts[steamId.id]?.sentryFileName?.let {
             if (it.isEmpty()) return@let null
             sentryFile(steamId, it)

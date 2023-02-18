@@ -18,5 +18,5 @@ interface BaseHandler {
      *
      * These are packets which describe a RPC notification (defined in *.proto files).
      */
-    suspend fun onRpcEvent(packet: SteamPacket) = Unit
+    suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) = Unit
 }

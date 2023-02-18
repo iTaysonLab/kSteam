@@ -18,7 +18,7 @@ import okio.Buffer
 class SteamPacket private constructor(
     val messageId: EMsg,
     val header: SteamPacketHeader,
-    internal var payload: ByteArray
+    var payload: ByteArray
 ) {
     companion object {
         // Whitelist of EMsg ID's that can be executed without auth

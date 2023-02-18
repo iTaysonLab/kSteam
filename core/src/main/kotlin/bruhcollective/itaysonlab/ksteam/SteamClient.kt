@@ -10,6 +10,8 @@ import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
 import bruhcollective.itaysonlab.ksteam.handlers.internal.CloudConfiguration
 import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.network.CMClient
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
@@ -112,7 +114,11 @@ class SteamClient(
                 packet.header.targetJobId == 0L
             }.onEach { packet ->
                 handlers.values.forEach { handler ->
-                    handler.onEvent(packet)
+                    if (packet.messageId == EMsg.k_EMsgServiceMethod) {
+                        handler.onRpcEvent((packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(), packet)
+                    } else {
+                        handler.onEvent(packet)
+                    }
                 }
             }.catch { throwable ->
                 logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${throwable.message}")
