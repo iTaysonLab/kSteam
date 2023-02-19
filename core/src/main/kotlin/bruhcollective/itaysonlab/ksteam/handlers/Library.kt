@@ -87,8 +87,15 @@ class Library(
     /**
      * Requests a list of apps to show in "Play Next" shelf
      */
-    suspend fun getPlayNextQueue() {
+    suspend fun getPlayNextQueue(): List<Int> {
+        awaitInfrastructure()
 
+        return steamClient.webApi.execute(
+            methodName = "Player.GetPlayNext",
+            requestAdapter = CPlayer_GetPlayNext_Request.ADAPTER,
+            responseAdapter = CPlayer_GetPlayNext_Response.ADAPTER,
+            requestData = CPlayer_GetPlayNext_Request()
+        ).dataNullable?.appids.orEmpty()
     }
 
     /**
@@ -96,10 +103,12 @@ class Library(
      *
      * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String): Flow<List<AppInfo>> {
+    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppInfo>> {
         return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }.map { collection ->
+            println("[getAppsInCollection] ${Thread.currentThread().name}")
+
             val collectionFilters = collection.filterSpec?.parseFilters()
             val hasPlayState = collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedNever) == true || collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedPreviously) == true
 
@@ -109,26 +118,24 @@ class Library(
                 null
             }
 
-            withContext(Dispatchers.IO) {
-                (collectionFilters?.let { filters ->
-                    steamClient.pics.getAppIdsFiltered(filters).let { appInfoList ->
-                        if (hasPlayState) {
-                            val neverPlayed = filters.byPlayState.entries.contains(EPlayState.PlayedNever)
+            (collectionFilters?.let { filters ->
+                steamClient.pics.getAppIdsFiltered(filters, limit).let { appInfoList ->
+                    if (hasPlayState) {
+                        val neverPlayed = filters.byPlayState.entries.contains(EPlayState.PlayedNever)
 
-                            appInfoList.filter {
-                                if (neverPlayed) {
-                                    (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) == 0
-                                } else {
-                                    (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) != 0
-                                }
+                        appInfoList.filter {
+                            if (neverPlayed) {
+                                (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) == 0
+                            } else {
+                                (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) != 0
                             }
-                        } else {
-                            appInfoList
                         }
+                    } else {
+                        appInfoList
                     }
-                } ?: steamClient.pics.getAppIdsAsInfos(collection.added)).sortedBy {
-                    it.common.name
                 }
+            } ?: steamClient.pics.getAppIdsAsInfos(collection.added, limit)).sortedBy {
+                it.common.name
             }
         }
     }
@@ -140,6 +147,18 @@ class Library(
         return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }
+    }
+
+    fun getRecentApps(): Flow<List<AppInfo>> {
+        return _playtime.map {
+            it.values.sortedByDescending { a -> a.last_playtime ?: 0 }.take(5).mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }
+        }.map {
+            steamClient.pics.getAppIdsAsInfos(it)
+        }
+    }
+
+    fun getFavoriteApps(limit: Int = 0): Flow<List<AppInfo>> {
+        return getAppsInCollection("favorite", limit)
     }
 
     /**
@@ -198,7 +217,7 @@ class Library(
 
         if (userPlayTimesCollector == null || userPlayTimesCollector?.isCompleted == true) {
             userPlayTimesCollector = scope.launch {
-                _isLoadingPlayTimes.value = false
+                _isLoadingPlayTimes.value = true
 
                 while (true) {
                     logDebug("Library:Collector", "Requesting last played times")
@@ -212,7 +231,7 @@ class Library(
                         ).dataNullable?.games?.associateBy { AppId(it.appid ?: 0) }.orEmpty()
                     }
 
-                    _isLoadingPlayTimes.value = true
+                    _isLoadingPlayTimes.value = false
 
                     delay(30.minutes) // Steam client approximately requests this data every 30 minutes
                 }
@@ -289,6 +308,14 @@ class Library(
         }
 
         _isLoadingLibrary.value = true
+    }
+
+    /**
+     * Awaits until PICS is ready and library is loaded.
+     */
+    private suspend fun awaitInfrastructure() {
+        _isLoadingLibrary.first { it }
+        steamClient.pics.isPicsAvailable.first { it == Pics.PicsState.Ready }
     }
 
     override suspend fun onEvent(packet: SteamPacket) {

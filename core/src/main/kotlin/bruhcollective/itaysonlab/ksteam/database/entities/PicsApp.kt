@@ -4,7 +4,6 @@ import bruhcollective.itaysonlab.ksteam.database.exposed.H2Compress
 import bruhcollective.itaysonlab.ksteam.database.exposed.array
 import bruhcollective.itaysonlab.ksteam.database.exposed.arrayContains
 import bruhcollective.itaysonlab.ksteam.database.exposed.expand
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
@@ -65,17 +64,19 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
         PicsApp.slice(PicsApp.id).selectAll().map { AppId(it[PicsApp.id].value) }
     }
 
-    suspend fun getVdfByAppId(db: Database, ids: List<AppId>) = newSuspendedTransaction(db = db) {
+    suspend fun getVdfByAppId(db: Database, ids: List<AppId>, limit: Int = 0) = newSuspendedTransaction(db = db) {
         picsRawData.expand().let { rawData ->
             PicsApp.slice(rawData).select {
                 PicsApp.id inList ids.map(AppId::id)
+            }.let {
+                if (limit > 0) it.limit(limit) else it
             }.orderBy(name, SortOrder.ASC).mapNotNull { row ->
                 row[rawData]
             }
         }
     }
 
-    suspend fun getVdfByFilter(db: Database, filters: DynamicFilters) = newSuspendedTransaction(db = db) {
+    suspend fun getVdfByFilter(db: Database, filters: DynamicFilters, limit: Int = 0) = newSuspendedTransaction(db = db) {
         picsRawData.expand().let { rawData ->
             PicsApp.slice(rawData).let { set ->
                 createAllFilters(filters).let { op ->
@@ -85,6 +86,8 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
                         set.selectAll()
                     }
                 }
+            }.let {
+                if (limit > 0) it.limit(limit) else it
             }.orderBy(name, SortOrder.ASC).mapNotNull { row ->
                 row[rawData]
             }

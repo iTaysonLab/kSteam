@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.pics
 
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
+import bruhcollective.itaysonlab.ksteam.cdn.StaticAppImageUrl
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -61,5 +62,12 @@ data class AppInfo internal constructor(
 
 //
 
-val AppInfo.iconUrl get() = CommunityAppImageUrl(appId to common.iconId)
-val AppInfo.logoUrl get() = CommunityAppImageUrl(appId to common.logoId)
+val AppInfo.icon get() = CommunityAppImageUrl(appId to common.iconId)
+val AppInfo.logo get() = CommunityAppImageUrl(appId to common.logoId)
+val AppInfo.header get() = StaticAppImageUrl(appId to "header.jpg")
+val AppInfo.capsuleSmall get() = StaticAppImageUrl(appId to "capsule_231x87.jpg")
+val AppInfo.capsuleLarge get() = StaticAppImageUrl(appId to "capsule_616x353.jpg")
+val AppInfo.pageBackground get() = StaticAppImageUrl(appId to "page_bg_raw.jpg")
+val AppInfo.logoLarge get() = StaticAppImageUrl(appId to "logo.png")
+val AppInfo.libraryEntry get() = StaticAppImageUrl(appId to "library_600x900.jpg")
+val AppInfo.libraryHeader get() = StaticAppImageUrl(appId to "library_hero.jpg")

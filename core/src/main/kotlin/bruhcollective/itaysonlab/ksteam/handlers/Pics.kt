@@ -54,8 +54,8 @@ class Pics internal constructor(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    suspend fun getAppIdsAsInfos(ids: List<AppId>): List<AppInfo> = database.withDatabase {
-        PicsApp.getVdfByAppId(this, ids)
+    suspend fun getAppIdsAsInfos(ids: List<AppId>, limit: Int = 0): List<AppInfo> = database.withDatabase {
+        PicsApp.getVdfByAppId(this, ids, limit)
     }.map { blob ->
         blob.inputStream.source().buffer().use { source ->
             vdfAppInfo.decodeFromBufferedSource(RootNodeSkipperDeserializationStrategy(), source)
@@ -63,8 +63,8 @@ class Pics internal constructor(
     }
 
     @OptIn(ExperimentalSerializationApi::class)
-    internal suspend fun getAppIdsFiltered(filters: DynamicFilters): List<AppInfo> = database.withDatabase {
-        PicsApp.getVdfByFilter(this, filters)
+    internal suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): List<AppInfo> = database.withDatabase {
+        PicsApp.getVdfByFilter(this, filters, limit)
     }.map { blob ->
         blob.inputStream.source().buffer().use { source ->
             vdfAppInfo.decodeFromBufferedSource(RootNodeSkipperDeserializationStrategy(), source)

@@ -40,6 +40,7 @@ internal class CloudConfiguration(
                 )
             ),
         ).dataNullable?.data_?.firstOrNull().let { newNamespace ->
+            logDebug("CloudConfig:Rpc", "Namespace received: $newNamespace")
             currentState.update { map ->
                 map.toMutableMap().apply {
                     put(
@@ -56,7 +57,7 @@ internal class CloudConfiguration(
             packet.getProtoPayload(CCloudConfigStore_Change_Notification.ADAPTER).dataNullable?.let { notification ->
                 notification.versions.forEach { updatedNamespace ->
                     logDebug("CloudConfig:Rpc", "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}")
-                    downloadAndSet(updatedNamespace.enamespace ?: return@forEach, updatedNamespace.version ?: return@forEach)
+                    downloadAndSet(updatedNamespace.enamespace ?: return@forEach)
                 }
             }
         }
