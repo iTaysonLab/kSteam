@@ -1,11 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
+import androidx.compose.runtime.Stable
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Stable
 data class LibraryCollection(
     val id: String,
     val name: String,
@@ -15,9 +17,10 @@ data class LibraryCollection(
     internal val timestamp: Int,
     internal val version: Long,
 ) {
-    fun toRemoteModel() = CollectionModel(id, name, added.map(AppId::id), removed.map(AppId::id), filterSpec)
+    internal fun toRemoteModel() = CollectionModel(id, name, added.map(AppId::id), removed.map(AppId::id), filterSpec)
 
     @Serializable
+    @Stable
     data class DynamicFilterSpec(
         @SerialName("nFormatVersion") val formatVersion: Int,
         @SerialName("strSearchText") val searchText: String,
@@ -25,6 +28,7 @@ data class LibraryCollection(
         @SerialName("setSuggestions") val suggestions: List<Int>, // TODO
     ) {
         @Serializable
+        @Stable
         data class FilterGroup(
             @SerialName("rgOptions") val options: List<Int>,
             @SerialName("bAcceptUnion") val acceptUnion: Boolean
@@ -45,7 +49,7 @@ data class LibraryCollection(
     }
 
     @Serializable
-    data class CollectionModel(
+    internal data class CollectionModel(
         val id: String,
         val name: String,
         val added: List<Int>,

@@ -1,10 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
+import androidx.compose.runtime.Stable
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 
 /**
  * Information about the current persona signed into the account.
  */
+@Stable
 data class CurrentPersona internal constructor(
     /**
      * The [SteamId] of the user.

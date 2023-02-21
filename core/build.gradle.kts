@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r22"
+version = "r23"
 
 kotlin {
     jvmToolchain(8)
@@ -18,6 +18,9 @@ java {
 dependencies {
     implementation(project(":models"))
     implementation(project(":kotlinx-vdf"))
+
+    // For @Stable annotations inside "UI" models
+    compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
 
     implementation("io.ktor:ktor-serialization:2.2.2")
     implementation("io.ktor:ktor-client-core:2.2.2")
@@ -34,6 +37,8 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.41.1")
     implementation("com.h2database:h2:2.1.214")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")

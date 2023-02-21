@@ -1,8 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
+import androidx.compose.runtime.Stable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Stable
 data class LibraryShelf (
     val id: String,
     val linkedCollection: String,

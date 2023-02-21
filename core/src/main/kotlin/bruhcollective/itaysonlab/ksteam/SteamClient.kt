@@ -54,6 +54,7 @@ class SteamClient(
         GuardManagement(this).createAssociation(),
         GuardConfirmation(this).createAssociation(),
         CloudConfiguration(this).createAssociation(),
+        Profile(this).createAssociation(),
         Pics(this, database).createAssociation(),
     )
 

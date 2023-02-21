@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
+import androidx.compose.runtime.Stable
 import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import bruhcollective.itaysonlab.ksteam.platform.ipString
@@ -12,6 +13,7 @@ import steam.webui.common.CMsgIPAddress
 /**
  * Represents a session which is approved to access Steam.
  */
+@Stable
 class ActiveSession private constructor(
     val id: Long,
     val deviceName: String,
@@ -33,6 +35,7 @@ class ActiveSession private constructor(
      */
     fun protoBytes() = _proto.encodeByteString()
 
+    @Stable
     data class UsageData(
         val time: Int,
         val ip: CMsgIPAddress,

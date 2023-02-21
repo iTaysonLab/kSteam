@@ -2,7 +2,6 @@ package bruhcollective.itaysonlab.ksteam.models
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EAccountType
 import bruhcollective.itaysonlab.ksteam.models.enums.EUniverse
-import kotlin.jvm.JvmInline
 
 @JvmInline
 value class SteamId(val id: ULong) {
@@ -26,7 +25,7 @@ value class SteamId(val id: ULong) {
 
     val longId get() = id.toLong()
 
-    val accountId get() = longId and 0xFFFFFFFF
+    val accountId get() = (longId and 0xFFFFFFFF).toInt()
     val accountInstance get() = (longId ushr 32 and 0xFFFFF).let { SteamInstance.byApiRepresentation(it.toInt()) }
     val accountType get() = (longId ushr 52 and 0xF).let { EAccountType.byEncoded(it.toInt()) }
     val accountUniverse get() = (longId ushr 56 and 0xFF).let { EUniverse.byEncoded(it.toInt()) }

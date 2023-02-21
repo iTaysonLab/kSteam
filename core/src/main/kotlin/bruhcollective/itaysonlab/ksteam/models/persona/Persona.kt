@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
+import androidx.compose.runtime.Stable
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
 import steam.webui.common.CMsgClientPersonaState_Friend
@@ -9,6 +10,7 @@ import steam.webui.common.CMsgClientPersonaState_Friend
  *
  * Some of the data can be defined as "unknown" - you need to call specific methods in [bruhcollective.itaysonlab.ksteam.handlers.Persona] to request that data.
  */
+@Stable
 data class Persona internal constructor(
     /**
      * The [SteamId] of the user.
@@ -29,7 +31,8 @@ data class Persona internal constructor(
     /**
      * Online type
      */
-    val onlineStatus: EPersonaState
+    val onlineStatus: EPersonaState,
+
 ) {
     companion object {
         val Unknown = Persona(
@@ -53,6 +56,19 @@ data class Persona internal constructor(
         onlineStatus = EPersonaState.byEncoded(obj.persona_state ?: 0)
     )
 
+    internal constructor(obj: PlayerSummary) : this(
+        id = SteamId(obj.steamid.toULong()),
+        name = obj.personaname,
+        avatar = AvatarHash(obj.avatarhash.orEmpty()),
+        lastSeen = LastSeen(
+            lastLogOff = obj.lastlogoff ?: 0,
+            lastLogOn = obj.lastlogon ?: 0,
+            lastSeenOnline = obj.lastseenonline ?: 0
+        ),
+        onlineStatus = EPersonaState.byEncoded(obj.personastate)
+    )
+
+    @Stable
     data class LastSeen internal constructor(
         val lastLogOn: Int,
         val lastLogOff: Int,

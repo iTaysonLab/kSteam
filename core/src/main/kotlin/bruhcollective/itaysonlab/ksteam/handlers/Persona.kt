@@ -44,6 +44,11 @@ class Persona internal constructor(
         }
     }
 
+    /**
+     * Provides live [Persona] data for several [SteamId]'s.
+     *
+     * This method also can return data for non-friends, but it is not known if updates can be received for them.
+     */
     suspend fun personas(ids: List<SteamId>): Flow<List<Persona>> {
         ids.filterNot { personas.value.containsKey(it) }.let { nonPresentPersonas ->
             if (nonPresentPersonas.isNotEmpty()) {
@@ -56,7 +61,11 @@ class Persona internal constructor(
         }
     }
 
-    // TODO: maybe provide a default persona?
+    /**
+     * Provides live [Persona] data for the specific [SteamId].
+     *
+     * This method also can return data for non-friends, but it is not known if updates can be received for them.
+     */
     suspend fun persona(id: SteamId): Flow<Persona> {
         if (personas.value.containsKey(id).not()) {
             requestPersonas(listOf(id))
@@ -67,6 +76,11 @@ class Persona internal constructor(
         }
     }
 
+    /**
+     * Sets current user's online status.
+     *
+     * Note, that [EPersonaState.Offline] will make you appear "offline", but kSteam won't be able to receive [Persona] updates.
+     */
     suspend fun setOnlineStatus(mode: EPersonaState = EPersonaState.Online) {
         if (_currentPersonaOnlineStatus.value == mode) return
         _currentPersonaOnlineStatus.value = mode
@@ -87,7 +101,7 @@ class Persona internal constructor(
     }
 
     /**
-     * Returns a Flow with a current user mapped to a [Persona].
+     * Returns a Flow with a current user [Persona] data.
      */
     fun currentLivePersona() = personas.combine(currentPersona) { personaMap, signedInPersona ->
         personaMap[signedInPersona.id] ?: Persona.Unknown
@@ -117,7 +131,7 @@ class Persona internal constructor(
         }
     }
 
-    suspend fun requestPersonas(ids: List<SteamId>) {
+    private suspend fun requestPersonas(ids: List<SteamId>) {
         if (ids.isEmpty()) return
 
         logDebug("Handlers:Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
