@@ -148,6 +148,10 @@ class Pics internal constructor(
         }.also { saveAppsToDatabase(it) }
     }
 
+    suspend fun getAppSummariesByAppId(appIds: List<AppId>) = database.withDatabase {
+        PicsApp.getSummaryByAppId(this, appIds)
+    }
+
     private suspend fun savePackagesToDatabase(info: List<PicsPackage.PicsPackageVdfRepresentation>) {
         database.withDatabase {
             PicsPackage.insertAll(this, info)

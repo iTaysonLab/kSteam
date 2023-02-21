@@ -81,8 +81,8 @@ class Notifications internal constructor(
                             timestamp = not.timestamp ?: 0,
                             unread = not.read?.not() ?: false,
                             hidden = not.hidden ?: false,
-                            app = if (appId != 0) {
-                                steamClient.store.getApp(AppId(appId))
+                            appSummary = if (appId != 0) {
+                                steamClient.store.getAppSummaries(listOf(AppId(appId))).values.first()
                             } else {
                                 null
                             }

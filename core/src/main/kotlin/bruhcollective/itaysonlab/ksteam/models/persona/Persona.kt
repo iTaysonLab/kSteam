@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
 import androidx.compose.runtime.Stable
+import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
 import steam.webui.common.CMsgClientPersonaState_Friend
@@ -32,7 +33,14 @@ data class Persona internal constructor(
      * Online type
      */
     val onlineStatus: EPersonaState,
-
+    /**
+     * If in game, this will be game's AppID.
+     */
+    val ingameAppId: AppId,
+    /**
+     * If in game, this will be game's rich presence information.
+     */
+    val ingameRichPresence: Map<String, String>
 ) {
     companion object {
         val Unknown = Persona(
@@ -40,7 +48,9 @@ data class Persona internal constructor(
             name = "",
             avatar = AvatarHash(""),
             lastSeen = LastSeen(0, 0, 0),
-            onlineStatus = EPersonaState.Offline
+            onlineStatus = EPersonaState.Offline,
+            ingameAppId = AppId(0),
+            ingameRichPresence = emptyMap()
         )
     }
 
@@ -53,19 +63,9 @@ data class Persona internal constructor(
             lastLogOn = obj.last_logon ?: 0,
             lastSeenOnline = obj.last_seen_online ?: 0
         ),
-        onlineStatus = EPersonaState.byEncoded(obj.persona_state ?: 0)
-    )
-
-    internal constructor(obj: PlayerSummary) : this(
-        id = SteamId(obj.steamid.toULong()),
-        name = obj.personaname,
-        avatar = AvatarHash(obj.avatarhash.orEmpty()),
-        lastSeen = LastSeen(
-            lastLogOff = obj.lastlogoff ?: 0,
-            lastLogOn = obj.lastlogon ?: 0,
-            lastSeenOnline = obj.lastseenonline ?: 0
-        ),
-        onlineStatus = EPersonaState.byEncoded(obj.personastate)
+        onlineStatus = EPersonaState.byEncoded(obj.persona_state ?: 0),
+        ingameAppId = AppId(obj.gameid?.toInt() ?: 0),
+        ingameRichPresence = obj.rich_presence.associate { it.key.orEmpty() to it.value_.orEmpty() }
     )
 
     @Stable

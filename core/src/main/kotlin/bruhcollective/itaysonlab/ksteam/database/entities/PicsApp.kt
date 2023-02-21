@@ -5,6 +5,7 @@ import bruhcollective.itaysonlab.ksteam.database.exposed.array
 import bruhcollective.itaysonlab.ksteam.database.exposed.arrayContains
 import bruhcollective.itaysonlab.ksteam.database.exposed.expand
 import bruhcollective.itaysonlab.ksteam.models.AppId
+import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
@@ -62,6 +63,16 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
 
     suspend fun getAppIds(db: Database) = newSuspendedTransaction(db = db) {
         PicsApp.slice(PicsApp.id).selectAll().map { AppId(it[PicsApp.id].value) }
+    }
+
+    suspend fun getSummaryByAppId(db: Database, ids: List<AppId>) = newSuspendedTransaction(db = db) {
+        PicsApp.slice(PicsApp.id, name).select {
+            PicsApp.id inList ids.map(AppId::id)
+        }.map {
+            AppSummary(AppId(it[PicsApp.id].value), it[name])
+        }.associateBy {
+            it.id
+        }
     }
 
     suspend fun getVdfByAppId(db: Database, ids: List<AppId>, limit: Int = 0) = newSuspendedTransaction(db = db) {

@@ -1,14 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.persona.Persona
-import bruhcollective.itaysonlab.ksteam.models.persona.PlayerSummaries
+import bruhcollective.itaysonlab.ksteam.models.persona.*
 import bruhcollective.itaysonlab.ksteam.models.persona.ProfileCustomization
-import bruhcollective.itaysonlab.ksteam.models.persona.ProfileEquipment
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import steam.webui.player.*
@@ -63,17 +62,17 @@ class Profile internal constructor(
      *
      * Data is returned as a [Flow] with a update rate of 5 minutes.
      */
-    fun getProfiles(steamIds: List<SteamId>): Flow<List<Persona>> {
+    fun getProfiles(steamIds: List<SteamId>): Flow<List<SummaryPersona>> {
         return flow {
             while (true) {
                 emit(
                     steamClient.externalWebApi.ajaxGetTyped<PlayerSummaries>(
-                        baseUrl = "EnvironmentConstants.WEB_API_BASE",
+                        baseUrl = EnvironmentConstants.WEB_API_BASE,
                         path = listOf("ISteamUserOAuth", "GetUserSummaries", "v2"),
                         parameters = mapOf(
                             "steamids" to steamIds.joinToString(",") { it.longId.toString() }
                         )
-                    ).players.map(::Persona)
+                    ).players.map(::SummaryPersona)
                 )
 
                 delay(5.minutes)
@@ -81,7 +80,7 @@ class Profile internal constructor(
         }
     }
 
-    fun getProfile(steamId: SteamId) = getProfiles(listOf(steamId)).map(List<Persona>::first)
+    fun getProfile(steamId: SteamId) = getProfiles(listOf(steamId)).map(List<SummaryPersona>::first)
 
     suspend fun getProfilesNow(steamIds: List<SteamId>) = getProfiles(steamIds).first()
     suspend fun getProfileNow(steamId: SteamId) = getProfile(steamId).first()

@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.notifications
 
-import bruhcollective.itaysonlab.ksteam.models.apps.App
+import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.econ.EconItemReference
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import kotlinx.coroutines.flow.Flow
@@ -80,9 +80,9 @@ sealed class Notification {
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
-        val app: App?
+        val appSummary: AppSummary?
     ) : Notification() {
-        val isMultipleItemsOnSale get() = app == null
+        val isMultipleItemsOnSale get() = appSummary == null
 
         @Serializable
         class Body(
