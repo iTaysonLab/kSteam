@@ -1,9 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.models.apps
 
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.cdn.StaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import steam.webui.common.StoreItem
 
+@Immutable
 class AppSummary internal constructor(
     val id: AppId,
     val name: String,

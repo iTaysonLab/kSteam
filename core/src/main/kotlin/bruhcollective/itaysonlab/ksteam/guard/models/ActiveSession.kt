@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import bruhcollective.itaysonlab.ksteam.platform.ipString
@@ -13,8 +13,8 @@ import steam.webui.common.CMsgIPAddress
 /**
  * Represents a session which is approved to access Steam.
  */
-@Stable
-class ActiveSession private constructor(
+@Immutable
+data class ActiveSession internal constructor(
     val id: Long,
     val deviceName: String,
     val timeUpdated: Int,
@@ -32,11 +32,13 @@ class ActiveSession private constructor(
      * Get a [ByteString] of the CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription protobuf.
      *
      * Useful for using as a argument in Android Navigation
+     *
+     * TODO: in Jetisteam, reference to a session by it's ID, so this function can be safely removed
      */
     fun protoBytes() = _proto.encodeByteString()
 
-    @Stable
-    data class UsageData(
+    @Immutable
+    data class UsageData internal constructor(
         val time: Int,
         val ip: CMsgIPAddress,
         val locale: String,
@@ -46,7 +48,7 @@ class ActiveSession private constructor(
     ) {
         val ipString = ip.ipString
 
-        constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent) : this(
+        internal constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent) : this(
             time = proto.time ?: 0,
             ip = proto.ip ?: CMsgIPAddress(v4 = 0),
             locale = proto.locale.orEmpty(),

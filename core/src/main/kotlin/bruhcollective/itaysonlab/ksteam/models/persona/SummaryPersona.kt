@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
@@ -7,8 +8,8 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
 /**
  * A persona is a user in the Steam network.
  */
-@Stable
-class SummaryPersona internal constructor(
+@Immutable
+data class SummaryPersona internal constructor(
     /**
      * The [SteamId] of the user.
      */

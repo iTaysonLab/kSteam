@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
@@ -11,7 +11,7 @@ import steam.webui.common.CMsgClientPersonaState_Friend
  *
  * Some of the data can be defined as "unknown" - you need to call specific methods in [bruhcollective.itaysonlab.ksteam.handlers.Persona] to request that data.
  */
-@Stable
+@Immutable
 data class Persona internal constructor(
     /**
      * The [SteamId] of the user.
@@ -68,7 +68,7 @@ data class Persona internal constructor(
         ingameRichPresence = obj.rich_presence.associate { it.key.orEmpty() to it.value_.orEmpty() }
     )
 
-    @Stable
+    @Immutable
     data class LastSeen internal constructor(
         val lastLogOn: Int,
         val lastLogOff: Int,

@@ -1,7 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityPublicAssetImageUrl
 
+@Immutable
 data class ProfileItem internal constructor(
     val imageSmall: CommunityPublicAssetImageUrl,
     val imageLarge: CommunityPublicAssetImageUrl,

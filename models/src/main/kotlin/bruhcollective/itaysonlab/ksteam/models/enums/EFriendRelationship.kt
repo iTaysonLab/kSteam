@@ -19,3 +19,8 @@ enum class EFriendRelationship {
 
 val CMsgClientFriendsList_Friend.relationship get() = EFriendRelationship.byEncoded(efriendrelationship)
 val CMsgClientFriendsList_Friend.steamId get() = SteamId(ulfriendid?.toULong() ?: 0u)
+
+val EFriendRelationship.isAny get() = this != EFriendRelationship.None
+val EFriendRelationship.isFriend get() = this == EFriendRelationship.Friend
+val EFriendRelationship.sentRequest get() = this == EFriendRelationship.RequestInitiator
+val EFriendRelationship.receivedRequest get() = this == EFriendRelationship.RequestRecipient

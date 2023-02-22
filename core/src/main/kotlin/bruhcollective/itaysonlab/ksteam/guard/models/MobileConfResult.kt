@@ -1,10 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Stable
+@Immutable
 class MobileConfResult(
     val success: Boolean,
 )

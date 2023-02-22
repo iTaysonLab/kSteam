@@ -107,6 +107,13 @@ class Persona internal constructor(
         personaMap[signedInPersona.id] ?: Persona.Unknown
     }
 
+    /**
+     * Returns [SteamId]'s relationship with the current user.
+     */
+    fun personaRelationship(steamId: SteamId): Flow<EFriendRelationship> = currentFriendList.map {
+        it[steamId] ?: EFriendRelationship.None
+    }
+
     private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) {
         _currentFriendList.update {
             // 1. Request persona states

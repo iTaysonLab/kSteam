@@ -1,24 +1,19 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import steam.webui.player.CPlayer_GetProfileCustomization_Response
+import androidx.compose.runtime.Immutable
 import steam.webui.player.EBanContentCheckResult
 import steam.webui.player.EProfileCustomizationStyle
 import steam.webui.player.EProfileCustomizationType
 
+@Immutable
 data class ProfileCustomization internal constructor(
-    val profileCustomizationEntries: List<ProfileCustomizationEntry>,
+    val profileWidgets: List<ProfileWidget>,
     val slotsAvailable: Int,
     val profileTheme: ProfileTheme,
     val profilePreferences: ProfilePreferences?
-) {
-    internal constructor(proto: CPlayer_GetProfileCustomization_Response): this(
-        profileCustomizationEntries = proto.customizations.map { ProfileCustomizationEntry(it) },
-        slotsAvailable = proto.slots_available ?: 0,
-        profileTheme = proto.profile_theme?.let { ProfileTheme(it) } ?: error("Unknown ProfileTheme"),
-        profilePreferences = proto.profile_preferences?.let { ProfilePreferences(it) }
-    )
-}
+)
 
+@Immutable
 data class ProfileCustomizationEntry internal constructor(
     val customizationType: EProfileCustomizationType,
     val level: Int,
@@ -37,6 +32,7 @@ data class ProfileCustomizationEntry internal constructor(
     )
 }
 
+@Immutable
 data class ProfileCustomizationSlot internal constructor(
     val appId: Int,
     val publishedFileId: Long,
@@ -67,6 +63,7 @@ data class ProfileCustomizationSlot internal constructor(
     )
 }
 
+@Immutable
 data class ProfileTheme internal constructor(
     val themeId: String,
     val title: String
@@ -77,6 +74,7 @@ data class ProfileTheme internal constructor(
     )
 }
 
+@Immutable
 data class ProfilePreferences internal constructor(
     val hideProfileAwards: Boolean
 ) {

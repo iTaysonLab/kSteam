@@ -19,7 +19,7 @@ dependencies {
     implementation(project(":models"))
     implementation(project(":kotlinx-vdf"))
 
-    // For @Stable annotations inside "UI" models
+    // For @Stable / @Immutable annotations inside "UI" models
     compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
 
     implementation("io.ktor:ktor-serialization:2.2.2")

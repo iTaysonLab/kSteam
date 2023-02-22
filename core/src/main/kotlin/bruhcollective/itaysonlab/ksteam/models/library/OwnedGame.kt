@@ -1,10 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import steam.webui.player.CPlayer_GetOwnedGames_Response_Game
 
-@Stable
+@Immutable
 data class OwnedGame internal constructor(
     val id: AppId,
     val name: String,

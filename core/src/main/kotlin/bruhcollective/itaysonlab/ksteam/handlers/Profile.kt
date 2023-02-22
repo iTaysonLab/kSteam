@@ -2,12 +2,16 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.debug.logDebug
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.persona.*
 import bruhcollective.itaysonlab.ksteam.models.persona.ProfileCustomization
+import bruhcollective.itaysonlab.ksteam.models.persona.ProfilePreferences
+import bruhcollective.itaysonlab.ksteam.models.persona.ProfileTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import steam.webui.player.*
@@ -43,16 +47,90 @@ class Profile internal constructor(
         ).data.let { ProfileEquipment(it) }
     }
 
+    private suspend fun getAchievementsProgress(steamId: SteamId, appIds: List<AppId>): Map<AppId, CPlayer_GetAchievementsProgress_Response_AchievementProgress> {
+        return steamClient.webApi.execute(
+            methodName = "Player.GetAchievementsProgress",
+            requestAdapter = CPlayer_GetAchievementsProgress_Request.ADAPTER,
+            responseAdapter = CPlayer_GetAchievementsProgress_Response.ADAPTER,
+            requestData = CPlayer_GetAchievementsProgress_Request(steamid = steamId.longId, language = steamClient.config.language.vdfName, appids = appIds.map(AppId::id))
+        ).data.achievement_progress.associateBy { AppId(it.appid ?: 0) }
+    }
+
+    private suspend fun getTopAchievements(steamId: SteamId, appIds: List<AppId>, count: Int = 5): Map<AppId, List<CPlayer_GetTopAchievementsForGames_Response_Achievement>> {
+        return steamClient.webApi.execute(
+            methodName = "Player.GetTopAchievementsForGames",
+            requestAdapter = CPlayer_GetTopAchievementsForGames_Request.ADAPTER,
+            responseAdapter = CPlayer_GetTopAchievementsForGames_Response.ADAPTER,
+            requestData = CPlayer_GetTopAchievementsForGames_Request(steamid = steamId.longId, language = steamClient.config.language.vdfName, appids = appIds.map(AppId::id), max_achievements = count)
+        ).data.games.associate { AppId(it.appid ?: 0) to it.achievements }
+    }
+
     /**
      * Returns customization of a specific user.
      */
     suspend fun getCustomization(steamId: SteamId, includePurchased: Boolean = false, includeInactive: Boolean = false): ProfileCustomization {
-        return steamClient.webApi.execute(
+        fun List<steam.webui.player.ProfileCustomization>.mapEntriesToAppIds() = this.map { it.slots.mapNotNull { s -> s.appid } }
+            .flatten()
+            .map(::AppId)
+
+        val customization = steamClient.webApi.execute(
             methodName = "Player.GetProfileCustomization",
             requestAdapter = CPlayer_GetProfileCustomization_Request.ADAPTER,
             responseAdapter = CPlayer_GetProfileCustomization_Response.ADAPTER,
             requestData = CPlayer_GetProfileCustomization_Request(steamid = steamId.longId, include_inactive_customizations = includeInactive, include_purchased_customizations = includePurchased)
-        ).data.let { ProfileCustomization(it) }
+        ).data
+
+        val appSummaries = customization.customizations
+            .mapEntriesToAppIds()
+            .let { steamClient.store.getAppSummaries(it) }
+
+        val achievements = customization.customizations
+            .filter {
+                (EProfileCustomizationType.fromValue(it.customization_type ?: 0) ?: EProfileCustomizationType.k_EProfileCustomizationTypeInvalid) in listOf(
+                    EProfileCustomizationType.k_EProfileCustomizationTypeAchievements,
+                    EProfileCustomizationType.k_EProfileCustomizationTypeAchievementsCompletionist,
+                    EProfileCustomizationType.k_EProfileCustomizationTypeRareAchievementShowcase,
+                    EProfileCustomizationType.k_EProfileCustomizationTypeFavoriteGame,
+                )
+            }
+            .mapEntriesToAppIds()
+            .let { getTopAchievements(steamId, it, count = 5) to getAchievementsProgress(steamId, it) }
+
+        val widgets = customization.customizations.mapNotNull { protoWidget ->
+            when (val enumType = EProfileCustomizationType.fromValue(protoWidget.customization_type ?: 0) ?: EProfileCustomizationType.k_EProfileCustomizationTypeInvalid) {
+                EProfileCustomizationType.k_EProfileCustomizationTypeGameCollector -> {
+                    ProfileWidget.GameCollector(
+                        featuredApps = protoWidget.slots.mapNotNull { it.appid }.mapNotNull { appSummaries[AppId(it)] }
+                    )
+                }
+
+                EProfileCustomizationType.k_EProfileCustomizationTypeFavoriteGame -> {
+                    val appId = AppId(protoWidget.slots.first().appid ?: return@mapNotNull null)
+
+                    ProfileWidget.FavoriteGame(
+                        app = appSummaries[appId] ?: return@mapNotNull null,
+                        achievementProgress = achievements.second[appId]?.let { progress ->
+                            ProfileWidget.FavoriteGame.AchievementProgress(
+                                currentAchivements = progress.unlocked ?: 0,
+                                totalAchievements = progress.total ?: 0,
+                                topPictures = achievements.first[appId]?.sortedBy { it.player_percent_unlocked }?.map { CommunityAppImageUrl(appId.id to it.icon.orEmpty()) } ?: emptyList()
+                            )
+                        } ?: return@mapNotNull null
+                    )
+                }
+
+                else -> {
+                    ProfileWidget.Unknown(enumType)
+                }
+            }
+        }
+
+        return ProfileCustomization(
+            profileWidgets = widgets,
+            slotsAvailable = customization.slots_available ?: 0,
+            profileTheme = customization.profile_theme?.let { ProfileTheme(it) } ?: error("Unknown ProfileTheme"),
+            profilePreferences = customization.profile_preferences?.let { ProfilePreferences(it) }
+        )
     }
 
     /**

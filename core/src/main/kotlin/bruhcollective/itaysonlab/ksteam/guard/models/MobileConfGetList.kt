@@ -1,12 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.guard.MobileConfirmSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
 @Serializable(with = MobileConfirmSerializer::class)
-@Stable
+@Immutable
 sealed class ConfirmationListState {
     companion object {
         val Decoder = Json {
@@ -15,22 +15,22 @@ sealed class ConfirmationListState {
         }
     }
 
-    @Stable
+    @Immutable
     object Loading : ConfirmationListState()
 
-    @Stable
+    @Immutable
     class NetworkError(
         val e: Exception
     ) : ConfirmationListState()
 
     @Serializable
-    @Stable
+    @Immutable
     class Success(
         val conf: List<MobileConfirmationItem>
     ) : ConfirmationListState()
 
     @Serializable
-    @Stable
+    @Immutable
     class Error(
         val message: String = "",
         val detail: String = ""

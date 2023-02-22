@@ -1,7 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
+import androidx.compose.runtime.Immutable
 import steam.webui.player.CPlayer_GetProfileItemsEquipped_Response
 
+@Immutable
 data class ProfileEquipment internal constructor(
     val background: ProfileItem? = null,
     val miniBackground: ProfileItem? = null,

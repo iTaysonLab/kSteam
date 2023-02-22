@@ -1,11 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-import androidx.compose.runtime.Stable
+import androidx.compose.runtime.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Stable
+@Immutable
 class MobileConfirmationItem(
     val type: Int,
     @SerialName("type_name") val typeName: String,
