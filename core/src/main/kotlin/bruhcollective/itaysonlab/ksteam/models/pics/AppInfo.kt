@@ -1,16 +1,19 @@
 package bruhcollective.itaysonlab.ksteam.models.pics
 
+import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.cdn.StaticAppImageUrl
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Immutable
 data class AppInfo internal constructor(
     @SerialName("appid") val appId: Int,
     val common: AppInfoCommon = AppInfoCommon()
 ) {
     @Serializable
+    @Immutable
     data class AppInfoCommon internal constructor(
         val name: String = "",
         val type: String = "",
@@ -41,6 +44,7 @@ data class AppInfo internal constructor(
         @SerialName("logo") val logoId: String = "",
     ) {
         @Serializable
+        @Immutable
         data class SteamDeckCompatibility internal constructor(
             val category: Int = 0,
             val tests: List<SteamDeckCompatTestEntry> = emptyList()
@@ -53,6 +57,7 @@ data class AppInfo internal constructor(
         }
 
         @Serializable
+        @Immutable
         data class AppInfoAssociation internal constructor(
             val type: String = "",
             val name: String = ""

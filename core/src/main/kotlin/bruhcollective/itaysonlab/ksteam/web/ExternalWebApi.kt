@@ -74,18 +74,22 @@ internal class ExternalWebApi(
     internal suspend inline fun <reified T> ajaxGetTyped(
         baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
         path: List<String>,
-        parameters: Map<String, String>
-    ): T = ajaxGet(baseUrl, path, parameters).body()
+        parameters: Map<String, String>,
+        noinline extraParameters: ParametersBuilder.() -> Unit = {}
+    ): T = ajaxGet(baseUrl, path, parameters, extraParameters).body()
 
     internal suspend fun ajaxGet(
         baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
         path: List<String>,
-        parameters: Map<String, String>
+        parameters: Map<String, String>,
+        extraParameters: ParametersBuilder.() -> Unit = {}
     ): HttpResponse {
         return apiClient.get(URLBuilder(baseUrl).appendPathSegments(path).apply {
             parameters.forEach { entry ->
                 this.parameters[entry.key] = entry.value
             }
+
+            this.parameters.let(extraParameters)
         }.build())
     }
 

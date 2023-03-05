@@ -30,8 +30,10 @@ internal class KSteamDatabase (
             database = Database.connect("jdbc:h2:${File(steamClient.config.rootFolder, "ksteam").absolutePath}")
         }
 
-        newSuspendedTransaction(db = database) {
-            SchemaUtils.createMissingTablesAndColumns(PicsApp, PicsPackage, StoreTag, inBatch = true)
-        }
+        try {
+            newSuspendedTransaction(db = database) {
+                SchemaUtils.createMissingTablesAndColumns(PicsApp, PicsPackage, StoreTag, inBatch = true)
+            }
+        } catch (e: Exception) {}
     }
 }

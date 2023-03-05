@@ -15,6 +15,7 @@ inline val SteamClient.webApi get() = getHandler<WebApi>()
 inline val SteamClient.library get() = getHandler<Library>()
 inline val SteamClient.profile get() = getHandler<Profile>()
 inline val SteamClient.pics get() = getHandler<Pics>()
+inline val SteamClient.news get() = getHandler<News>()
 
 //
 

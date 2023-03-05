@@ -1,13 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.database.entities
 
 import bruhcollective.itaysonlab.ksteam.database.exposed.H2Compress
+import bruhcollective.itaysonlab.ksteam.database.exposed.batchUpsert
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import okio.ByteString
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.batchInsert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -25,7 +25,7 @@ internal object PicsPackage: IdTable<UInt>(name = "pics_packages") {
     }
 
     suspend fun insertAll(db: Database, info: List<PicsPackageVdfRepresentation>) = newSuspendedTransaction(db = db) {
-        PicsPackage.batchInsert(info, shouldReturnGeneratedValues = false) { triple ->
+        PicsPackage.batchUpsert(info) { triple ->
             this[PicsPackage.id] = triple.packageInfo.packageId.toUInt()
             this[picsChangeNumber] = triple.changeNumber
             this[picsRawData] = H2Compress(ExposedBlob(triple.raw.toByteArray()), useDeflate = true)

@@ -24,3 +24,4 @@ It's usage mostly based on **Kotlin Coroutines** and **states** to better suit f
 - [Ktor](https://github.com/ktorio/ktor) is used as a networking library
 - [Wire](https://github.com/square/wire) is used for protobuf decoding/encoding
 - [Okio](https://github.com/square/okio) is used for cross-platform filesystem access
+- [Exposed](https://github.com/jetbrains/exposed) and [H2 Database](https://github.com/h2database/h2database) is used for database access

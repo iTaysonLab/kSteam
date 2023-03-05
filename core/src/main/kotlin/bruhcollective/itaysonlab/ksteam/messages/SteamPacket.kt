@@ -103,9 +103,9 @@ class SteamPacket private constructor(
         )
     }
 
-    fun <T> getBinaryPayload(adapter: SteamBinaryPayloadAdapter<T>): T {
+    fun getBinaryPayload(): Buffer {
         require(header is SteamPacketHeader.Binary) { "Message is not binary, but binary decoding requested" }
-        return adapter.decode(payload.buffer())
+        return payload.buffer()
     }
 
     fun isProtobuf() = header is SteamPacketHeader.Protobuf

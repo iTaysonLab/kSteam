@@ -40,6 +40,8 @@ class Store internal constructor(
     }
 
     suspend fun getAppSummaries(appId: List<AppId>): Map<AppId, AppSummary> {
+        if (appId.isEmpty()) return emptyMap()
+
         val picsSummaries = steamClient.pics.getAppSummariesByAppId(appId)
         val netSummaries = getApps(appId.filterNot { picsSummaries.containsKey(it) })
 

@@ -73,6 +73,8 @@ class Profile internal constructor(
             .flatten()
             .map(::AppId)
 
+        val ownedGames = steamClient.library.getOwnedGames(steamId, includeFreeGames = true).associateBy { it.id }
+
         val customization = steamClient.webApi.execute(
             methodName = "Player.GetProfileCustomization",
             requestAdapter = CPlayer_GetProfileCustomization_Request.ADAPTER,
@@ -100,7 +102,8 @@ class Profile internal constructor(
             when (val enumType = EProfileCustomizationType.fromValue(protoWidget.customization_type ?: 0) ?: EProfileCustomizationType.k_EProfileCustomizationTypeInvalid) {
                 EProfileCustomizationType.k_EProfileCustomizationTypeGameCollector -> {
                     ProfileWidget.GameCollector(
-                        featuredApps = protoWidget.slots.mapNotNull { it.appid }.mapNotNull { appSummaries[AppId(it)] }
+                        featuredApps = protoWidget.slots.mapNotNull { it.appid }.mapNotNull { appSummaries[AppId(it)] },
+                        ownedGamesCount = ownedGames.size
                     )
                 }
 
@@ -109,6 +112,7 @@ class Profile internal constructor(
 
                     ProfileWidget.FavoriteGame(
                         app = appSummaries[appId] ?: return@mapNotNull null,
+                        playedSeconds = ownedGames[appId]?.totalPlaytime ?: 0,
                         achievementProgress = achievements.second[appId]?.let { progress ->
                             ProfileWidget.FavoriteGame.AchievementProgress(
                                 currentAchivements = progress.unlocked ?: 0,
@@ -128,7 +132,7 @@ class Profile internal constructor(
         return ProfileCustomization(
             profileWidgets = widgets,
             slotsAvailable = customization.slots_available ?: 0,
-            profileTheme = customization.profile_theme?.let { ProfileTheme(it) } ?: error("Unknown ProfileTheme"),
+            profileTheme = customization.profile_theme?.let { ProfileTheme(it) },
             profilePreferences = customization.profile_preferences?.let { ProfilePreferences(it) }
         )
     }

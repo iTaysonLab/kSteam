@@ -1,9 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.database.entities
 
-import bruhcollective.itaysonlab.ksteam.database.exposed.H2Compress
-import bruhcollective.itaysonlab.ksteam.database.exposed.array
-import bruhcollective.itaysonlab.ksteam.database.exposed.arrayContains
-import bruhcollective.itaysonlab.ksteam.database.exposed.expand
+import bruhcollective.itaysonlab.ksteam.database.exposed.*
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.*
@@ -105,8 +102,38 @@ internal object PicsApp: IdTable<Int>(name = "pics_apps") {
         }
     }
 
+    suspend fun getAppSummaryByAppId(db: Database, ids: List<AppId>, limit: Int = 0) = newSuspendedTransaction(db = db) {
+        picsRawData.expand().let { rawData ->
+            PicsApp.slice(PicsApp.id, name).select {
+                PicsApp.id inList ids.map(AppId::id)
+            }.let {
+                if (limit > 0) it.limit(limit) else it
+            }.orderBy(name, SortOrder.ASC).mapNotNull { row ->
+                AppSummary(id = AppId(row[PicsApp.id].value), name = row[name])
+            }
+        }
+    }
+
+    suspend fun getAppSummaryByFilter(db: Database, filters: DynamicFilters, limit: Int = 0) = newSuspendedTransaction(db = db) {
+        picsRawData.expand().let { rawData ->
+            PicsApp.slice(PicsApp.id, name).let { set ->
+                createAllFilters(filters).let { op ->
+                    if (op != null) {
+                        set.select(op)
+                    } else {
+                        set.selectAll()
+                    }
+                }
+            }.let {
+                if (limit > 0) it.limit(limit) else it
+            }.orderBy(name, SortOrder.ASC).mapNotNull { row ->
+                AppSummary(id = AppId(row[PicsApp.id].value), name = row[name])
+            }
+        }
+    }
+
     suspend fun insertAll(db: Database, info: List<PicsAppVdfRepresentation>) = newSuspendedTransaction(db = db) {
-        PicsApp.batchInsert(info, shouldReturnGeneratedValues = false) { triple ->
+        PicsApp.batchUpsert(info) { triple ->
             this[PicsApp.id] = triple.appInfo.appId
             this[name] = triple.appInfo.common.name
             this[PicsApp.type] = EAppType.values().firstOrNull { it.name.equals(triple.appInfo.common.type, ignoreCase = true) } ?: EAppType.Invalid

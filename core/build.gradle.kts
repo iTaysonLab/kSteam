@@ -30,15 +30,15 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp:2.2.2")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.2")
 
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
     implementation("org.jetbrains.exposed:exposed-core:0.41.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.41.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
     implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.41.1")
     implementation("com.h2database:h2:2.1.214")
-
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
 
     implementation("com.squareup.okio:okio:3.2.0")
     api("com.squareup.wire:wire-runtime:4.4.3")

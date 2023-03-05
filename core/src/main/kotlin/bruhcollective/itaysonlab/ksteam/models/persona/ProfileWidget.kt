@@ -10,7 +10,8 @@ sealed class ProfileWidget {
     @Immutable
     data class FavoriteGame internal constructor(
         val app: AppSummary,
-        val achievementProgress: AchievementProgress
+        val achievementProgress: AchievementProgress,
+        val playedSeconds: Int
     ): ProfileWidget() {
         @Immutable
         data class AchievementProgress internal constructor(
@@ -22,7 +23,8 @@ sealed class ProfileWidget {
 
     @Immutable
     data class GameCollector internal constructor(
-        val featuredApps: List<AppSummary>
+        val featuredApps: List<AppSummary>,
+        val ownedGamesCount: Int
     ): ProfileWidget()
 
     /**

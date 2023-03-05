@@ -9,7 +9,7 @@ import steam.webui.player.EProfileCustomizationType
 data class ProfileCustomization internal constructor(
     val profileWidgets: List<ProfileWidget>,
     val slotsAvailable: Int,
-    val profileTheme: ProfileTheme,
+    val profileTheme: ProfileTheme?,
     val profilePreferences: ProfilePreferences?
 )
 

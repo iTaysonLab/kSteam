@@ -8,6 +8,6 @@ import bruhcollective.itaysonlab.ksteam.cdn.internal.CdnConstants
 @JvmInline
 value class CommunityAppImageUrl(
     private val packed: Pair<Int, String>
-) {
-    val url: String get() = "${CdnConstants.SteamStatic}/steamcommunity/public/images/apps/${packed.first}/${packed.second}.jpg"
+): CdnUrl {
+    override val url: String get() = "${CdnConstants.SteamStatic}/steamcommunity/public/images/apps/${packed.first}/${packed.second}.jpg"
 }

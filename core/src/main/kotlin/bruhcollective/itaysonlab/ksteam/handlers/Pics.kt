@@ -7,6 +7,7 @@ import bruhcollective.itaysonlab.ksteam.database.entities.PicsPackage
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
+import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
@@ -71,6 +72,23 @@ class Pics internal constructor(
         }
     }
 
+    internal suspend fun getAppIdsFilteredSummary(filters: DynamicFilters, limit: Int = 0): List<AppSummary> = database.withDatabase {
+        PicsApp.getAppSummaryByFilter(this, filters, limit)
+    }
+
+    internal suspend fun getAppIdsSummary(ids: List<AppId>, limit: Int = 0): List<AppSummary> = database.withDatabase {
+        PicsApp.getAppSummaryByAppId(this, ids, limit)
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    suspend fun getAppInfo(id: AppId): AppInfo = database.withDatabase {
+        PicsApp.getVdfByAppId(this, listOf(id))
+    }.first().let { blob ->
+        blob.inputStream.source().buffer().use { source ->
+            vdfAppInfo.decodeFromBufferedSource(RootNodeSkipperDeserializationStrategy(), source)
+        }
+    }
+
     /**
      * 1: Receive k_EMsgClientLicenseList
      * 2: Collect package IDs from CMsgClientLicenseList
@@ -119,7 +137,7 @@ class Pics internal constructor(
 
     @OptIn(ExperimentalSerializationApi::class)
     private suspend fun requestPicsMetadataForLicenses(requiresUpdate: List<CMsgClientLicenseList_License>) {
-        val appIds = dispatchListParsing(loadPackageInfo(requiresUpdate)) { pkgInfo ->
+        val appIds = dispatchListParsing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { pkgInfo ->
             vdfBinary.decodeFromBufferedSource<PackageInfo>(RootNodeSkipperDeserializationStrategy(), Buffer().also { buffer ->
                 buffer.write(pkgInfo.buffer ?: return@dispatchListParsing null)
             }).let {
@@ -128,9 +146,9 @@ class Pics internal constructor(
         }.also { savePackagesToDatabase(it) }.map { it.packageInfo.appIds }.flatten()
 
         // We will just assume that any changed packages means that all games are updated
-        // However, we should have been used saved access tokens
+        // However, we should use saved access tokens (and check appids in future)
 
-        dispatchListParsing(loadAppsInfo(appIds)) { appInfo ->
+        dispatchListParsing(loadAppsInfo(appIds).distinctBy { it.appid }) { appInfo ->
             try {
                 vdfText.decodeFromBufferedSource<AppInfo>(
                     RootNodeSkipperDeserializationStrategy(),
@@ -140,8 +158,7 @@ class Pics internal constructor(
                         PicsApp.PicsAppVdfRepresentation(Triple(it, (appInfo.change_number ?: 0).toUInt(), appInfo.buffer ?: ByteString.EMPTY))
                     }
             } catch (mfe: Exception) {
-                // Some of appids might NOT be the games
-                // In kSteam scope, this is not required (as we are not building a full Steam replacement client and probably no one will do it)
+                // We try to cover almost all types, but sometimes stuff... happends
                 logVerbose("Pics:Unknown", appInfo.buffer?.hex().orEmpty() )
                 null
             }

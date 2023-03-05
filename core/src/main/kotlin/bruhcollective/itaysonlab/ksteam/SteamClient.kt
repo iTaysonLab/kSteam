@@ -55,7 +55,9 @@ class SteamClient(
         GuardConfirmation(this).createAssociation(),
         CloudConfiguration(this).createAssociation(),
         Profile(this).createAssociation(),
+        News(this).createAssociation(),
         Pics(this, database).createAssociation(),
+        CurrentPersona().createAssociation(),
     )
 
     val connectionStatus get() = cmClient.clientState

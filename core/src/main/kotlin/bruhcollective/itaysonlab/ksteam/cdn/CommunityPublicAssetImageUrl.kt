@@ -9,6 +9,6 @@ import androidx.compose.runtime.Immutable
 @Immutable
 value class CommunityPublicAssetImageUrl(
     private val path: String
-) {
-    val url: String get() = "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/$path"
+): CdnUrl {
+    override val url: String get() = "https://cdn.akamai.steamstatic.com/steamcommunity/public/images/$path"
 }

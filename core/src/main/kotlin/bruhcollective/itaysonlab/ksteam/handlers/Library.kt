@@ -7,6 +7,7 @@ import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
@@ -67,7 +68,7 @@ class Library(
      *
      * It is not recommended to use this method to get user's library - use collections API instead.
      */
-    suspend fun requestLibrary(steamId: SteamId = steamClient.currentSessionSteamId): List<OwnedGame> {
+    suspend fun getOwnedGames(steamId: SteamId = steamClient.currentSessionSteamId, includeFreeGames: Boolean = false): List<OwnedGame> {
         libraryCache[steamId]?.let {
             return it
         }
@@ -79,7 +80,9 @@ class Library(
             requestData = CPlayer_GetOwnedGames_Request(
                 steamid = steamId.longId,
                 include_appinfo = true,
-                include_extended_appinfo = true
+                include_extended_appinfo = true,
+                include_free_sub = includeFreeGames,
+                include_played_free_games = includeFreeGames
             )
         ).dataNullable?.games?.map(::OwnedGame).orEmpty().also { libraryCache[steamId] = it }
     }
@@ -103,12 +106,10 @@ class Library(
      *
      * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppInfo>> {
+    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppSummary>> {
         return userCollections.mapNotNull { list ->
             list.firstOrNull { it.id == id }
         }.map { collection ->
-            println("[getAppsInCollection] ${Thread.currentThread().name}")
-
             val collectionFilters = collection.filterSpec?.parseFilters()
             val hasPlayState = collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedNever) == true || collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedPreviously) == true
 
@@ -118,25 +119,23 @@ class Library(
                 null
             }
 
-            (collectionFilters?.let { filters ->
-                steamClient.pics.getAppIdsFiltered(filters, limit).let { appInfoList ->
+            collectionFilters?.let { filters ->
+                steamClient.pics.getAppIdsFilteredSummary(filters, limit).let { appInfoList ->
                     if (hasPlayState) {
                         val neverPlayed = filters.byPlayState.entries.contains(EPlayState.PlayedNever)
 
                         appInfoList.filter {
                             if (neverPlayed) {
-                                (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) == 0
+                                (playTime?.get(it.id)?.first_playtime ?: 0) == 0
                             } else {
-                                (playTime?.get(AppId(it.appId))?.first_playtime ?: 0) != 0
+                                (playTime?.get(it.id)?.first_playtime ?: 0) != 0
                             }
                         }
                     } else {
                         appInfoList
                     }
                 }
-            } ?: steamClient.pics.getAppIdsAsInfos(collection.added, limit)).sortedBy {
-                it.common.name
-            }
+            } ?: steamClient.pics.getAppIdsSummary(collection.added, limit)
         }
     }
 
@@ -149,15 +148,15 @@ class Library(
         }
     }
 
-    fun getRecentApps(): Flow<List<AppInfo>> {
+    fun getRecentApps(): Flow<List<AppSummary>> {
         return _playtime.map {
             it.values.sortedByDescending { a -> a.last_playtime ?: 0 }.take(5).mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }
         }.map {
-            steamClient.pics.getAppIdsAsInfos(it)
+            steamClient.pics.getAppIdsSummary(it)
         }
     }
 
-    fun getFavoriteApps(limit: Int = 0): Flow<List<AppInfo>> {
+    fun getFavoriteApps(limit: Int = 0): Flow<List<AppSummary>> {
         return getAppsInCollection("favorite", limit)
     }
 
