@@ -117,15 +117,17 @@ class SteamClient(
                 packet.header.targetJobId == 0L
             }.onEach { packet ->
                 handlers.values.forEach { handler ->
-                    if (packet.messageId == EMsg.k_EMsgServiceMethod) {
-                        handler.onRpcEvent((packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(), packet)
-                    } else {
-                        handler.onEvent(packet)
+                    try {
+                        if (packet.messageId == EMsg.k_EMsgServiceMethod) {
+                            handler.onRpcEvent((packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(), packet)
+                        } else {
+                            handler.onEvent(packet)
+                        }
+                    } catch (e: Exception) {
+                        logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${e.message}")
+                        e.printStackTrace()
                     }
                 }
-            }.catch { throwable ->
-                logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${throwable.message}")
-                throwable.printStackTrace()
             }.launchIn(eventsScope)
     }
 
