@@ -1,6 +1,8 @@
 package bruhcollective.itaysonlab.kxvdf.internal
 
 internal object ControlPoints {
+    const val Backspace = 0x8
+
     const val HorizontalTab = 0x9
     const val NewLine = 0xA
 

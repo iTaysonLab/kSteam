@@ -47,6 +47,10 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
             }
 
             is VdfTag.NodeStart -> {
+                if (tag.name.getOrNull(0)?.code == ControlPoints.Backspace) {
+                    return CompositeDecoder.DECODE_DONE
+                }
+
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
                 return if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
                     if (vdf.ignoreUnknownKeys) {
@@ -283,7 +287,9 @@ internal sealed class VdfReader (internal val source: BufferedSource) {
         }
 
         override fun nextTag(): VdfTag {
-            if (currentType != BinaryVdfType.None) {
+            val peekableType = BinaryVdfType.values().getOrNull(source.peek().readByte().toInt())
+
+            if (currentType != BinaryVdfType.None && peekableType != BinaryVdfType.None) {
                 return VdfTag.NodeElementValue(readValue()).also {
                     currentType = BinaryVdfType.None
                 }
