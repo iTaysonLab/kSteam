@@ -287,9 +287,7 @@ internal sealed class VdfReader (internal val source: BufferedSource) {
         }
 
         override fun nextTag(): VdfTag {
-            val peekableType = BinaryVdfType.values().getOrNull(source.peek().readByte().toInt())
-
-            if (currentType != BinaryVdfType.None && peekableType != BinaryVdfType.None) {
+            if (currentType != BinaryVdfType.None) {
                 return VdfTag.NodeElementValue(readValue()).also {
                     currentType = BinaryVdfType.None
                 }
@@ -327,6 +325,10 @@ internal sealed class VdfReader (internal val source: BufferedSource) {
                         } else {
                             continue
                         }
+                    }
+
+                    if (byte == 8) {
+                        break
                     }
 
                     appendCodePoint(byte)
