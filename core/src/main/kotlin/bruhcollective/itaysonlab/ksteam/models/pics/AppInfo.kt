@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.pics
 import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.cdn.StaticAppImageUrl
+import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -66,6 +67,8 @@ data class AppInfo internal constructor(
 }
 
 //
+
+val AppInfo.type get() = EAppType.values().firstOrNull { it.name.equals(common.type, ignoreCase = true) } ?: EAppType.Invalid
 
 val AppInfo.icon get() = CommunityAppImageUrl(appId to common.iconId)
 val AppInfo.logo get() = CommunityAppImageUrl(appId to common.logoId)

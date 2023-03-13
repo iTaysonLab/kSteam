@@ -120,7 +120,7 @@ class Library(
             }
 
             collectionFilters?.let { filters ->
-                steamClient.pics.getAppIdsFilteredSummary(filters, limit).let { appInfoList ->
+                steamClient.pics.getAppSummariesFiltered(filters, limit).let { appInfoList ->
                     if (hasPlayState) {
                         val neverPlayed = filters.byPlayState.entries.contains(EPlayState.PlayedNever)
 
@@ -135,7 +135,7 @@ class Library(
                         appInfoList
                     }
                 }
-            } ?: steamClient.pics.getAppIdsSummary(collection.added, limit)
+            } ?: steamClient.pics.getAppSummariesByAppId(collection.added, limit).values.sortedBy { it.name }
         }
     }
 
@@ -152,7 +152,7 @@ class Library(
         return _playtime.map {
             it.values.sortedByDescending { a -> a.last_playtime ?: 0 }.take(5).mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }
         }.map {
-            steamClient.pics.getAppIdsSummary(it)
+            steamClient.pics.getAppSummariesByAppId(it).values.sortedBy { a -> a.name }
         }
     }
 
@@ -290,7 +290,7 @@ class Library(
                 linkedCollection = entry.linkedCollection,
                 sortBy = entry.sortBy,
                 lastChangedMs = entry.lastChangedMs,
-                orderTimestamp = entry.orderTimestamp,
+                orderTimestamp = entry.orderTimestamp ?: 0L,
                 version = it.version ?: 0,
                 remoteTimestamp = it.timestamp ?: 0
             )

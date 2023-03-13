@@ -11,9 +11,9 @@ import kotlinx.serialization.Serializable
 data class LibraryCollection(
     val id: String,
     val name: String,
-    val added: List<AppId>,
-    val removed: List<AppId>,
-    val filterSpec: DynamicFilterSpec?,
+    val added: List<AppId> = emptyList(),
+    val removed: List<AppId> = emptyList(),
+    val filterSpec: DynamicFilterSpec? = null,
     internal val timestamp: Int,
     internal val version: Long,
 ) {
@@ -22,10 +22,10 @@ data class LibraryCollection(
     @Serializable
     @Immutable
     data class DynamicFilterSpec(
-        @SerialName("nFormatVersion") val formatVersion: Int,
-        @SerialName("strSearchText") val searchText: String,
-        @SerialName("filterGroups") val filterGroups: List<FilterGroup>,
-        @SerialName("setSuggestions") val suggestions: List<Int>, // TODO
+        @SerialName("nFormatVersion") val formatVersion: Int = 2,
+        @SerialName("strSearchText") val searchText: String = "",
+        @SerialName("filterGroups") val filterGroups: List<FilterGroup> = emptyList(),
+        @SerialName("setSuggestions") val suggestions: List<Int> = emptyList(), // TODO
     ) {
         @Serializable
         @Immutable
@@ -53,8 +53,8 @@ data class LibraryCollection(
     internal data class CollectionModel(
         val id: String,
         val name: String,
-        val added: List<Int>,
-        val removed: List<Int>,
+        val added: List<Int> = emptyList(),
+        val removed: List<Int> = emptyList(),
         val filterSpec: DynamicFilterSpec? = null,
     )
 }

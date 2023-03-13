@@ -79,9 +79,6 @@ class SteamClient(
      * This will establish connection with Steam Network servers.
      */
     suspend fun start() {
-        // 1. Initialize kSteam database
-        database.tryInitializeDatabase()
-        // 2. Start CMClient connection
         cmClient.tryConnect()
     }
 
