@@ -6,14 +6,12 @@ import bruhcollective.itaysonlab.ksteam.debug.logError
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
-import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
-import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import kotlinx.coroutines.*
@@ -38,8 +36,6 @@ class Library(
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    private val libraryCache = mutableMapOf<SteamId, List<OwnedGame>>()
-
     //
     private val _isLoadingLibrary = MutableStateFlow(false)
     val isLoadingLibrary = _isLoadingLibrary.asStateFlow()
@@ -62,44 +58,6 @@ class Library(
 
     private val _playtime = MutableStateFlow<Map<AppId, CPlayer_GetLastPlayedTimes_Response_Game>>(emptyMap())
     val playtime = _playtime.asStateFlow()
-
-    /**
-     * Requests a library of a specific [steamId].
-     *
-     * It is not recommended to use this method to get user's library - use collections API instead.
-     */
-    suspend fun getOwnedGames(steamId: SteamId = steamClient.currentSessionSteamId, includeFreeGames: Boolean = false): List<OwnedGame> {
-        libraryCache[steamId]?.let {
-            return it
-        }
-
-        return steamClient.unifiedMessages.execute(
-            methodName = "Player.GetOwnedGames",
-            requestAdapter = CPlayer_GetOwnedGames_Request.ADAPTER,
-            responseAdapter = CPlayer_GetOwnedGames_Response.ADAPTER,
-            requestData = CPlayer_GetOwnedGames_Request(
-                steamid = steamId.longId,
-                include_appinfo = true,
-                include_extended_appinfo = true,
-                include_free_sub = includeFreeGames,
-                include_played_free_games = includeFreeGames
-            )
-        ).dataNullable?.games?.map(::OwnedGame).orEmpty().also { libraryCache[steamId] = it }
-    }
-
-    /**
-     * Requests a list of apps to show in "Play Next" shelf
-     */
-    suspend fun getPlayNextQueue(): List<Int> {
-        awaitInfrastructure()
-
-        return steamClient.unifiedMessages.execute(
-            methodName = "Player.GetPlayNext",
-            requestAdapter = CPlayer_GetPlayNext_Request.ADAPTER,
-            responseAdapter = CPlayer_GetPlayNext_Response.ADAPTER,
-            requestData = CPlayer_GetPlayNext_Request()
-        ).dataNullable?.appids.orEmpty()
-    }
 
     /**
      * Queries eligible apps in a collection by its [id].
@@ -336,11 +294,5 @@ class Library(
 
             else -> Unit
         }
-    }
-
-    @JvmInline
-    value class Library(private val packed: Pair<Int, List<OwnedGame>>) {
-        val count get() = packed.first
-        val list get() = packed.second
     }
 }

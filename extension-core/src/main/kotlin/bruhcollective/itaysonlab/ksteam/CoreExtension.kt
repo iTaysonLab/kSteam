@@ -15,7 +15,8 @@ class Core (
         Notifications(steamClient).associate(),
         Persona(steamClient).associate(),
         Profile(steamClient).associate(),
-        Store(steamClient).associate()
+        Store(steamClient).associate(),
+        Player(steamClient).associate(),
     )
 
     companion object Builder: ExtensionFactory<CoreExtensionConfiguration, Core> {

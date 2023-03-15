@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import bruhcollective.itaysonlab.ksteam.GuardExtensionConfiguration
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
@@ -9,13 +10,15 @@ import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import io.ktor.client.statement.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
 import java.net.URLEncoder
 
 /**
  * Mobile confirmations using Steam Guard instances. (trade/market)
  */
 class GuardConfirmation(
-    private val steamClient: SteamClient
+    private val steamClient: SteamClient,
+    private val configuration: GuardExtensionConfiguration
 ) : BaseHandler {
     /**
      * Get a list of confirmations waiting for the response.
@@ -26,7 +29,7 @@ class GuardConfirmation(
                 steamClient.webApi.ajaxGet(
                     path = listOf("mobileconf", "getlist"),
                     parameters = mapOf(
-                        "p" to steamClient.config.deviceInfo.uuid,
+                        "p" to configuration.uuid,
                         "a" to instance.steamId.longId.toString(),
                         "t" to sigStamp.generationTime.toString(),
                         "k" to sigStamp.b64EncodedSignature,
@@ -64,7 +67,7 @@ class GuardConfirmation(
             steamClient.webApi.ajaxGetTyped<MobileConfResult>(
                 path = listOf("mobileconf", "ajaxop"),
                 parameters = mapOf(
-                    "p" to steamClient.config.deviceInfo.uuid,
+                    "p" to configuration.uuid,
                     "a" to instance.steamId.longId.toString(),
                     "t" to sigStamp.generationTime.toString(),
                     "k" to sigStamp.b64EncodedSignature,
@@ -87,7 +90,7 @@ class GuardConfirmation(
     ): String {
         val sigStamp = instance.confirmationTicket("detail")
         val b64 = withContext(Dispatchers.IO) { URLEncoder.encode(sigStamp.b64EncodedSignature, "UTF-8") }
-        return "https://steamcommunity.com/mobileconf/detailspage/${item.id}?p=${steamClient.config.deviceInfo.uuid}&a=${instance.steamId.longId}&k=$b64&t=${sigStamp.generationTime}&m=react&tag=detail"
+        return "https://steamcommunity.com/mobileconf/detailspage/${item.id}?p=${configuration.uuid}&a=${instance.steamId.longId}&k=$b64&t=${sigStamp.generationTime}&m=react&tag=detail"
     }
 
     override suspend fun onEvent(packet: SteamPacket) = Unit

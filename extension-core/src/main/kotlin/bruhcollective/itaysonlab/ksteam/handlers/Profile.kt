@@ -43,7 +43,7 @@ class Profile internal constructor(
             methodName = "Player.GetProfileItemsEquipped",
             requestAdapter = CPlayer_GetProfileItemsEquipped_Request.ADAPTER,
             responseAdapter = CPlayer_GetProfileItemsEquipped_Response.ADAPTER,
-            requestData = CPlayer_GetProfileItemsEquipped_Request(steamid = steamId.longId, language = steamClient.config.language.vdfName)
+            requestData = CPlayer_GetProfileItemsEquipped_Request(steamid = steamId.longId, language = steamClient.language.vdfName)
         ).data.let { ProfileEquipment(it) }
     }
 
@@ -52,7 +52,7 @@ class Profile internal constructor(
             methodName = "Player.GetAchievementsProgress",
             requestAdapter = CPlayer_GetAchievementsProgress_Request.ADAPTER,
             responseAdapter = CPlayer_GetAchievementsProgress_Response.ADAPTER,
-            requestData = CPlayer_GetAchievementsProgress_Request(steamid = steamId.longId, language = steamClient.config.language.vdfName, appids = appIds.map(AppId::id))
+            requestData = CPlayer_GetAchievementsProgress_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds.map(AppId::id))
         ).data.achievement_progress.associateBy { AppId(it.appid ?: 0) }
     }
 
@@ -61,7 +61,7 @@ class Profile internal constructor(
             methodName = "Player.GetTopAchievementsForGames",
             requestAdapter = CPlayer_GetTopAchievementsForGames_Request.ADAPTER,
             responseAdapter = CPlayer_GetTopAchievementsForGames_Response.ADAPTER,
-            requestData = CPlayer_GetTopAchievementsForGames_Request(steamid = steamId.longId, language = steamClient.config.language.vdfName, appids = appIds.map(AppId::id), max_achievements = count)
+            requestData = CPlayer_GetTopAchievementsForGames_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds.map(AppId::id), max_achievements = count)
         ).data.games.associate { AppId(it.appid ?: 0) to it.achievements }
     }
 
@@ -73,7 +73,7 @@ class Profile internal constructor(
             .flatten()
             .map(::AppId)
 
-        val ownedGames = steamClient.library.getOwnedGames(steamId, includeFreeGames = true).associateBy { it.id }
+        val ownedGames = steamClient.player.getOwnedGames(steamId, includeFreeGames = true).associateBy { it.id }
 
         val customization = steamClient.unifiedMessages.execute(
             methodName = "Player.GetProfileCustomization",

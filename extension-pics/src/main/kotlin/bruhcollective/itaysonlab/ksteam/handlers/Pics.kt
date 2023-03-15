@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.database.keyvalue.PicsVdfKvDatabase
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
@@ -21,15 +22,15 @@ import steam.webui.common.*
 class Pics internal constructor(
     private val steamClient: SteamClient,
     private val database: PicsVdfKvDatabase
-) : BaseHandler {
+) : BaseHandler, MetadataPlugin {
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
     suspend fun getAppIdsAsInfos(appIds: List<AppId>, limit: Int = 0): List<AppInfo> = appIds.mapNotNull { appId ->
-        database.vdf.apps.get(appId)
+        database.apps.get(appId)
     }
 
-    private suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): List<AppInfo> = database.vdf.sortAppsByDynamicFilters(filters).toList()
+    private suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): List<AppInfo> = database.sortAppsByDynamicFilters(filters).toList()
 
     internal suspend fun getAppSummariesFiltered(filters: DynamicFilters, limit: Int = 0): List<AppSummary> = getAppIdsFiltered(filters, limit).map { app ->
         AppSummary(AppId(app.appId), app.common.name)
@@ -39,7 +40,7 @@ class Pics internal constructor(
         AppId(app.appId) to AppSummary(AppId(app.appId), app.common.name)
     }
 
-    suspend fun getAppInfo(id: AppId): AppInfo? = database.vdf.apps.get(id)
+    suspend fun getAppInfo(id: AppId): AppInfo? = database.apps.get(id)
 
     // region Internal stuff
 
@@ -67,15 +68,15 @@ class Pics internal constructor(
         logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
         processedLicenses += licenses
 
-        database.vdf.packages.initialize()
-        database.vdf.apps.initialize()
+        database.packages.initialize()
+        database.apps.initialize()
 
         // TODO: get latest update number and compare changes
 
         val requiresUpdate = licenses.filter { sLicense ->
             if (sLicense.package_id != null && sLicense.change_number != null) {
-                database.vdf.packages.get(sLicense.package_id!!).let { dLicense ->
-                    dLicense == null || sLicense.change_number!! > database.vdf.getChangeNumberFor(PicsVdfKvDatabase.Keys.Packages, sLicense.package_id!!)
+                database.packages.get(sLicense.package_id!!).let { dLicense ->
+                    dLicense == null || sLicense.change_number!! > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Packages, sLicense.package_id!!)
                 }
             } else {
                 false
@@ -90,7 +91,7 @@ class Pics internal constructor(
 
         // TODO: check integrity and update if not all ids are present
 
-        appIds = database.vdf.apps.getKeys()
+        appIds = database.apps.getKeys()
 
         _isPicsAvailable.value = PicsState.Ready
     }
@@ -103,8 +104,8 @@ class Pics internal constructor(
             val changeNumber = pkgInfo.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = pkgInfo.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
-            database.vdf.parseBinaryVdf<PackageInfo>(buffer)?.also {
-                database.vdf.putPicsMetadata(PicsVdfKvDatabase.Keys.Packages, packageId, changeNumber, buffer)
+            database.parseBinaryVdf<PackageInfo>(buffer)?.also {
+                database.putPicsMetadata(PicsVdfKvDatabase.Keys.Packages, packageId, changeNumber, buffer)
             }?.appIds
         }.flatten()
 
@@ -118,8 +119,8 @@ class Pics internal constructor(
             val changeNumber = appInfo.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = appInfo.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
-            database.vdf.parseTextVdf<AppInfo>(buffer)?.also {
-                database.vdf.putPicsMetadata(PicsVdfKvDatabase.Keys.Apps, appId, changeNumber, buffer)
+            database.parseTextVdf<AppInfo>(buffer)?.also {
+                database.putPicsMetadata(PicsVdfKvDatabase.Keys.Apps, appId, changeNumber, buffer)
             }
         }
     }
@@ -188,4 +189,6 @@ class Pics internal constructor(
         // 3. PICS is ready to use
         Ready
     }
+
+    override suspend fun getMetadataFor(appIds: List<AppId>) = getAppSummariesByAppId(appIds)
 }

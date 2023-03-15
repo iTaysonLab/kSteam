@@ -7,13 +7,14 @@ import bruhcollective.itaysonlab.ksteam.extension.associate
 import bruhcollective.itaysonlab.ksteam.handlers.Guard
 import bruhcollective.itaysonlab.ksteam.handlers.GuardConfirmation
 import bruhcollective.itaysonlab.ksteam.handlers.GuardManagement
+import java.util.*
 
 class Guard (
     private val configuration: GuardExtensionConfiguration
 ): Extension {
     override fun createHandlers(steamClient: SteamClient): HandlerMap = mapOf(
-        Guard(steamClient).associate(),
-        GuardConfirmation(steamClient).associate(),
+        Guard(steamClient, configuration).associate(),
+        GuardConfirmation(steamClient, configuration).associate(),
         GuardManagement(steamClient).associate()
     )
 
@@ -24,4 +25,13 @@ class Guard (
     }
 }
 
-class GuardExtensionConfiguration
+class GuardExtensionConfiguration {
+    /**
+     * The UUID of the device.
+     *
+     * When using several extensions that require UUID, it's advised to use the same for everything.
+     *
+     * By default, a random UUID is selected. If you can - save it in a separate config file.
+     */
+    var uuid: String = UUID.randomUUID().toString()
+}

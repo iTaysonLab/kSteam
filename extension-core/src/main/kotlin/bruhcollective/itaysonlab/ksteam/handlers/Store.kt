@@ -1,9 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
-import kotlinx.serialization.json.Json
 import steam.webui.common.*
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
@@ -16,8 +16,6 @@ import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
 class Store internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
-    private val json = Json { ignoreUnknownKeys = true }
-
     // TODO: make it "compressable" or store in some kind of LRU cache with on-disk
     private val appSummaryDetailMap = mutableMapOf<AppId, AppSummary>()
     private val rpLocalizationMap = mutableMapOf<AppId, Map<String, String>>()
@@ -32,20 +30,25 @@ class Store internal constructor(
             requestAdapter = CCommunity_GetAppRichPresenceLocalization_Request.ADAPTER,
             responseAdapter = CCommunity_GetAppRichPresenceLocalization_Response.ADAPTER,
             requestData = CCommunity_GetAppRichPresenceLocalization_Request(
-                appid = appId.id, language = steamClient.config.language.vdfName
+                appid = appId.id, language = steamClient.language.vdfName
             )
         ).dataNullable?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap()).also {
             rpLocalizationMap[appId] = it
         }
     }
 
-    suspend fun getAppSummaries(appId: List<AppId>): Map<AppId, AppSummary> {
-        if (appId.isEmpty()) return emptyMap()
+    suspend fun getAppSummaries(appIds: List<AppId>): Map<AppId, AppSummary> {
+        if (appIds.isEmpty()) return emptyMap()
 
-        val picsSummaries = steamClient.pics.getAppSummariesByAppId(appId)
-        val netSummaries = getApps(appId.filterNot { picsSummaries.containsKey(it) })
+        val picsSummaries = steamClient.getImplementingHandlerOrNull<MetadataPlugin>()?.getMetadataFor(appIds) ?: emptyMap()
 
-        return picsSummaries + netSummaries
+        val netSummaries = if (picsSummaries.isNotEmpty()) {
+            getApps(appIds.filterNot { picsSummaries.containsKey(it) })
+        } else {
+            getApps(appIds)
+        }
+
+        return netSummaries + picsSummaries
     }
 
     /**
@@ -68,7 +71,7 @@ class Store internal constructor(
                 requestData = CStoreBrowse_GetItems_Request(
                     ids = appIdsParts.second.map { StoreItemID(appid = it.id) },
                     context = StoreBrowseContext(
-                        language = steamClient.config.language.vdfName,
+                        language = steamClient.language.vdfName,
                         country_code = steamClient.persona.currentPersona.value.country
                     ), data_request = StoreBrowseItemDataRequest(
                         include_assets = true,

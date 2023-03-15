@@ -7,15 +7,12 @@ import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.enums.plus
-import NewsCalendarResponse
 import bruhcollective.itaysonlab.ksteam.models.news.AppType
 import bruhcollective.itaysonlab.ksteam.models.news.EventType
 import bruhcollective.itaysonlab.ksteam.models.news.NewsCalendarResponse
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
 import bruhcollective.itaysonlab.ksteam.models.news.usernews.ActivityFeedEntry
-import community.CommunityHubResponse
-import usernews.ActivityFeedEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import kotlinx.coroutines.flow.first
 import steam.webui.usernews.CUserNews_GetUserNews_Request
@@ -70,9 +67,7 @@ class News internal constructor(
                 "languageTag" to steamClient.language.vdfName,
                 "nMaxInappropriateScore" to "1"
             ),
-            extraParameters = {
-                appendAll("rgSections[]", listOf("2", "3", "4", "9"))
-            }
+            extraParameters = mapOf("rgSections[]" to listOf("2", "3", "4", "9"))
         ).hub
     }
 

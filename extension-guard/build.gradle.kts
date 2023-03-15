@@ -27,11 +27,13 @@ wire {
 dependencies {
     implementation(project(":core"))
 
+    implementation(project(":proto-common"))
     protoPath(project(":proto-common"))
 
     // For @Stable / @Immutable annotations inside "UI" models
     compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
 
+    implementation("io.ktor:ktor-client-core:2.2.2")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
     api("com.squareup.wire:wire-runtime:4.5.2")
 

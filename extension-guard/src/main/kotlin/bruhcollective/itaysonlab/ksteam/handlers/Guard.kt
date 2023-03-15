@@ -1,11 +1,14 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import bruhcollective.itaysonlab.ksteam.GuardExtensionConfiguration
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
 import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
+import bruhcollective.itaysonlab.ksteam.guardMoveConfirm
+import bruhcollective.itaysonlab.ksteam.guardMoveStart
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
@@ -22,7 +25,8 @@ import java.io.File
  * Steam Guard provider.
  */
 class Guard(
-    private val steamClient: SteamClient
+    private val steamClient: SteamClient,
+    private val configuration: GuardExtensionConfiguration
 ) : BaseHandler, SteamGuardPlugin {
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
 
@@ -65,7 +69,7 @@ class Guard(
                 authenticator_type = 1,
                 sms_phone_id = "1",
                 version = 2,
-                device_identifier = steamClient.uuid
+                device_identifier = configuration.uuid
             )
         ).data.let { response ->
             if (response.status == EResult.DuplicateRequest.encoded) {

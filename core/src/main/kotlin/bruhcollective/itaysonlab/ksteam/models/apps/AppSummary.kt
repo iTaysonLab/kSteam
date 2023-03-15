@@ -6,7 +6,7 @@ import bruhcollective.itaysonlab.ksteam.models.AppId
 import steam.webui.common.StoreItem
 
 @Immutable
-class AppSummary internal constructor(
+class AppSummary(
     val id: AppId,
     val name: String,
 ) {

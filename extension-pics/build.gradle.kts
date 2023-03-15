@@ -28,6 +28,9 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":kotlinx-vdf"))
 
+    implementation(project(":extension-core"))
+
+    implementation(project(":proto-common"))
     protoPath(project(":proto-common"))
 
     // For @Stable / @Immutable annotations inside "UI" models
