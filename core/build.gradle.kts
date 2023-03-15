@@ -1,23 +1,34 @@
 plugins {
     kotlin("jvm")
     kotlin("plugin.serialization")
+    id("com.squareup.wire")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r23"
+version = "r24"
 
 kotlin {
-    jvmToolchain(8)
+
 }
 
 java {
     withSourcesJar()
 }
 
+wire {
+    kotlin {
+        rpcCallStyle = "suspending"
+        rpcRole = "server"
+        nameSuffix = ""
+    }
+}
+
 dependencies {
-    implementation(project(":models"))
     implementation(project(":kotlinx-vdf"))
+
+    implementation(project(":proto-common"))
+    protoPath(project(":proto-common"))
 
     // For @Stable / @Immutable annotations inside "UI" models
     compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
@@ -34,14 +45,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
-    implementation("org.jetbrains.exposed:exposed-core:0.41.1")
-    implementation("org.jetbrains.exposed:exposed-dao:0.41.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
-    implementation("org.jetbrains.exposed:exposed-kotlin-datetime:0.41.1")
-    implementation("com.h2database:h2:2.1.214")
-
     implementation("com.squareup.okio:okio:3.2.0")
-    api("com.squareup.wire:wire-runtime:4.4.3")
+    api("com.squareup.wire:wire-runtime:4.5.2")
 
     testImplementation(kotlin("test"))
 }

@@ -12,7 +12,7 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(8)
+
 }
 
 java {

@@ -1,7 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.notification
 
-import bruhcollective.itaysonlab.ksteam.handlers.Pics
-
 /**
  * The kSteam Notification Subsystem
  *
@@ -11,12 +9,4 @@ import bruhcollective.itaysonlab.ksteam.handlers.Pics
  */
 class Notifications {
 
-    sealed class Internal {
-
-        /**
-         * A PICS (metadata database) state is changed
-         */
-        class PicsStateChanged(val state: Pics.PicsState)
-
-    }
 }

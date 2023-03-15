@@ -72,7 +72,7 @@ class DefaultLoggingTransport : LoggingTransport {
     private fun createMsg(tag: String, message: String) = "[$tag] $message"
 }
 
-internal fun logVerbose(tag: String, message: String) = Logging.transport.printVerbose(tag, message)
-internal fun logDebug(tag: String, message: String) = Logging.transport.printDebug(tag, message)
-internal fun logWarning(tag: String, message: String) = Logging.transport.printWarning(tag, message)
-internal fun logError(tag: String, message: String) = Logging.transport.printError(tag, message)
+fun logVerbose(tag: String, message: String) = Logging.transport.printVerbose(tag, message)
+fun logDebug(tag: String, message: String) = Logging.transport.printDebug(tag, message)
+fun logWarning(tag: String, message: String) = Logging.transport.printWarning(tag, message)
+fun logError(tag: String, message: String) = Logging.transport.printError(tag, message)

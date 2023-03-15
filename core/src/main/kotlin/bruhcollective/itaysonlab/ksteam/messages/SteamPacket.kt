@@ -3,7 +3,6 @@ package bruhcollective.itaysonlab.ksteam.messages
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.util.buffer
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
 
@@ -111,3 +110,5 @@ class SteamPacket private constructor(
     fun isProtobuf() = header is SteamPacketHeader.Protobuf
     fun isBinary() = header is SteamPacketHeader.Binary
 }
+
+private fun ByteArray.buffer() = Buffer().write(this)

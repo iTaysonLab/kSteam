@@ -11,7 +11,6 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
-import bruhcollective.itaysonlab.ksteam.util.send
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
@@ -115,10 +114,13 @@ internal class CMClient(
             logDebug("CMClient:WsConnection", "Connected to Steam3 network")
 
             send(
-                SteamPacket.newProto(
-                    messageId = EMsg.k_EMsgClientHello,
-                    adapter = CMsgClientHello.ADAPTER,
-                    payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
+                Frame.Binary(
+                    fin = true,
+                    data = SteamPacket.newProto(
+                        messageId = EMsg.k_EMsgClientHello,
+                        adapter = CMsgClientHello.ADAPTER,
+                        payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
+                    ).encode()
                 )
             )
 

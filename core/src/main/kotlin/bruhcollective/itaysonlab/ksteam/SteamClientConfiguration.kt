@@ -1,7 +1,6 @@
 package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp
-import bruhcollective.itaysonlab.ksteam.database.keyvalue.KeyValueDatabase
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import io.ktor.client.*
@@ -37,11 +36,7 @@ class SteamClientConfiguration(
     /**
      * Specifies logic used in Login ID usage when signing in.
      */
-    internal val authPrivateIpLogic: AuthPrivateIpLogic = AuthPrivateIpLogic.UsePrivateIp,
-    /**
-     * Provide your own Key-Value DB implementation
-     */
-    internal val keyValueDatabase: KeyValueDatabase
+    internal val authPrivateIpLogic: AuthPrivateIpLogic = UsePrivateIp,
 ) {
     init {
         rootFolder.mkdirs()

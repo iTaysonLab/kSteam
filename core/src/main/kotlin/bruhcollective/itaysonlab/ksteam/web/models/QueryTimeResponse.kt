@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal class QueryTimeData(
+class QueryTimeData(
     @SerialName("server_time") val serverTime: Long,
     @SerialName("allow_correction") val allowCorrection: Boolean = false,
 )

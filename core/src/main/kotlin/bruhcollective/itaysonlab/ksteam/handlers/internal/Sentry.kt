@@ -2,7 +2,6 @@ package bruhcollective.itaysonlab.ksteam.handlers.internal
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.persona
 import bruhcollective.itaysonlab.ksteam.handlers.storage
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
@@ -36,7 +35,7 @@ internal class Sentry(
 
     private suspend fun writeSentryFile(packetHeader: SteamPacketHeader, data: CMsgClientUpdateMachineAuth) =
         withContext(Dispatchers.IO) {
-            val currentId = steamClient.persona.currentPersona.value.id
+            val currentId = steamClient.currentSessionSteamId
             val filename = data.filename.let { if (it.isNullOrEmpty()) "sentry" else it }
 
             steamClient.storage.modifyAccount(currentId) {

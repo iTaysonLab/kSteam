@@ -1,9 +1,14 @@
 rootProject.name = "ksteam"
 
 include(":core")
-include(":models")
 include(":cli-client")
 include(":kotlinx-vdf")
+
+include(":proto-common")
+
+include(":extension-core")
+include(":extension-pics")
+include(":extension-guard")
 
 pluginManagement {
     repositories {

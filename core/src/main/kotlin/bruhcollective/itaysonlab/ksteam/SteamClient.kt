@@ -1,13 +1,13 @@
 package bruhcollective.itaysonlab.ksteam
 
-import bruhcollective.itaysonlab.ksteam.database.KSteamDatabase
 import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.debug.logError
-import bruhcollective.itaysonlab.ksteam.handlers.*
-import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
-import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
-import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
-import bruhcollective.itaysonlab.ksteam.handlers.internal.CloudConfiguration
+import bruhcollective.itaysonlab.ksteam.extension.Extension
+import bruhcollective.itaysonlab.ksteam.extension.HandlerMap
+import bruhcollective.itaysonlab.ksteam.handlers.Account
+import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages
+import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
@@ -15,7 +15,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.network.CMClient
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
-import bruhcollective.itaysonlab.ksteam.web.ExternalWebApi
+import bruhcollective.itaysonlab.ksteam.web.WebApi
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
@@ -26,39 +26,24 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.*
 import kotlin.reflect.KClass
 
-/**
- * Main entrypoint for kSteam usage.
- */
-class SteamClient(
-    internal val config: SteamClientConfiguration
+class SteamClient internal constructor(
+    internal val config: SteamClientConfiguration,
+    injectedExtensions: List<Extension>
 ) {
     private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
 
-    internal val externalWebApi = ExternalWebApi(config.apiClient)
+    val webApi = WebApi(config.apiClient)
 
-    private val serverList = CMList(externalWebApi)
+    private val serverList = CMList(webApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
-    private val database = KSteamDatabase(this)
 
-    // TODO: we definitely need some sort of DI
-    val handlers = mapOf<KClass<*>, BaseHandler>(
+    val handlers: HandlerMap = mapOf<KClass<*>, BaseHandler>(
         Account(this).createAssociation(),
-        WebApi(this).createAssociation(),
-        Storage(this).createAssociation(),
-        Persona(this).createAssociation(),
-        Notifications(this).createAssociation(),
-        Store(this).createAssociation(),
-        Library(this).createAssociation(),
+        UnifiedMessages(this).createAssociation(),
         Sentry(this).createAssociation(),
-        Guard(this).createAssociation(),
-        GuardManagement(this).createAssociation(),
-        GuardConfirmation(this).createAssociation(),
-        CloudConfiguration(this).createAssociation(),
-        Profile(this).createAssociation(),
-        News(this).createAssociation(),
-        Pics(this, database).createAssociation(),
-        CurrentPersona().createAssociation(),
-    )
+    ) + extensionsToHandlers(injectedExtensions)
+
+    val language get() = config.language
 
     val connectionStatus get() = cmClient.clientState
 
@@ -135,6 +120,10 @@ class SteamClient(
             ?: throw IllegalStateException("Typed handler registered with incorrect mapping (trying to get: ${T::class.java.simpleName}, got: ${handler::class.java.simpleName}).")
     }
 
+    inline fun <reified T> getImplementingHandlerOrNull(): T? {
+        return handlers.values.filterIsInstance<T>().firstOrNull()
+    }
+
     private inline fun <reified T : BaseHandler> T.createAssociation() = T::class to this
 
     private suspend fun HttpRequestBuilder.writeSteamData() = apply {
@@ -144,6 +133,13 @@ class SteamClient(
             parameter("access_token", account.getCurrentAccount()?.accessToken.orEmpty())
         } else {
             header("Cookie", "mobileClient=android; mobileClientVersion=777777 3.0.0; steamLoginSecure=${account.buildSteamLoginSecureCookie()};")
+        }
+    }
+
+    private fun extensionsToHandlers(extensions: List<Extension>): HandlerMap {
+        return extensions.map { it.createHandlers(this) }.fold(mutableMapOf()) { map, extensionHandlers ->
+            map += extensionHandlers
+            map
         }
     }
 

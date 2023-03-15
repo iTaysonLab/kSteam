@@ -4,7 +4,6 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import steam.webui.authentication.CAuthentication_DeviceDetails
 import steam.webui.authentication.EAuthTokenPlatformType
-import java.util.*
 
 /**
  * This is used to send data to Steam when creating an authorization state.
@@ -34,10 +33,6 @@ class DeviceInformation(
      * - k_EAuthTokenPlatformType_WebBrowser is unknown, but also not recommended.
      */
     internal val platformType: EAuthTokenPlatformType = EAuthTokenPlatformType.k_EAuthTokenPlatformType_SteamClient,
-    /**
-     * UUID of device.
-     */
-    internal val uuid: String = UUID.randomUUID().toString()
 ) {
     fun toAuthDetails() = CAuthentication_DeviceDetails(
         device_friendly_name = deviceName,

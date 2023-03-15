@@ -5,6 +5,7 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
 import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.debug.logWarning
+import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
@@ -47,7 +48,7 @@ class Account internal constructor(
      * Also starts a polling session.
      */
     suspend fun getSignInQrCode(): QrCodeData? {
-        val qrData = steamClient.webApi.execute(
+        val qrData = steamClient.unifiedMessages.execute(
             signed = false,
             methodName = "Authentication.BeginAuthSessionViaQR",
             requestAdapter = CAuthentication_BeginAuthSessionViaQR_Request.ADAPTER,
@@ -79,7 +80,7 @@ class Account internal constructor(
         password: String,
         rememberSession: Boolean = true,
     ): AuthorizationResult {
-        val rsaData = steamClient.webApi.execute(
+        val rsaData = steamClient.unifiedMessages.execute(
             signed = false,
             methodName = "Authentication.GetPasswordRSAPublicKey",
             requestAdapter = CAuthentication_GetPasswordRSAPublicKey_Request.ADAPTER,
@@ -91,7 +92,7 @@ class Account internal constructor(
             Cryptography.rsaEncrypt(password, rsaData.publickey_mod.orEmpty(), rsaData.publickey_exp.orEmpty())
                 .toByteString().base64().dropLast(1)
 
-        val signInResult = steamClient.webApi.execute(
+        val signInResult = steamClient.unifiedMessages.execute(
             signed = false,
             methodName = "Authentication.BeginAuthSessionViaCredentials",
             requestAdapter = CAuthentication_BeginAuthSessionViaCredentials_Request.ADAPTER,
@@ -122,8 +123,6 @@ class Account internal constructor(
                     "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
                 )
 
-                val availableInstanceFor = steamClient.guard.instanceFor(SteamId(this.steamid?.toULong() ?: 0u))
-
                 pollInfo = PollInfo(this.client_id!! to this.request_id!!)
                 authState.tryEmit(AuthorizationState.AwaitingTwoFactor(this))
 
@@ -135,10 +134,13 @@ class Account internal constructor(
                     createWatcherFlow(this.interval ?: 5f)
                 }
 
-                if (availableInstanceFor != null && allowed_confirmations.mapNotNull { it.confirmation_type }
-                        .contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
-                    logVerbose("Account:SignIn", "This SteamID has a registered Guard instance, we can skip 2FA")
-                    updateCurrentSessionWithCode(availableInstanceFor.generateCodeWithTime().codeString)
+                if (allowed_confirmations.mapNotNull { it.confirmation_type }.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
+                    val guardCode = steamClient.getImplementingHandlerOrNull<SteamGuardPlugin>()?.getCodeFor(SteamId(this.steamid?.toULong() ?: 0u))
+
+                    if (guardCode != null) {
+                        logVerbose("Account:SignIn", "This SteamID has a registered Guard instance, we can skip 2FA")
+                        updateCurrentSessionWithCode(guardCode)
+                    }
                 }
             }
 
@@ -155,7 +157,7 @@ class Account internal constructor(
         require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
 
         (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).let { authState ->
-            steamClient.webApi.execute(
+            steamClient.unifiedMessages.execute(
                 signed = false,
                 methodName = "Authentication.UpdateAuthSessionWithSteamGuardCode",
                 requestAdapter = CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request.ADAPTER,
@@ -290,7 +292,7 @@ class Account internal constructor(
 
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
         require(pollInfo != null) { "pollInfo should not be null" }
-        return steamClient.webApi.execute(
+        return steamClient.unifiedMessages.execute(
             signed = false,
             methodName = "Authentication.PollAuthSessionStatus",
             requestAdapter = CAuthentication_PollAuthSessionStatus_Request.ADAPTER,
@@ -378,7 +380,7 @@ class Account internal constructor(
     fun buildSteamLoginSecureCookie() = getCurrentAccount()?.let { "${it.steamId}||${it.accessToken}" }.orEmpty()
 
     suspend fun updateAccessToken() {
-        steamClient.webApi.execute(
+        steamClient.unifiedMessages.execute(
             methodName = "Authentication.GenerateAccessTokenForApp",
             requestAdapter = CAuthentication_AccessToken_GenerateForApp_Request.ADAPTER,
             responseAdapter = CAuthentication_AccessToken_GenerateForApp_Response.ADAPTER,
