@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r24"
+version = "r25"
 
 kotlin {
 
@@ -27,7 +27,7 @@ wire {
 dependencies {
     implementation(project(":kotlinx-vdf"))
 
-    implementation(project(":proto-common"))
+    api(project(":proto-common"))
     protoPath(project(":proto-common"))
 
     // For @Stable / @Immutable annotations inside "UI" models

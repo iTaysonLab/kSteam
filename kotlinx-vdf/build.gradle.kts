@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab"
-version = "r1"
+version = "r25"
 
 repositories {
     mavenCentral()
