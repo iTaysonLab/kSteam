@@ -9,6 +9,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages
 import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
+import bruhcollective.itaysonlab.ksteam.handlers.internal.Storage
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
@@ -41,6 +42,7 @@ class SteamClient internal constructor(
         Account(this).createAssociation(),
         UnifiedMessages(this).createAssociation(),
         Sentry(this).createAssociation(),
+        Storage(this).createAssociation(),
     ) + extensionsToHandlers(injectedExtensions)
 
     val language get() = config.language
