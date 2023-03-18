@@ -179,9 +179,6 @@ class Library(
 
         // Collect WebUI info (if collector is not started)
 
-        // Wait until PICS data is loaded (avoids UI lockup/race condition when PICS is being loaded lately than folders and Flows won't update)
-        steamClient.pics.isPicsAvailable.first { it == Pics.PicsState.Ready }
-
         if (cloudCollector == null || cloudCollector?.isCompleted == true) {
             cloudCollector = steamClient.cloudConfiguration.request(1).onEach { list ->
                 handleUserLibrary(list)
@@ -200,7 +197,10 @@ class Library(
         }
     }
 
-    private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
+    private suspend fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
+        // Wait until PICS data is loaded (avoids UI lockup/race condition when PICS is being loaded lately than folders and Flows won't update)
+        steamClient.pics.isPicsAvailable.first { it == Pics.PicsState.Ready }
+
         _isLoadingLibrary.value = false
 
         entries.forEach { entry ->
