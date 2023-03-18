@@ -14,8 +14,10 @@ import bruhcollective.itaysonlab.ksteam.handlers.internal.CloudConfiguration
 class Pics (
     private val configuration: PicsExtensionConfiguration
 ): Extension {
+    private val database = PicsVdfKvDatabase(configuration.database)
+
     override fun createHandlers(steamClient: SteamClient): HandlerMap = mapOf(
-        Pics(steamClient, PicsVdfKvDatabase(configuration.database)).associate(),
+        Pics(steamClient, database).associate(),
         Library(steamClient).associate(),
         CloudConfiguration(steamClient).associate()
     )
