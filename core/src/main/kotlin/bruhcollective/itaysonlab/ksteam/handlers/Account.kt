@@ -124,7 +124,7 @@ class Account internal constructor(
                 )
 
                 pollInfo = PollInfo(this.client_id!! to this.request_id!!)
-                authState.tryEmit(AuthorizationState.AwaitingTwoFactor(this))
+                authState.emit(AuthorizationState.AwaitingTwoFactor(this))
 
                 if (allowed_confirmations.mapNotNull { it.confirmation_type }.let {
                         it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation) || it.contains(
