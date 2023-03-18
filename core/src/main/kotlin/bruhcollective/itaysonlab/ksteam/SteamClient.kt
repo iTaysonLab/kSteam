@@ -31,7 +31,7 @@ class SteamClient internal constructor(
     internal val config: SteamClientConfiguration,
     injectedExtensions: List<Extension>
 ) {
-    private val eventsScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("kSteam-events"))
+    private val eventsScope = CoroutineScope(Dispatchers.IO + SupervisorJob() + CoroutineName("kSteam-events"))
 
     val webApi = WebApi(config.apiClient)
 

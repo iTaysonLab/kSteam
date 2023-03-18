@@ -15,7 +15,6 @@ import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import okio.Buffer
@@ -59,7 +58,7 @@ internal class CMClient(
     /**
      * A queue for incoming packets, which are processed by consumers
      */
-    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(0, Int.MAX_VALUE, BufferOverflow.SUSPEND)
+    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(extraBufferCapacity = Int.MAX_VALUE)
     val incomingPacketsQueue = mutableIncomingPacketsQueue.asSharedFlow()
 
     /**
@@ -148,7 +147,7 @@ internal class CMClient(
                                         handleClientLogOn(checkedPacket)
                                     }
 
-                                    mutableIncomingPacketsQueue.tryEmit(checkedPacket)
+                                    mutableIncomingPacketsQueue.emit(checkedPacket)
                                 }
                             }
                         } else {
@@ -193,7 +192,7 @@ internal class CMClient(
      * Sometimes, Steam can send multi-messages (gzipped 2+ messages at once).
      * This function handles such messages.
      */
-    private fun handleMultiPacket(checkedPacket: SteamPacket) {
+    private suspend fun handleMultiPacket(checkedPacket: SteamPacket) {
         val payloadResult = checkedPacket.getProtoPayload(CMsgMulti.ADAPTER)
 
         if (payloadResult.hasData) {
@@ -227,7 +226,7 @@ internal class CMClient(
                     handleClientLogOn(packetParsed)
                 }
 
-                mutableIncomingPacketsQueue.tryEmit(packetParsed)
+                mutableIncomingPacketsQueue.emit(packetParsed)
             } while (payloadBuffer.exhausted().not())
         } else {
             logVerbose("SteamPacket:Multi", "> ${payloadResult.result.name}")
