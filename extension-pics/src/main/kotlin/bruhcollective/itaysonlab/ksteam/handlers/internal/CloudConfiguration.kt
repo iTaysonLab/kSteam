@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers.internal
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -40,7 +40,7 @@ internal class CloudConfiguration(
                 )
             ),
         ).dataNullable?.data_?.firstOrNull().let { newNamespace ->
-            logDebug("CloudConfig:Rpc", "Namespace received: $newNamespace")
+            KSteamLogging.logDebug("CloudConfig:Rpc", "Namespace received: $newNamespace")
             currentState.update { map ->
                 map.toMutableMap().apply {
                     put(
@@ -56,7 +56,7 @@ internal class CloudConfiguration(
         if (rpcMethod == "CloudConfigStoreClient.NotifyChange#1") {
             packet.getProtoPayload(CCloudConfigStore_Change_Notification.ADAPTER).dataNullable?.let { notification ->
                 notification.versions.forEach { updatedNamespace ->
-                    logDebug("CloudConfig:Rpc", "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}")
+                    KSteamLogging.logDebug("CloudConfig:Rpc", "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}")
                     downloadAndSet(updatedNamespace.enamespace ?: return@forEach)
                 }
             }

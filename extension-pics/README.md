@@ -1,19 +1,27 @@
-kSteam Core extension
+kSteam PICS extension
 ---
-Contains essential handlers and UI models. If a handler has large impact on the codebase, it will be separated in a new extension module.
+Provides kSteam with an ability to request owned application metadata by using licenses/PICS system. Also provides a library collections manager API.
 
 ### Installation
 
 ```kotlin
 kSteam {
-    install(Core)
+    install(PICS) {
+        // A key-value database, you can use MMKV on Android JVM.
+        database = YourKvDatabaseImplementation()
+    }
 }
 ```
 
+### [Android only] MMKV
+
+If you plan to use kSteam on a Android device, you can skip the KV implementation with MMKV. This is a key-value database developed by Tencent.
+
+TODO: describe implementation
+
 ### What is covered
-- Persona
-- CurrentPersona
-- Notifications
-- Profile
-- Storage
-- Store
+- Pics
+- Library
+
+### TODO
+- The library is still work in progress, expect bugs and non-implemented code

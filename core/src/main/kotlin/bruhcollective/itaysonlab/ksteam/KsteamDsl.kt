@@ -1,5 +1,9 @@
 package bruhcollective.itaysonlab.ksteam
 
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLoggingVerbosity
+import bruhcollective.itaysonlab.ksteam.debug.LoggingTransport
+import bruhcollective.itaysonlab.ksteam.debug.NoopLoggingTransport
 import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.ExtensionFactory
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
@@ -14,6 +18,28 @@ annotation class KsteamDsl
 @KsteamDsl
 class KSteamConfiguration {
     private val extensions = mutableListOf<Extension>()
+
+    /**
+     * Specifies a logging transport where kSteam will log output
+     * 
+     * Defaults to [NoopLoggingTransport], which will consume logs without any actions.
+     */
+    var loggingTransport: LoggingTransport = NoopLoggingTransport
+
+    /**
+     * Specifies a logging verbosity (how much data will be logged)
+     * 
+     * Recommended:
+     * - [KSteamLoggingVerbosity.Disable] if you are using kSteam in a end-user application
+     * - [KSteamLoggingVerbosity.Warning] if you are using kSteam in a end-user application and want logs
+     * - [KSteamLoggingVerbosity.Debug] if you are developing an end-user application
+     * - [KSteamLoggingVerbosity.Verbose] if you are developing kSteam
+     * 
+     * [KSteamLoggingVerbosity.Verbose] can output sensitive info to a chosen [LoggingTransport]. A warning will be printed if it is selected.
+     *
+     * Defaults to [KSteamLoggingVerbosity.Warning], which will cover Error and Warning messages
+     */
+    var loggingVerbosity: KSteamLoggingVerbosity = KSteamLoggingVerbosity.Warning
 
     /**
      * Specifies a folder where kSteam will store session data.
@@ -59,6 +85,9 @@ class KSteamConfiguration {
     }
 
     fun build(): SteamClient {
+        KSteamLogging.transport = loggingTransport
+        KSteamLogging.verbosity = loggingVerbosity
+        
         return SteamClient(
             config = SteamClientConfiguration(
                 rootFolder = rootFolder ?: error("rootFolder must be set"),

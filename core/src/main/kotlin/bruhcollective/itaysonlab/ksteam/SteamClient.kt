@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
-import bruhcollective.itaysonlab.ksteam.debug.logError
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.HandlerMap
 import bruhcollective.itaysonlab.ksteam.handlers.Account
@@ -92,7 +92,7 @@ class SteamClient internal constructor(
                     getHandler<Account>().trySignInSaved()
                 }
             }.catch { throwable ->
-                logError("SteamClient:EventFlow", "Error occurred when collecting a client state: ${throwable.message}")
+                KSteamLogging.logError("SteamClient:EventFlow", "Error occurred when collecting a client state: ${throwable.message}")
             }.launchIn(eventsScope)
 
         cmClient.incomingPacketsQueue
@@ -108,7 +108,7 @@ class SteamClient internal constructor(
                             handler.onEvent(packet)
                         }
                     } catch (e: Exception) {
-                        logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${e.message}")
+                        KSteamLogging.logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${e.message}")
                         e.printStackTrace()
                     }
                 }

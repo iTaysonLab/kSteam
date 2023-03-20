@@ -15,8 +15,12 @@ tasks.withType<KotlinCompile> {
     }
 }
 
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}
+
 kotlin {
-    jvmToolchain(8)
+
 }
 
 application {
@@ -25,8 +29,11 @@ application {
 
 dependencies {
     implementation(project(":core"))
-    implementation(project(":models"))
     implementation(project(":kotlinx-vdf"))
+
+    implementation(project(":extension-core"))
+    implementation(project(":extension-guard"))
+    implementation(project(":extension-pics"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.0-RC")
 

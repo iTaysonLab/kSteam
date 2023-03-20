@@ -1,8 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
@@ -33,7 +32,7 @@ class Persona internal constructor(
     val currentFriendList = _currentFriendList.asStateFlow()
 
     private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
-        logVerbose("Persona:NewState", "Incoming: ${incoming.joinToString()}")
+        KSteamLogging.logVerbose("Persona:NewState", "Incoming: ${incoming.joinToString()}")
 
         personas.update { map ->
             map.toMutableMap().apply {
@@ -137,7 +136,7 @@ class Persona internal constructor(
     private suspend fun requestPersonas(ids: List<SteamId>) {
         if (ids.isEmpty()) return
 
-        logDebug("Handlers:Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
+        KSteamLogging.logDebug("Handlers:Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
 
         steamClient.executeAndForget(SteamPacket.newProto(
             messageId = EMsg.k_EMsgClientRequestFriendData,

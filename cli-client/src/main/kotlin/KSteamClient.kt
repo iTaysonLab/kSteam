@@ -1,48 +1,40 @@
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
-import bruhcollective.itaysonlab.ksteam.debug.Logging
-import bruhcollective.itaysonlab.ksteam.debug.LoggingTransport
-import bruhcollective.itaysonlab.ksteam.debug.LoggingVerbosity
+import bruhcollective.itaysonlab.ksteam.Core
+import bruhcollective.itaysonlab.ksteam.Guard
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLoggingVerbosity
+import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
+import bruhcollective.itaysonlab.ksteam.debug.StdoutLoggingTransport
 import bruhcollective.itaysonlab.ksteam.handlers.account
+import bruhcollective.itaysonlab.ksteam.kSteam
 import kotlinx.coroutines.*
 import java.io.File
 import java.nio.file.Paths
-import kotlin.time.Duration.Companion.seconds
 
-class KSteamClient: CoroutineScope by CoroutineScope(SupervisorJob() + Dispatchers.Default) {
-    private val steamClient = SteamClient(config = SteamClientConfiguration(
-        rootFolder = File(Paths.get("").toAbsolutePath().toString(), "ksteam"),
-    ))
+class KSteamClient: CoroutineScope by CoroutineScope(Dispatchers.Default + SupervisorJob()) {
+
+    private val steamClient = kSteam {
+        loggingTransport = StdoutLoggingTransport
+        loggingVerbosity = KSteamLoggingVerbosity.Verbose
+
+        rootFolder = File(Paths.get("").toAbsolutePath().toString(), "ksteam")
+
+        install(Core)
+
+        install(Guard) {
+            uuid = "test"
+        }
+    }
 
     fun start() {
         runBlocking {
-            Logging.transport = object: LoggingTransport {
-                override var verbosity: LoggingVerbosity
-                    get() = LoggingVerbosity.Verbose
-                    set(value) {}
-
-                override fun printError(tag: String, message: String) {
-                    println("[$tag] $message")
-                }
-
-                override fun printWarning(tag: String, message: String) {
-                    println("[$tag] $message")
-                }
-
-                override fun printDebug(tag: String, message: String) {
-                    println("[$tag] $message")
-                }
-
-                override fun printVerbose(tag: String, message: String) {
-                    println("[$tag] $message")
-                }
-            }
-
+            steamClient.dumperMode = PacketDumper.DumpMode.Full
             steamClient.start()
             steamClient.account.awaitSignIn()
 
-            delay(2000L)
+            delay(5000L)
+
+            // steamClient.profile.getCustomization(SteamId(76561198176883618_u), includePurchased = true, includeInactive = true)
+            // steamClient.news.getUserNews(AppId(1938090))
 
             /*steamClient.executeAndForget(
                 SteamPacket.newProto(messageId = EMsg.k_EMsgClientChangeStatus, adapter = CMsgClientChangeStatus.ADAPTER, payload = CMsgClientChangeStatus(
@@ -63,8 +55,6 @@ class KSteamClient: CoroutineScope by CoroutineScope(SupervisorJob() + Dispatche
                     count = 10
                 ),
             ).let { println(it) }*/
-
-            delay(30.seconds)
         }
     }
 }

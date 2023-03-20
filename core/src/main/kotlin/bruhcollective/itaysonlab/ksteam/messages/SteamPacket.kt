@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.messages
 
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import com.squareup.wire.ProtoAdapter
@@ -41,7 +41,7 @@ class SteamPacket private constructor(
             val messageIdRaw = packetBuffer.readIntLe()
             val messageId = EMsg.byEncoded(messageIdRaw and ProtobufClearMask)
 
-            logVerbose(
+            KSteamLogging.logVerbose(
                 "SteamPacket:ParseNet",
                 "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})"
             )
@@ -52,7 +52,7 @@ class SteamPacket private constructor(
                 SteamPacketHeader.Binary()
             }.apply { read(packetBuffer) }
 
-            logVerbose("SteamPacket:ParseNet", "> [header] $header")
+            KSteamLogging.logVerbose("SteamPacket:ParseNet", "> [header] $header")
 
             val payload = packetBuffer.readByteArray()
 

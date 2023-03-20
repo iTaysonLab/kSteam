@@ -1,9 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
-import bruhcollective.itaysonlab.ksteam.debug.logError
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
@@ -159,7 +157,7 @@ class Library(
                 _isLoadingPlayTimes.value = true
 
                 while (true) {
-                    logDebug("Library:Collector", "Requesting last played times")
+                    KSteamLogging.logDebug("Library:Collector", "Requesting last played times")
 
                     _playtime.update {
                         steamClient.unifiedMessages.execute(
@@ -186,7 +184,7 @@ class Library(
                 cloudCollector = null
 
                 if (it != null && it !is CancellationException) {
-                    logError("Library:Collector", "Error occurred when collecting library data: ${it.message}")
+                    KSteamLogging.logError("Library:Collector", "Error occurred when collecting library data: ${it.message}")
                     it.printStackTrace()
 
                     delay(1000L)
@@ -197,14 +195,11 @@ class Library(
         }
     }
 
-    private suspend fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
-        // Wait until PICS data is loaded (avoids UI lockup/race condition when PICS is being loaded lately than folders and Flows won't update)
-        steamClient.pics.isPicsAvailable.first { it == Pics.PicsState.Ready }
-
+    private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
         _isLoadingLibrary.value = false
 
         entries.forEach { entry ->
-            logVerbose("Library:Cloud", entry.toString())
+            KSteamLogging.logVerbose("Library:Cloud", entry.toString())
         }
 
         // -- User Collections --
@@ -220,7 +215,7 @@ class Library(
                 timestamp = it.timestamp ?: 0,
                 version = it.version ?: 0
             ).also { c ->
-                logVerbose("Library:Collection", c.toString())
+                KSteamLogging.logVerbose("Library:Collection", c.toString())
             }
         }.filter {
             when (it.id) {

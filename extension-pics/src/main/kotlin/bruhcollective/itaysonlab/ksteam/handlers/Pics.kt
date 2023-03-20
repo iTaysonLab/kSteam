@@ -2,7 +2,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.database.keyvalue.PicsVdfKvDatabase
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
@@ -65,7 +65,7 @@ class Pics internal constructor(
     }
 
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
-        logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
+        KSteamLogging.logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
         processedLicenses += licenses
 
         database.packages.initialize()
@@ -83,7 +83,7 @@ class Pics internal constructor(
             }
         }
 
-        logVerbose("Pics:HandleLicenses", "Require update: ${requiresUpdate.size}")
+        KSteamLogging.logVerbose("Pics:HandleLicenses", "Require update: ${requiresUpdate.size}")
 
         if (requiresUpdate.isNotEmpty()) {
             requestPicsMetadataForLicenses(requiresUpdate)

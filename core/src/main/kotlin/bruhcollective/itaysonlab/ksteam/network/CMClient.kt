@@ -2,10 +2,8 @@ package bruhcollective.itaysonlab.ksteam.network
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
-import bruhcollective.itaysonlab.ksteam.debug.logError
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
@@ -53,12 +51,12 @@ internal class CMClient(
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
      */
-    private val outgoingPacketsQueue = Channel<SteamPacket>(capacity = Channel.UNLIMITED)
+    private val outgoingPacketsQueue = Channel<SteamPacket>(capacity = 16)
 
     /**
      * A queue for incoming packets, which are processed by consumers
      */
-    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(extraBufferCapacity = Int.MAX_VALUE)
+    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(extraBufferCapacity = 16)
     val incomingPacketsQueue = mutableIncomingPacketsQueue.asSharedFlow()
 
     /**
@@ -103,14 +101,14 @@ internal class CMClient(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun connect() {
-        logDebug("CMClient:Start", "Fetching CMList")
+        KSteamLogging.logDebug("CMClient:Start", "Fetching CMList")
         selectedServer = serverList.getBestServer()
 
-        logDebug("CMClient:Start", "Connecting to WSS [url = ${selectedServer?.endpoint}]")
+        KSteamLogging.logDebug("CMClient:Start", "Connecting to WSS [url = ${selectedServer?.endpoint}]")
         configuration.networkClient.wss(urlString = "wss://" + (selectedServer?.endpoint ?: return) + "/cmsocket/") {
             call.request.attributes
 
-            logDebug("CMClient:WsConnection", "Connected to Steam3 network")
+            KSteamLogging.logDebug("CMClient:WsConnection", "Connected to Steam3 network")
 
             send(
                 Frame.Binary(
@@ -151,13 +149,13 @@ internal class CMClient(
                                 }
                             }
                         } else {
-                            logError(
+                            KSteamLogging.logError(
                                 "CMClient:WsConnection",
                                 "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}"
                             )
                         }
                     } else {
-                        logDebug(
+                        KSteamLogging.logDebug(
                             "CMClient:WsConnection",
                             "Received non-binary message (type: ${packetToReceive.frameType.name})"
                         )
@@ -167,8 +165,8 @@ internal class CMClient(
                 // Check if outgoing messages are in queue
                 if (outgoingPacketsQueue.isEmpty.not()) {
                     val packetToSend = outgoingPacketsQueue.receive()
-                    logVerbose("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
-                    logVerbose("CMClient:WsConnection", "> [header] ${packetToSend.header}")
+                    KSteamLogging.logVerbose("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
+                    KSteamLogging.logVerbose("CMClient:WsConnection", "> [header] ${packetToSend.header}")
                     dumper.onPacket(packetToSend, true)
                     send(packetToSend.encode())
                 }
@@ -199,12 +197,12 @@ internal class CMClient(
             val payload = payloadResult.data
 
             if ((payload.size_unzipped ?: 0) > 0) {
-                logVerbose(
+                KSteamLogging.logVerbose(
                     "SteamPacket:Multi",
                     "Parsing multi-message (compressed size: ${payload.size_unzipped} bytes)"
                 )
             } else {
-                logVerbose("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
+                KSteamLogging.logVerbose("SteamPacket:Multi", "Parsing multi-message (no compressed data)")
             }
 
             require(payload.message_body != null) { "Payload body is null" }
@@ -229,7 +227,7 @@ internal class CMClient(
                 mutableIncomingPacketsQueue.emit(packetParsed)
             } while (payloadBuffer.exhausted().not())
         } else {
-            logVerbose("SteamPacket:Multi", "> ${payloadResult.result.name}")
+            KSteamLogging.logVerbose("SteamPacket:Multi", "> ${payloadResult.result.name}")
         }
     }
 
@@ -278,7 +276,7 @@ internal class CMClient(
 
         launch(actorJob + CoroutineName("kSteam-heartbeat")) {
             while (true) {
-                logVerbose("CMClient:Heartbeat", "Adding heartbeat packet to queue")
+                KSteamLogging.logVerbose("CMClient:Heartbeat", "Adding heartbeat packet to queue")
 
                 executeAndForget(
                     SteamPacket.newProto(

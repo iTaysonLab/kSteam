@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
-import bruhcollective.itaysonlab.ksteam.debug.logDebug
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
@@ -182,7 +182,7 @@ class Profile internal constructor(
     override suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) {
         if (rpcMethod == "PlayerClient.NotifyFriendEquippedProfileItemsChanged#1") {
             val accountIdContainer = packet.getProtoPayload(CPlayer_FriendEquippedProfileItemsChanged_Notification.ADAPTER).dataNullable
-            logDebug("Profile:RpcEvent", "Received NotifyFriendEquippedProfileItemsChanged, target account id: ${accountIdContainer?.accountid} [current account id: ${steamClient.currentSessionSteamId.accountId}]")
+            KSteamLogging.logDebug("Profile:RpcEvent", "Received NotifyFriendEquippedProfileItemsChanged, target account id: ${accountIdContainer?.accountid} [current account id: ${steamClient.currentSessionSteamId.accountId}]")
             if (accountIdContainer != null && accountIdContainer.accountid == steamClient.currentSessionSteamId.accountId) {
                 requestMyEquipment()
             }

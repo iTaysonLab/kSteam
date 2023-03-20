@@ -3,8 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
-import bruhcollective.itaysonlab.ksteam.debug.logWarning
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
@@ -118,7 +117,7 @@ class Account internal constructor(
             AuthorizationResult.InvalidPassword
         } else {
             with(signInResult.data) {
-                logVerbose(
+                KSteamLogging.logVerbose(
                     "Account:SignIn",
                     "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
                 )
@@ -138,7 +137,7 @@ class Account internal constructor(
                     val guardCode = steamClient.getImplementingHandlerOrNull<SteamGuardPlugin>()?.getCodeFor(SteamId(this.steamid?.toULong() ?: 0u))
 
                     if (guardCode != null) {
-                        logVerbose("Account:SignIn", "This SteamID has a registered Guard instance, we can skip 2FA")
+                        KSteamLogging.logVerbose("Account:SignIn", "This SteamID has a registered Guard instance, we can skip 2FA")
                         updateCurrentSessionWithCode(guardCode)
                     }
                 }
@@ -217,7 +216,7 @@ class Account internal constructor(
             true
         } else {
             if (steamId != null) {
-                logWarning(
+                KSteamLogging.logWarning(
                     "Account:AutoSignIn",
                     "No accounts found on the kSteam database. Please log in manually to use this feature."
                 )
@@ -324,7 +323,7 @@ class Account internal constructor(
 
         return if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
             // Success, now we can cancel the session
-            logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
+            KSteamLogging.logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
 
             val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
 
@@ -398,7 +397,7 @@ class Account internal constructor(
     }
 
     enum class AuthorizationResult {
-        // Now you should use the state from Account.accountAuthState to show TFA interface
+        // Now you should use the state from Account.clientAuthState to show TFA interface
         Success,
 
         // The password does not match.

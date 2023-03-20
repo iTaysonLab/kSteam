@@ -1,19 +1,24 @@
-kSteam Core extension
+kSteam Guard extension
 ---
-Contains essential handlers and UI models. If a handler has large impact on the codebase, it will be separated in a new extension module.
+Allows kSteam to generate TOTP codes for Steam Guard, managing trade/sell confirmations and online sessions.
 
 ### Installation
 
 ```kotlin
 kSteam {
-    install(Core)
+    install(Guard) {
+        // an example, please use an appropriate UUID generator or leave default
+        uuid = "UUID1234567890"
+    }
 }
 ```
 
 ### What is covered
-- Persona
-- CurrentPersona
-- Notifications
-- Profile
-- Storage
-- Store
+- Guard
+- GuardConfirmation
+- GuardManagement
+
+### TODO
+- We need to migrate from protobuf to generic JSON mafile (no migration tools will be provided due to lack of a public release)
+- Cancelling session does not work because of signature generation - need to reverse engineer the official Steam Mobile app once again
+- Other features should work great (we still need to implement some sort of automated tests through)

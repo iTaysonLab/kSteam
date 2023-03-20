@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.database.keyvalue
 
-import bruhcollective.itaysonlab.ksteam.debug.logVerbose
+import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
@@ -75,7 +75,7 @@ internal class PicsVdfKvDatabase (
             })
         } catch (mfe: Exception) {
             // We try to cover almost all types, but sometimes stuff... happens
-            logVerbose("Pics:Unknown", source.toByteString().hex())
+            KSteamLogging.logVerbose("Pics:Unknown", source.toByteString().hex())
             null
         }
     }
