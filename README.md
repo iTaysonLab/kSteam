@@ -99,7 +99,7 @@ val animatedAvatarUrl = kSteamDevEquipment.animatedAvatar?.movieMp4?.url // - mo
 
 ### Credits
 - [SteamKit](https://github.com/SteamRE/SteamKit/) and [JavaSteam](https://github.com/Longi94/JavaSteam/) - base for understanding how Steam3 network works
-- [SteamDB protobuf repository](https://github.com/SteamDatabase/Protobufs/) is used in "models" module
+- [SteamDB protobuf repository](https://github.com/SteamDatabase/Protobufs/) is used in modules
 - [Ktor](https://github.com/ktorio/ktor) is used as a networking library
 - [Wire](https://github.com/square/wire) is used for protobuf decoding/encoding
 - [Okio](https://github.com/square/okio) is used for cross-platform filesystem access, VDF parsing and byte manipulation
