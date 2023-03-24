@@ -51,12 +51,12 @@ internal class CMClient(
     /**
      * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
      */
-    private val outgoingPacketsQueue = Channel<SteamPacket>(capacity = 16)
+    private val outgoingPacketsQueue = Channel<SteamPacket>(capacity = Channel.UNLIMITED)
 
     /**
      * A queue for incoming packets, which are processed by consumers
      */
-    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(extraBufferCapacity = 16)
+    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(extraBufferCapacity = Channel.UNLIMITED)
     val incomingPacketsQueue = mutableIncomingPacketsQueue.asSharedFlow()
 
     /**
