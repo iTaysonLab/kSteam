@@ -3,18 +3,18 @@ package bruhcollective.itaysonlab.ksteam.models.library
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 
-internal data class DynamicFilters (
-    val byAppType: DfEntry<EAppType>,
-    val byPlayState: DfEntry<EPlayState>,
-    val byAppFeature: DfEntry<EAppFeature>,
-    val byGenre: DfEntry<EGenre>,
-    val byStoreTag: DfEntry<Int>,
-    val byPartner: DfEntry<EPartner>,
-    val byFriend: DfEntry<SteamId>
+data class DynamicFilters (
+    val byAppType: DfEntry<EAppType> = DfEntry(emptyList<EAppType>() to false),
+    val byPlayState: DfEntry<EPlayState> = DfEntry(emptyList<EPlayState>() to false),
+    val byAppFeature: DfEntry<EAppFeature> = DfEntry(emptyList<EAppFeature>() to false),
+    val byGenre: DfEntry<EGenre> = DfEntry(emptyList<EGenre>() to false),
+    val byStoreTag: DfEntry<Int> = DfEntry(emptyList<Int>() to false),
+    val byPartner: DfEntry<EPartner> = DfEntry(emptyList<EPartner>() to false),
+    val byFriend: DfEntry<SteamId> = DfEntry(emptyList<SteamId>() to false)
 )
 
 @JvmInline
-internal value class DfEntry <T> (
+value class DfEntry <T> (
     private val packed: Pair<List<T>, Boolean>
 ) {
     val entries: List<T> get() = packed.first

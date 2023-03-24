@@ -10,6 +10,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
+import bruhcollective.itaysonlab.ksteam.models.library.RemoteCollectionModel
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
 import kotlinx.coroutines.*
@@ -18,7 +19,9 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import steam.webui.cloudconfigstore.CCloudConfigStore_Entry
 import steam.webui.common.CMsgClientLogonResponse
-import steam.webui.player.*
+import steam.webui.player.CPlayer_GetLastPlayedTimes_Request
+import steam.webui.player.CPlayer_GetLastPlayedTimes_Response
+import steam.webui.player.CPlayer_GetLastPlayedTimes_Response_Game
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -27,6 +30,11 @@ import kotlin.time.Duration.Companion.minutes
 class Library(
     private val steamClient: SteamClient
 ) : BaseHandler {
+    companion object {
+        const val FavoriteCollection = "favorite"
+        const val HiddenCollection = "hidden"
+    }
+
     private val scope = CreateSupervisedCoroutineScope("LibraryCollector", Dispatchers.Default)
 
     private var cloudCollector: Job? = null
@@ -42,13 +50,13 @@ class Library(
     val isLoadingPlayTimes = _isLoadingPlayTimes.asStateFlow()
     //
 
-    private val _userCollections = MutableStateFlow<List<LibraryCollection>>(emptyList())
+    private val _userCollections = MutableStateFlow<Map<String, LibraryCollection>>(emptyMap())
     val userCollections = _userCollections.asStateFlow()
 
-    private val _favoriteCollection = MutableStateFlow<LibraryCollection?>(null)
+    private val _favoriteCollection = MutableStateFlow<LibraryCollection>(LibraryCollection.Placeholder)
     val favoriteCollection = _favoriteCollection.asStateFlow()
 
-    private val _hiddenCollection = MutableStateFlow<LibraryCollection?>(null)
+    private val _hiddenCollection = MutableStateFlow<LibraryCollection>(LibraryCollection.Placeholder)
     val hiddenCollection = _hiddenCollection.asStateFlow()
 
     private val _shelves = MutableStateFlow<List<LibraryShelf>>(emptyList())
@@ -62,37 +70,53 @@ class Library(
      *
      * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppSummary>> {
-        return userCollections.mapNotNull { list ->
-            list.firstOrNull { it.id == id }
-        }.map { collection ->
-            val collectionFilters = collection.filterSpec?.parseFilters()
-            val hasPlayState = collectionFilters?.byPlayState?.entries?.contains(EPlayState.PlayedNever) == true || collectionFilters?.byPlayState?.entries?.contains(
-                EPlayState.PlayedPreviously) == true
+    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppSummary>> = userCollections.mapNotNull { collections ->
+        getAppsInCollection(collections[id] ?: return@mapNotNull null, limit)
+    }
 
-            val playTime = if (hasPlayState) {
-                _playtime.first() // Await playtime
-            } else {
-                null
+    fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<AppSummary>> = collectionFlow.map { collection ->
+        getAppsInCollection(collection, limit)
+    }
+
+    /**
+     * Queries eligible apps in a collection.
+     *
+     * @return a list of [AppInfo]
+     */
+    suspend fun getAppsInCollection(collection: LibraryCollection, limit: Int = 0): List<AppSummary> {
+        return when (collection) {
+            is LibraryCollection.Simple -> {
+                steamClient.pics.getAppSummariesByAppId(collection.added, limit).values.sortedBy { it.name }
             }
 
-            collectionFilters?.let { filters ->
-                steamClient.pics.getAppSummariesFiltered(filters, limit).let { appInfoList ->
-                    if (hasPlayState) {
-                        val neverPlayed = filters.byPlayState.entries.contains(EPlayState.PlayedNever)
+            is LibraryCollection.Dynamic -> {
+                val hasPlayStateNeverPlayed = collection.filters.byPlayState.entries.contains(EPlayState.PlayedNever)
+                val hasPlayStatePlayedPreviously = collection.filters.byPlayState.entries.contains(EPlayState.PlayedPreviously)
 
-                        appInfoList.filter {
-                            if (neverPlayed) {
+                val playTime = if (hasPlayStateNeverPlayed || hasPlayStatePlayedPreviously) {
+                    _playtime.first() // Await playtime
+                } else {
+                    null
+                }
+
+                steamClient.pics.getAppSummariesFiltered(collection.filters, limit).let { appInfoList ->
+                    when {
+                        hasPlayStateNeverPlayed -> {
+                            appInfoList.filter {
                                 (playTime?.get(it.id)?.first_playtime ?: 0) == 0
-                            } else {
+                            }
+                        }
+
+                        hasPlayStatePlayedPreviously -> {
+                            appInfoList.filter {
                                 (playTime?.get(it.id)?.first_playtime ?: 0) != 0
                             }
                         }
-                    } else {
-                        appInfoList
+
+                        else -> appInfoList
                     }
                 }
-            } ?: steamClient.pics.getAppSummariesByAppId(collection.added, limit).values.sortedBy { it.name }
+            }
         }
     }
 
@@ -101,7 +125,7 @@ class Library(
      */
     fun getCollection(id: String): Flow<LibraryCollection> {
         return userCollections.mapNotNull { list ->
-            list.firstOrNull { it.id == id }
+            list[id]
         }
     }
 
@@ -114,13 +138,17 @@ class Library(
     }
 
     fun getFavoriteApps(limit: Int = 0): Flow<List<AppSummary>> {
-        return getAppsInCollection("favorite", limit)
+        return getAppsInCollection(favoriteCollection, limit)
+    }
+
+    fun getHiddenApps(limit: Int = 0): Flow<List<AppSummary>> {
+        return getAppsInCollection(hiddenCollection, limit)
     }
 
     /**
      * Edit a collection.
      *
-     * This will trigger [collections] change.
+     * This will trigger [userCollections] change.
      */
     suspend fun editCollection() {
 
@@ -129,16 +157,16 @@ class Library(
     /**
      * Creates a new collection.
      *
-     * This will trigger [collections] change.
+     * This will trigger [userCollections] change.
      */
-    suspend fun createCollection() {
+    suspend fun createCollection(collection: LibraryCollection) {
 
     }
 
     /**
      * Deletes a collection.
      *
-     * This will trigger [collections] change.
+     * This will trigger [userCollections] change.
      */
     suspend fun deleteCollection(id: String) {
 
@@ -198,33 +226,29 @@ class Library(
     private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
         _isLoadingLibrary.value = false
 
-        entries.forEach { entry ->
-            KSteamLogging.logVerbose("Library:Cloud", entry.toString())
+        if (KSteamLogging.enableVerboseLogs) {
+            KSteamLogging.logVerbose("Library:Cloud", "Printing cloud keys:")
+
+            entries.forEach { entry ->
+                KSteamLogging.logVerbose("Library:Cloud", entry.toString())
+            }
         }
 
         // -- User Collections --
-        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull {
-            val entry = json.decodeFromString<LibraryCollection.CollectionModel>(it.value_ ?: return@mapNotNull null)
+        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull { entry ->
+            val entryObject = json.decodeFromString<RemoteCollectionModel>(entry.value_ ?: return@mapNotNull null)
 
-            LibraryCollection(
-                id = entry.id,
-                name = entry.name,
-                added = entry.added.map(::AppId),
-                removed = entry.removed.map(::AppId),
-                filterSpec = entry.filterSpec,
-                timestamp = it.timestamp ?: 0,
-                version = it.version ?: 0
-            ).also { c ->
+            LibraryCollection.fromJsonCollection(entryObject, entry.timestamp ?: return@mapNotNull null, entry.version ?: return@mapNotNull null).also { c ->
                 KSteamLogging.logVerbose("Library:Collection", c.toString())
             }
         }.filter {
             when (it.id) {
-                "favorite" -> {
+                FavoriteCollection -> {
                     _favoriteCollection.value = it
                     false
                 }
 
-                "hidden" -> {
+                HiddenCollection -> {
                     _hiddenCollection.value = it
                     false
                 }
@@ -233,9 +257,7 @@ class Library(
                     true
                 }
             }
-        }.sortedWith { o1, o2 ->
-            o1.name.compareTo(o2.name, ignoreCase = true)
-        }.toList().let { collections ->
+        }.associateBy(LibraryCollection::id).let { collections ->
             _userCollections.value = collections
         }
 

@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.debug
 import java.util.logging.Level
 import java.util.logging.Logger
 
-internal object KSteamLogging {
+object KSteamLogging {
     var transport: LoggingTransport = NoopLoggingTransport
 
     fun logVerbose(tag: String, message: String) = transport.printVerbose(tag, message)
@@ -22,6 +22,8 @@ internal object KSteamLogging {
                 )
             }
         }
+
+    val enableVerboseLogs get() = verbosity == KSteamLoggingVerbosity.Verbose
 }
 
 enum class KSteamLoggingVerbosity {
