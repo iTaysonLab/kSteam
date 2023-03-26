@@ -12,7 +12,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.Pics
 import bruhcollective.itaysonlab.ksteam.handlers.internal.CloudConfiguration
 
 class Pics (
-    private val configuration: PicsExtensionConfiguration
+    configuration: PicsExtensionConfiguration
 ): Extension {
     private val database = PicsVdfKvDatabase(configuration.database)
 

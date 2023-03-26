@@ -104,8 +104,9 @@ class Pics internal constructor(
             val changeNumber = pkgInfo.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = pkgInfo.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
-            database.parseBinaryVdf<PackageInfo>(buffer)?.also {
+            database.parseBinaryVdf<PackageInfo>(buffer)?.also { packageInfo ->
                 database.putPicsMetadata(PicsVdfKvDatabase.Keys.Packages, packageId, changeNumber, buffer)
+                database.packages.put(packageId, packageInfo)
             }?.appIds
         }.flatten()
 
@@ -119,8 +120,9 @@ class Pics internal constructor(
             val changeNumber = appInfo.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = appInfo.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
-            database.parseTextVdf<AppInfo>(buffer)?.also {
+            database.parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
                 database.putPicsMetadata(PicsVdfKvDatabase.Keys.Apps, appId, changeNumber, buffer)
+                database.apps.put(AppId(appId), appInfo)
             }
         }
     }
