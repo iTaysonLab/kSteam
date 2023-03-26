@@ -257,4 +257,8 @@ internal class SuspendableReadOnlyMap <Key, Value> (
         awaitRequiredInitialization()
         return internalList.values.asSequence()
     }
+
+    fun put(key: Key, value: Value) {
+        internalList[key] = value
+    }
 }

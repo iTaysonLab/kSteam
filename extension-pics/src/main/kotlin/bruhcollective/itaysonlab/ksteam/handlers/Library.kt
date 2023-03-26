@@ -224,7 +224,7 @@ class Library(
     }
 
     private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
-        _isLoadingLibrary.value = false
+        _isLoadingLibrary.value = true
 
         if (KSteamLogging.enableVerboseLogs) {
             KSteamLogging.logVerbose("Library:Cloud", "Printing cloud keys:")
@@ -285,7 +285,7 @@ class Library(
             _shelves.value = shelves
         }
 
-        _isLoadingLibrary.value = true
+        _isLoadingLibrary.value = false
     }
 
     /**
