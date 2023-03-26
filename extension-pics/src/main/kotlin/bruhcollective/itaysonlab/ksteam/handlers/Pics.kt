@@ -99,10 +99,10 @@ class Pics internal constructor(
     private suspend fun requestPicsMetadataForLicenses(requiresUpdate: List<CMsgClientLicenseList_License>) {
         _isPicsAvailable.value = PicsState.UpdatingPackages
 
-        val appIds = dispatchListProcessing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { pkgInfo ->
-            val packageId = pkgInfo.packageid ?: return@dispatchListProcessing null
-            val changeNumber = pkgInfo.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
-            val buffer = pkgInfo.buffer?.toByteArray() ?: return@dispatchListProcessing null
+        val appIds = dispatchListProcessing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { packageInfoProto ->
+            val packageId = packageInfoProto.packageid ?: return@dispatchListProcessing null
+            val changeNumber = packageInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
+            val buffer = packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
             database.parseBinaryVdf<PackageInfo>(buffer)?.also { packageInfo ->
                 database.putPicsMetadata(PicsVdfKvDatabase.Keys.Packages, packageId, changeNumber, buffer)
@@ -115,10 +115,10 @@ class Pics internal constructor(
 
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        dispatchListProcessing(loadAppsInfo(appIds).distinctBy { it.appid }) { appInfo ->
-            val appId = appInfo.appid ?: return@dispatchListProcessing null
-            val changeNumber = appInfo.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
-            val buffer = appInfo.buffer?.toByteArray() ?: return@dispatchListProcessing null
+        dispatchListProcessing(loadAppsInfo(appIds).distinctBy { it.appid }) { appInfoProto ->
+            val appId = appInfoProto.appid ?: return@dispatchListProcessing null
+            val changeNumber = appInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
+            val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
             database.parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
                 database.putPicsMetadata(PicsVdfKvDatabase.Keys.Apps, appId, changeNumber, buffer)

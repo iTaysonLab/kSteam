@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
  *
  * A library collection is a defined set of filters which is used to sort applications in user's Steam library.
  */
+@Immutable
 sealed class LibraryCollection (
     val id: String,
     val name: String,
@@ -48,6 +49,7 @@ sealed class LibraryCollection (
      *
      * You can add applications here.
      */
+    @Immutable
     class Simple(
         id: String,
         name: String,
@@ -60,6 +62,7 @@ sealed class LibraryCollection (
     /**
      * A dynamic collection which can specify a variety of filters.
      */
+    @Immutable
     class Dynamic(
         id: String,
         name: String,
