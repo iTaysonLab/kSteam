@@ -5,10 +5,10 @@ import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
-import bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import steam.webui.usernews.CUserNews_Event
 
+@Immutable
 sealed class ActivityFeedEntry (
     val date: Int,
     val steamId: SteamId,
