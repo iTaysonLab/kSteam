@@ -1,7 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.database.keyvalue
 
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
@@ -44,7 +43,7 @@ internal class PicsVdfKvDatabase (
 
     internal val apps = SuspendableReadOnlyMap(
         initFunc = {
-            parseKeyValueVdfs<AppInfo>(vdfText, Keys.Apps).associateBy { AppId(it.appId) }
+            parseKeyValueVdfs<AppInfo>(vdfText, Keys.Apps).associateBy { it.appId }
         }
     )
 
@@ -260,5 +259,9 @@ internal class SuspendableReadOnlyMap <Key, Value> (
 
     fun put(key: Key, value: Value) {
         internalList[key] = value
+    }
+
+    fun containsKey(key: Key): Boolean {
+        return internalList.containsKey(key)
     }
 }

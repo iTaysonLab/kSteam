@@ -27,7 +27,7 @@ class Pics internal constructor(
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
     suspend fun getAppIdsAsInfos(appIds: List<AppId>, limit: Int = 0): List<AppInfo> = appIds.mapNotNull { appId ->
-        database.apps.get(appId)
+        database.apps.get(appId.id)
     }
 
     private suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): List<AppInfo> = database.sortAppsByDynamicFilters(filters).toList()
@@ -40,14 +40,14 @@ class Pics internal constructor(
         AppId(app.appId) to AppSummary(AppId(app.appId), app.common.name)
     }
 
-    suspend fun getAppInfo(id: AppId): AppInfo? = database.apps.get(id)
+    suspend fun getAppInfo(id: AppId): AppInfo? = database.apps.get(id.id)
 
     // region Internal stuff
 
-    private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
+    // private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
 
     // TODO: filter based on owning package ids
-    internal var appIds: Sequence<AppId> = emptySequence()
+    internal var appIds: List<Int> = emptyList()
         private set
 
     /**
@@ -66,40 +66,38 @@ class Pics internal constructor(
 
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
         KSteamLogging.logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
-        processedLicenses += licenses
 
         database.packages.initialize()
         database.apps.initialize()
 
-        // TODO: get latest update number and compare changes
-
         val requiresUpdate = licenses.filter { sLicense ->
             if (sLicense.package_id != null && sLicense.change_number != null) {
-                database.packages.get(sLicense.package_id!!).let { dLicense ->
-                    dLicense == null || sLicense.change_number!! > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Packages, sLicense.package_id!!)
-                }
+                val packageId = sLicense.package_id ?: return@filter false
+                val changeNumber = sLicense.change_number ?: return@filter false
+
+                database.packages.containsKey(packageId).not() || changeNumber > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Packages, packageId)
             } else {
                 false
             }
         }
 
-        KSteamLogging.logVerbose("Pics:HandleLicenses", "Require update: ${requiresUpdate.size}")
-
-        if (requiresUpdate.isNotEmpty()) {
-            requestPicsMetadataForLicenses(requiresUpdate)
-        }
-
-        // TODO: check integrity and update if not all ids are present
-
-        appIds = database.apps.getKeys()
+        updatePackagesMetadata(requiresUpdate)
+        appIds = checkAppsIntegrity(licenses)
 
         _isPicsAvailable.value = PicsState.Ready
     }
 
-    private suspend fun requestPicsMetadataForLicenses(requiresUpdate: List<CMsgClientLicenseList_License>) {
+    private suspend fun updatePackagesMetadata(requiresUpdate: List<CMsgClientLicenseList_License>) {
         _isPicsAvailable.value = PicsState.UpdatingPackages
 
-        val appIds = dispatchListProcessing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { packageInfoProto ->
+        if (requiresUpdate.isEmpty()) {
+            KSteamLogging.logDebug("Pics:HandleLicenses", "Package metadata is in up-to-date state, no update required")
+            return
+        } else {
+            KSteamLogging.logDebug("Pics:HandleLicenses", "Requesting metadata for ${requiresUpdate.size} packages")
+        }
+
+        dispatchListProcessing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { packageInfoProto ->
             val packageId = packageInfoProto.packageid ?: return@dispatchListProcessing null
             val changeNumber = packageInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
@@ -108,23 +106,57 @@ class Pics internal constructor(
                 database.putPicsMetadata(PicsVdfKvDatabase.Keys.Packages, packageId, changeNumber, buffer)
                 database.packages.put(packageId, packageInfo)
             }?.appIds
-        }.flatten()
+        }
+    }
 
-        // We will just assume that any changed packages means that all games are updated
-        // However, we should use saved access tokens (and check appids in future)
+    // This is trying to mimic Steam client behavior
+    private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>): List<Int> {
+        // Get ids of app that we actually own
+        val appIds = licenses
+            .mapNotNull { database.packages.get(it.package_id ?: return@mapNotNull null)?.appIds }
+            .flatten()
+            .distinct()
+
+        // Firstly, we request app tokens to access metadata
+        val tokens = steamClient.execute(SteamPacket.newProto(
+            messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
+            adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
+            payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
+        )).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens
+
+        // Firstly, we load cloud app metadata
+        val metadata = loadAppsInfo(tokens, withoutContent = true)
+
+        // Secondly, we diff the change numbers
+        val requiresUpdate = metadata
+            .filter { sAppInfo ->
+                val appId = sAppInfo.appid ?: return@filter false
+                val changeNumber = sAppInfo.change_number ?: return@filter false
+
+                database.apps.containsKey(appId).not() || changeNumber > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Apps, appId)
+            }
+
+        if (requiresUpdate.isEmpty()) {
+            KSteamLogging.logDebug("Pics:HandleLicenses", "App metadata is in up-to-date state, no update required")
+            return appIds
+        } else {
+            KSteamLogging.logDebug("Pics:HandleLicenses", "Requesting metadata for ${requiresUpdate.size} apps")
+        }
 
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        dispatchListProcessing(loadAppsInfo(appIds).distinctBy { it.appid }) { appInfoProto ->
+        dispatchListProcessing(loadAppsInfo(tokens, withoutContent = false).distinctBy { it.appid }) { appInfoProto ->
             val appId = appInfoProto.appid ?: return@dispatchListProcessing null
             val changeNumber = appInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
             database.parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
                 database.putPicsMetadata(PicsVdfKvDatabase.Keys.Apps, appId, changeNumber, buffer)
-                database.apps.put(AppId(appId), appInfo)
+                database.apps.put(appId, appInfo)
             }
         }
+
+        return appIds
     }
 
     private suspend fun loadPackageInfo(licenses: List<CMsgClientLicenseList_License>): List<CMsgClientPICSProductInfoResponse_PackageInfo> {
@@ -143,16 +175,10 @@ class Pics internal constructor(
         )
     }
 
-    private suspend fun loadAppsInfo(appIds: List<Int>): List<CMsgClientPICSProductInfoResponse_AppInfo> {
-        val tokens = steamClient.execute(SteamPacket.newProto(
-            messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
-            adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
-            payload = CMsgClientPICSAccessTokenRequest(appids = appIds)
-        )).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens
-
+    private suspend fun loadAppsInfo(tokens: List<CMsgClientPICSAccessTokenResponse_AppToken>, withoutContent: Boolean = false): List<CMsgClientPICSProductInfoResponse_AppInfo> {
         return requestDataFromPics(
             request = CMsgClientPICSProductInfoRequest(
-                meta_data_only = false,
+                meta_data_only = withoutContent,
                 apps = tokens.mapNotNull {
                     CMsgClientPICSProductInfoRequest_AppInfo(
                         appid = it.appid ?: return@mapNotNull null,

@@ -175,7 +175,7 @@ class Library(
     /**
      * Checks if a current user is actually owning an [appId].
      */
-    fun ownsThisApp(appId: AppId) = steamClient.pics.appIds.contains(appId)
+    fun ownsThisApp(appId: AppId) = steamClient.pics.appIds.contains(appId.id)
 
     private suspend fun startCollector() {
         // Collect user play time
