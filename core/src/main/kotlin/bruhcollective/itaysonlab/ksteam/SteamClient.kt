@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam
 
-import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
+import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.HandlerMap
 import bruhcollective.itaysonlab.ksteam.handlers.Account
@@ -100,8 +100,10 @@ class SteamClient internal constructor(
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
             }.onEach { packet ->
+                KSteamLogging.logVerbose("SteamClient:EventFlow", "Dispatching packet to [${handlers.values.joinToString { it.javaClass.simpleName }}]")
                 handlers.values.forEach { handler ->
                     try {
+                        KSteamLogging.logVerbose("SteamClient:EventFlow", "- Dispatching packet to ${handler.javaClass.simpleName}")
                         if (packet.messageId == EMsg.k_EMsgServiceMethod) {
                             handler.onRpcEvent((packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(), packet)
                         } else {
