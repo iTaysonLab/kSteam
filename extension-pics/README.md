@@ -2,11 +2,15 @@ kSteam PICS extension
 ---
 Provides kSteam with an ability to request owned application metadata by using licenses/PICS system. Also provides a library collections manager API.
 
+**Requires installation of Core extension**
+
 ### Installation
 
 ```kotlin
 kSteam {
-    install(PICS) {
+    install(Core)
+    
+    install(Pics) {
         // A key-value database, you can use MMKV on Android JVM.
         database = YourKvDatabaseImplementation()
     }

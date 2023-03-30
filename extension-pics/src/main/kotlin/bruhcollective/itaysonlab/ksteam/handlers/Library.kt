@@ -10,6 +10,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
+import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.models.library.RemoteCollectionModel
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
@@ -48,6 +49,10 @@ class Library(
 
     private val _isLoadingPlayTimes = MutableStateFlow(false)
     val isLoadingPlayTimes = _isLoadingPlayTimes.asStateFlow()
+
+    private val _ownedGames = MutableStateFlow<List<OwnedGame>>(emptyList())
+    val ownedGames = _ownedGames.asStateFlow()
+
     //
 
     private val _userCollections = MutableStateFlow<Map<String, LibraryCollection>>(emptyMap())
@@ -296,12 +301,20 @@ class Library(
         steamClient.pics.isPicsAvailable.first { it == Pics.PicsState.Ready }
     }
 
+    private suspend fun requestOwnedGames() {
+        _ownedGames.value = steamClient.player.getOwnedGames()
+    }
+
     override suspend fun onEvent(packet: SteamPacket) {
         when (packet.messageId) {
             EMsg.k_EMsgClientLogOnResponse -> {
                 if (packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER).dataNullable?.eresult == EResult.OK.encoded) {
                     startCollector()
                 }
+            }
+
+            EMsg.k_EMsgClientLicenseList -> {
+                requestOwnedGames()
             }
 
             EMsg.k_EMsgClientLoggedOff, EMsg.k_EMsgClientLogOff -> {

@@ -45,8 +45,6 @@ class Pics internal constructor(
     // region Internal stuff
 
     // private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
-
-    // TODO: filter based on owning package ids
     internal var appIds: List<Int> = emptyList()
         private set
 
