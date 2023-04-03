@@ -1,5 +1,7 @@
 rootProject.name = "ksteam"
 
+includeBuild("build-extensions")
+
 include(":core")
 include(":cli-client")
 include(":kotlinx-vdf")
