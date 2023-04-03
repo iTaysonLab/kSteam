@@ -33,9 +33,9 @@ dependencies {
     // For @Stable / @Immutable annotations inside "UI" models
     compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
 
-    implementation("io.ktor:ktor-client-core:2.2.2")
+    implementation("io.ktor:ktor-client-core:2.2.4")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-    api("com.squareup.wire:wire-runtime:4.5.2")
+    api("com.squareup.wire:wire-runtime:4.5.3")
 
     testImplementation(kotlin("test"))
 }
