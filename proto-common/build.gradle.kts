@@ -1,6 +1,7 @@
 plugins {
-    kotlin("jvm")
+    kotlin("multiplatform")
     id("com.squareup.wire")
+    id("build-extensions")
     `maven-publish`
 }
 
@@ -13,10 +14,18 @@ wire {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r25"
+version = "r26"
 
 kotlin {
-    // jvmToolchain(8)
+    jvmToolchain(11)
+
+    jvm()
+
+    configureOrCreateNativePlatforms()
+
+    sourceSets {
+        val commonMain by getting
+    }
 }
 
 publishing {
@@ -26,7 +35,6 @@ publishing {
                 name.set("kSteam - Protobufs (Common)")
                 description.set("Common Protocol Buffers for kSteam")
                 url.set("https://github.com/itaysonlab/ksteam")
-                from(components.findByName("java"))
             }
         }
     }
