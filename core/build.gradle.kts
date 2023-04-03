@@ -1,19 +1,57 @@
 plugins {
-    kotlin("jvm")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("com.squareup.wire")
+    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r25"
+version = "r26"
 
 kotlin {
+    jvmToolchain(11)
 
-}
+    jvm {
 
-java {
-    withSourcesJar()
+    }
+
+    configureOrCreateNativePlatforms()
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(project(":kotlinx-vdf"))
+                api(project(":proto-common"))
+
+                implementation("io.ktor:ktor-serialization:2.2.4")
+                implementation("io.ktor:ktor-client-core:2.2.4")
+                implementation("io.ktor:ktor-client-websockets:2.2.4")
+                implementation("io.ktor:ktor-client-content-negotiation:2.2.4")
+                implementation("io.ktor:ktor-client-cio:2.2.4")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.4")
+
+                implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-Beta")
+
+                implementation("com.squareup.okio:okio:3.3.0")
+                api("com.squareup.wire:wire-runtime:4.5.3")
+            }
+        }
+
+        val jvmMain by getting {
+            dependencies {
+
+            }
+        }
+
+        createSourceSet("appleMain", parent = commonMain, children = appleTargets, dependencies = {
+
+        })
+    }
 }
 
 wire {
@@ -22,33 +60,11 @@ wire {
         rpcRole = "server"
         nameSuffix = ""
     }
-}
 
-dependencies {
-    implementation(project(":kotlinx-vdf"))
-
-    api(project(":proto-common"))
-    protoPath(project(":proto-common"))
-
-    // For @Stable / @Immutable annotations inside "UI" models
-    compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
-
-    implementation("io.ktor:ktor-serialization:2.2.2")
-    implementation("io.ktor:ktor-client-core:2.2.2")
-    implementation("io.ktor:ktor-client-websockets:2.2.2")
-    implementation("io.ktor:ktor-client-content-negotiation:2.2.2")
-    implementation("io.ktor:ktor-client-cio:2.2.2")
-    implementation("io.ktor:ktor-client-okhttp:2.2.2")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.2")
-
-    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-
-    implementation("com.squareup.okio:okio:3.2.0")
-    api("com.squareup.wire:wire-runtime:4.5.2")
-
-    testImplementation(kotlin("test"))
+    protoPath {
+        // srcProject(":proto-common")
+        srcDir("../proto-common/src/commonMain/proto/")
+    }
 }
 
 publishing {
