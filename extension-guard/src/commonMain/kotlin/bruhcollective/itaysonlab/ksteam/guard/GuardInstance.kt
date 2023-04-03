@@ -12,14 +12,10 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
+import okio.Buffer
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import okio.buffer
-import okio.sink
-import java.io.ByteArrayOutputStream
-import java.nio.ByteBuffer
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 import kotlin.experimental.and
 import kotlin.math.min
 
@@ -35,7 +31,6 @@ class GuardInstance(
     private val clockContext: GuardClockContext
 ) {
     companion object {
-        internal const val AlgorithmTotp = "HmacSHA1"
         internal const val AlgorithmConfirmation = "HmacSHA256"
 
         private const val Digits = 5
@@ -53,24 +48,21 @@ class GuardInstance(
     val revocationCode get() = configuration.revocation_code
     val username get() = configuration.account_name
 
-    private val secretKey = SecretKeySpec(configuration.shared_secret.toByteArray(), AlgorithmTotp)
-    private val secretKeyIdentity = SecretKeySpec(configuration.identity_secret.toByteArray(), AlgorithmTotp)
-
-    private val digest = Mac.getInstance(AlgorithmTotp).also { it.init(secretKey) }
-    private val digestIdentity = Mac.getInstance(AlgorithmTotp).also { it.init(secretKeyIdentity) }
+    private fun ByteString.sharedTotp() = hmacSha1(configuration.shared_secret)
+    private fun ByteString.identityTotp() = hmacSha1(configuration.identity_secret)
 
     private suspend fun generateCode(): CodeModel {
         val currentTime = clockContext.currentTimeMs()
 
         val progress = ((Period - ((currentTime) % Period)) / Period.toFloat()).coerceIn(0f..1f)
-        val localDigest = digest.doFinal(ByteBuffer.allocate(8).putLong(currentTime / Period).array())
+        val localDigest = Buffer().writeLong(currentTime / Period).readByteString().identityTotp().toByteArray()
 
         val offset = (localDigest.last() and 0xf).toInt()
         val code = localDigest.copyOfRange(offset, offset + 4)
         code[0] = (0x7f and code[0].toInt()).toByte()
 
         return CodeModel(Triple(buildString {
-            var remainingCodeInt = ByteBuffer.wrap(code).int
+            var remainingCodeInt = Buffer().write(code).readInt()
             repeat(Digits) {
                 append(Alphabet[remainingCodeInt % Alphabet.size])
                 remainingCodeInt /= 26
@@ -78,10 +70,8 @@ class GuardInstance(
         }, progress, currentTime))
     }
 
-    private fun digestSha256(msg: ByteArray): ByteArray {
-        val localKey = SecretKeySpec(configuration.shared_secret.toByteArray(), AlgorithmConfirmation)
-        val localDigest = Mac.getInstance(AlgorithmConfirmation).also { it.init(localKey) }
-        return localDigest.doFinal(msg)
+    private fun digestSha256(msg: ByteString): ByteString {
+        return msg.hmacSha256(configuration.shared_secret)
     }
 
     suspend fun generateCodeWithTime(): StaticAuthCode {

@@ -1,19 +1,40 @@
 plugins {
-    kotlin("jvm")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("com.squareup.wire")
+    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r25"
+version = "r26"
 
 kotlin {
+    jvmToolchain(11)
 
-}
+    jvm()
 
-java {
-    withSourcesJar()
+    configureOrCreateNativePlatforms()
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(project(":core"))
+                implementation(project(":proto-common"))
+
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+                implementation("io.ktor:ktor-client-core:2.2.4")
+
+                api("com.squareup.wire:wire-runtime:4.5.3")
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+    }
 }
 
 wire {
@@ -22,22 +43,10 @@ wire {
         rpcRole = "server"
         nameSuffix = ""
     }
-}
 
-dependencies {
-    implementation(project(":core"))
-
-    implementation(project(":proto-common"))
-    protoPath(project(":proto-common"))
-
-    // For @Stable / @Immutable annotations inside "UI" models
-    compileOnly("org.jetbrains.compose.runtime:runtime-desktop:1.3.0")
-
-    implementation("io.ktor:ktor-client-core:2.2.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-    api("com.squareup.wire:wire-runtime:4.5.3")
-
-    testImplementation(kotlin("test"))
+    protoPath {
+        srcProject(":proto-common")
+    }
 }
 
 publishing {

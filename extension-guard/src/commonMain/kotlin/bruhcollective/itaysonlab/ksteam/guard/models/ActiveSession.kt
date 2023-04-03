@@ -1,9 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-import androidx.compose.runtime.Immutable
 import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
-import bruhcollective.itaysonlab.ksteam.platform.ipString
+import bruhcollective.itaysonlab.ksteam.util.ipString
 import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
 import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent
 import steam.webui.authentication.EAuthSessionGuardType
@@ -13,7 +12,6 @@ import steam.webui.common.CMsgIPAddress
 /**
  * Represents a session which is approved to access Steam.
  */
-@Immutable
 data class ActiveSession internal constructor(
     val id: Long,
     val deviceName: String,
@@ -37,7 +35,6 @@ data class ActiveSession internal constructor(
      */
     fun protoBytes() = _proto.encodeByteString()
 
-    @Immutable
     data class UsageData internal constructor(
         val time: Int,
         val ip: CMsgIPAddress,

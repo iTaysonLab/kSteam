@@ -1,5 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
+import kotlin.jvm.JvmInline
+
 @JvmInline
 value class CodeModel(private val packed: Triple<String, Float, Long>) {
     companion object {
