@@ -2,6 +2,7 @@ package bruhcollective.itaysonlab.ksteam.models
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EAccountType
 import bruhcollective.itaysonlab.ksteam.models.enums.EUniverse
+import kotlin.jvm.JvmInline
 
 @JvmInline
 value class SteamId(val id: ULong) {

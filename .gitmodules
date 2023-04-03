@@ -1,0 +1,3 @@
+[submodule "core/src/nativeInterop/cinterop/libdeflate"]
+	path = core/src/nativeInterop/cinterop/libdeflate
+	url = https://github.com/ebiggers/libdeflate

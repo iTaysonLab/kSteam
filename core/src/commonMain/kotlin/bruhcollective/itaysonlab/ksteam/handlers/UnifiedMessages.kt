@@ -12,7 +12,7 @@ class UnifiedMessages internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     /**
-     * Create a WebAPI request using the Steam network transport
+     * Create a Unified Message request using the Steam network transport
      *
      * @param signed if this request should be done on current account scope
      * @param methodName formatted as "Service.Method", like "Authentication.BeginAuthSessionViaQR"

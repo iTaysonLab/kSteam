@@ -16,7 +16,20 @@ kotlin {
 
     }
 
-    configureOrCreateNativePlatforms()
+    configureOrCreateNativePlatforms(onEachTarget = {
+        compilations.getByName("main") {
+            cinterops {
+                val libdeflate by creating {
+                    defFile(project.file("src/nativeInterop/cinterop/libdeflate.def"))
+                    compilerOpts("-I/src/nativeInterop/cinterop")
+
+                    includeDirs {
+                        allHeaders("src/nativeInterop/cinterop")
+                    }
+                }
+            }
+        }
+    })
 
     sourceSets {
         val commonMain by getting {
@@ -48,7 +61,11 @@ kotlin {
             }
         }
 
-        createSourceSet("appleMain", parent = commonMain, children = appleTargets, dependencies = {
+        val nativeMain = createSourceSet("nativeMain", parent = commonMain, children = appleTargets, dependencies = {
+
+        })
+
+        createSourceSet("appleMain", parent = nativeMain, children = appleTargets, dependencies = {
 
         })
     }

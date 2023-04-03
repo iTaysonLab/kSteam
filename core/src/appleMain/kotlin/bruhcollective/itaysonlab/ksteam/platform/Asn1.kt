@@ -4,6 +4,7 @@ import bruhcollective.itaysonlab.ksteam.util.HexNumbers
 import okio.Buffer
 import okio.BufferedSink
 
+// Very simple ASN.1 writer
 value class Asn1Writer (private val sink: BufferedSink) {
     fun sequence(scope: Asn1Writer.() -> Unit) {
         createAsn1(scope).apply {

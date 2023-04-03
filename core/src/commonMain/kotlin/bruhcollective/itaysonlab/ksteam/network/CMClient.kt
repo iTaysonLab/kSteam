@@ -8,7 +8,8 @@ import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.platform.CreateSupervisedCoroutineScope
+import bruhcollective.itaysonlab.ksteam.platform.readGzippedContentAsBuffer
+import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
@@ -16,9 +17,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import okio.Buffer
-import okio.Source
 import okio.buffer
-import okio.gzip
 import steam.messages.clientserver_login.CMsgClientHello
 import steam.webui.common.CMsgClientHeartBeat
 import steam.webui.common.CMsgClientLogonResponse
@@ -208,7 +207,7 @@ internal class CMClient(
             require(payload.message_body != null) { "Payload body is null" }
 
             val payloadBuffer = if ((payload.size_unzipped ?: 0) > 0) {
-                (Buffer().write(payload.message_body ?: return) as Source).gzip().buffer()
+                Buffer().write(payload.message_body ?: return).readGzippedContentAsBuffer(payload.size_unzipped).buffer()
             } else {
                 Buffer().write(payload.message_body ?: return)
             }

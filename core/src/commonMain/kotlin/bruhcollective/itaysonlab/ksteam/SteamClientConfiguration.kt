@@ -78,9 +78,18 @@ class SteamClientConfiguration(
          * Uses current machine's private IP.
          *
          * This is the recommended approach which is used in the official client and other Steam Network libraries.
-         * Note that this method can cause collisions
+         * Note that this method can cause collisions.
+         *
+         * On Apple platforms, it will fall back to [Generate] because current API usage can lead to App Store rules violation.
          */
         UsePrivateIp,
+
+        /**
+         * Generates a random integer and passes this as an IP.
+         *
+         * Not recommended because there is no guarantee Steam would accept a session with "faked" IP.
+         */
+        Generate,
 
         /**
          * Do not send any private IP.

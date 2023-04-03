@@ -7,13 +7,17 @@ import kotlinx.serialization.json.okio.decodeFromBufferedSource
 import kotlinx.serialization.json.okio.encodeToBufferedSink
 import kotlinx.serialization.serializer
 import okio.Path
-import okio.Path.Companion.toPath
+import kotlin.reflect.KProperty
 
 class FileProxiedObject <T> (
     private val fileRef: Path,
     private val serializer: KSerializer<T>,
     private val default: T
 ) {
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
+
     private val okioFs = provideOkioFilesystem()
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -24,7 +28,7 @@ class FileProxiedObject <T> (
             default
         } else {
             fs.read(fileRef) {
-                Json.decodeFromBufferedSource(serializer,this)
+                json.decodeFromBufferedSource(serializer,this)
             }
         }
     }
@@ -41,10 +45,18 @@ class FileProxiedObject <T> (
             createDirectories(fileRef)
 
             write(fileRef) {
-                Json.encodeToBufferedSink(serializer, data, this)
+                json.encodeToBufferedSink(serializer, data, this)
             }
         }
     }
 }
 
-inline fun <reified T> fileProxiedObject(fileName: String, default: T) = FileProxiedObject<T>(fileRef = FileProxiedObject.FPO_CONFIG_ROOT / fileName.toPath(), serializer = serializer(), default = default)
+inline fun <reified T> fileProxiedObject(path: Path, default: T) = FileProxiedObject<T>(fileRef = path, serializer = serializer(), default = default)
+
+inline operator fun <T> FileProxiedObject<T>.getValue(thisObj: Any?, property: KProperty<*>): T {
+    return value
+}
+
+inline operator fun <T> FileProxiedObject<T>.setValue(thisObj: Any?, property: KProperty<*>, value: T) {
+    this.value = value
+}

@@ -12,6 +12,8 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.*
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
+import bruhcollective.itaysonlab.ksteam.util.convertToCmIpV4
+import bruhcollective.itaysonlab.ksteam.util.generateIpV4Int
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,7 +24,6 @@ import okio.ByteString.Companion.toByteString
 import steam.webui.authentication.*
 import steam.webui.common.CMsgClientLogon
 import steam.webui.common.CMsgClientLogonResponse
-import steam.webui.common.CMsgIPAddress
 import kotlin.jvm.JvmInline
 import kotlin.random.Random
 
@@ -31,6 +32,7 @@ class Account internal constructor(
 ) : BaseHandler {
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
     private val deviceInfo get() = steamClient.config.deviceInfo
+    private val globalConfiguration get() = steamClient.storage.globalConfiguration
 
     private var pollInfo: PollInfo? = null
     private var authStateWatcher: Job? = null
@@ -204,10 +206,10 @@ class Account internal constructor(
         steamId: SteamId? = null
     ): Boolean {
         val accountToSignIn = if (steamId != null) {
-            steamClient.storage.globalConfiguration.availableAccounts[steamId.id]
+            globalConfiguration.availableAccounts[steamId.id]
         } else {
-            steamClient.storage.globalConfiguration.availableAccounts[steamClient.storage.globalConfiguration.defaultAccount]
-        } ?: steamClient.storage.globalConfiguration.availableAccounts.values.firstOrNull()
+            globalConfiguration.availableAccounts[globalConfiguration.defaultAccount]
+        } ?: globalConfiguration.availableAccounts.values.firstOrNull()
 
         return if (accountToSignIn != null) {
             sendClientLogon(steamId = SteamId(accountToSignIn.steamId), token = accountToSignIn.refreshToken)
@@ -225,8 +227,8 @@ class Account internal constructor(
     }
 
     private suspend fun sendClientLogon(token: String, steamId: SteamId) {
-        if (steamClient.storage.globalConfiguration.machineId.isEmpty()) {
-            steamClient.storage.globalConfiguration = steamClient.storage.globalConfiguration.copy(
+        if (globalConfiguration.machineId.isEmpty()) {
+            steamClient.storage.globalConfiguration = globalConfiguration.copy(
                 machineId = Random.nextBytes(64).toByteString().hex()
             )
         }
@@ -235,7 +237,11 @@ class Account internal constructor(
 
         val currentIp = when (steamClient.config.authPrivateIpLogic) {
             SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp -> {
-                CMsgIPAddress(v4 = (getIpv4Address() xor 0xBAADF00D_u).toInt())
+                convertToCmIpV4(getIpv4Address())
+            }
+
+            SteamClientConfiguration.AuthPrivateIpLogic.Generate -> {
+                convertToCmIpV4(generateIpV4Int())
             }
 
             SteamClientConfiguration.AuthPrivateIpLogic.None -> null
@@ -249,7 +255,7 @@ class Account internal constructor(
                 client_os_type = steamClient.config.deviceInfo.osType.encoded,
                 should_remember_password = true,
                 qos_level = 2,
-                machine_id = steamClient.storage.globalConfiguration.machineId.decodeHex(),
+                machine_id = globalConfiguration.machineId.decodeHex(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
                 obfuscated_private_ip = currentIp,
                 deprecated_obfustucated_private_ip = currentIp?.v4,
@@ -280,7 +286,7 @@ class Account internal constructor(
     suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
 
     fun hasSavedDataForAtLeastOneAccount(): Boolean {
-        return steamClient.storage.globalConfiguration.availableAccounts.isEmpty().not()
+        return globalConfiguration.availableAccounts.isEmpty().not()
     }
 
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
@@ -367,8 +373,8 @@ class Account internal constructor(
         }
     }
 
-    fun getSavedAccounts() = steamClient.storage.globalConfiguration.availableAccounts
-    fun getDefaultAccount() = getSavedAccounts()[steamClient.storage.globalConfiguration.defaultAccount]
+    fun getSavedAccounts() = globalConfiguration.availableAccounts
+    fun getDefaultAccount() = getSavedAccounts()[globalConfiguration.defaultAccount]
     fun getCurrentAccount() = getSavedAccounts()[steamClient.currentSessionSteamId.id]
     fun buildSteamLoginSecureCookie() = getCurrentAccount()?.let { "${it.steamId}||${it.accessToken}" }.orEmpty()
 

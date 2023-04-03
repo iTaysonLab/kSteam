@@ -8,9 +8,13 @@ import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
-import okio.*
+import okio.ByteString
+import okio.Path
+import okio.use
 import steam.webui.common.CMsgClientUpdateMachineAuth
 import steam.webui.common.CMsgClientUpdateMachineAuthResponse
 
@@ -19,33 +23,33 @@ internal class Sentry(
 ) : BaseHandler {
     private fun sentryFile(steamId: SteamId, fileName: String) = steamClient.storage.storageFor(steamId) / fileName
 
-    private fun sentryFile(steamId: SteamId): File? {
+    private fun sentryFile(steamId: SteamId): Path? {
         return steamClient.storage.globalConfiguration.availableAccounts[steamId.id]?.sentryFileName?.let {
             if (it.isEmpty()) return@let null
             sentryFile(steamId, it)
-        }?.takeIf(File::exists)
+        }
     }
 
     fun sentryHash(steamId: SteamId): ByteString? {
-        return sentryFile(steamId)?.source()?.buffer()?.use {
-            it.readByteString().sha1()
+        return provideOkioFilesystem().read(sentryFile(steamId) ?: return null) {
+            readByteString().sha1()
         }
     }
 
     private suspend fun writeSentryFile(packetHeader: SteamPacketHeader, data: CMsgClientUpdateMachineAuth) =
         withContext(Dispatchers.IO) {
+            val fs = provideOkioFilesystem()
+
             val currentId = steamClient.currentSessionSteamId
             val filename = data.filename.let { if (it.isNullOrEmpty()) "sentry" else it }
+            val filepath = sentryFile(currentId, filename)
 
             steamClient.storage.modifyAccount(currentId) {
                 copy(sentryFileName = filename)
             }
 
-            sentryFile(currentId, filename).apply {
-                if (exists()) delete()
-                createNewFile()
-            }.sink().buffer().use { sink ->
-                sink.write(
+            fs.write(filepath) {
+                write(
                     byteString = data.bytes ?: ByteString.EMPTY,
                     byteCount = data.cubtowrite ?: data.bytes?.size ?: 0,
                     offset = data.offset ?: 0
@@ -58,7 +62,9 @@ internal class Sentry(
                 CMsgClientUpdateMachineAuthResponse(
                     filename = filename,
                     eresult = EResult.OK.encoded,
-                    filesize = sentryFile(currentId)?.length()?.toInt(),
+                    filesize = fs.openReadOnly(filepath).use {
+                        it.size().toInt()
+                    },
                     sha_file = sentryHash(currentId),
                     offset = data.offset,
                     cubwrote = data.cubtowrite,

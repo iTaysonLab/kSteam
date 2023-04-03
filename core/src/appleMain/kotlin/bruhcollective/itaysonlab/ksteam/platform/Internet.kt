@@ -1,9 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.platform
 
-import kotlin.random.Random
-import kotlin.random.nextUInt
+import bruhcollective.itaysonlab.ksteam.util.generateIpV4Int
 
 actual fun getIpv4Address(): UInt {
-    // AppStore safe way to generate a integer.... just generate it!
-    return Random.nextUInt()
+    // App Store's safest way to get an IP.... just generate it!
+    return generateIpV4Int()
 }

@@ -4,38 +4,51 @@ import org.gradle.kotlin.dsl.get
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
+@OptIn(ExperimentalStdlibApi::class)
 fun KotlinMultiplatformExtension.configureOrCreateNativePlatforms(
     includeApple: Boolean = true,
     includeUnix: Boolean = false,
-    includeMingw: Boolean = false
+    includeMingw: Boolean = false,
+    onEachTarget: KotlinNativeTarget.() -> Unit = {}
 ) {
-    if (includeApple) {
-        // iOS
-        iosX64()
-        iosArm64()
-        iosSimulatorArm64()
-        // tvOS
-        tvosX64()
-        tvosArm64()
-        tvosSimulatorArm64()
-        // watchOS
-        // watchosArm32()
-        // watchosArm64()
-        // watchosX64()
-        // watchosSimulatorArm64()
-        // macOS (should I separate it to "desktop"?)
-        macosX64()
-        macosArm64()
-    }
+    buildList<KotlinNativeTarget> {
+        if (includeApple) {
+            addAll(
+                listOf(
+                    // iOS
+                    iosX64(),
+                    iosArm64(),
+                    iosSimulatorArm64(),
+                    // tvOS
+                    tvosX64(),
+                    tvosArm64(),
+                    tvosSimulatorArm64(),
+                    // watchOS
+                    // watchosArm32()
+                    // watchosArm64()
+                    // watchosX64()
+                    // watchosSimulatorArm64()
+                    // macOS (should I separate it to "desktop"?)
+                    macosX64(),
+                    macosArm64(),
+                )
+            )
+        }
 
-    if (includeUnix) {
-        linuxX64()
-    }
+        if (includeUnix) {
+            add(
+                linuxX64()
+            )
+        }
 
-    if (includeMingw) {
-        mingwX64()
-    }
+        if (includeMingw) {
+            add(
+                mingwX64()
+            )
+        }
+    }.forEach(onEachTarget)
 }
 
 val appleTargets = listOf(
@@ -58,7 +71,8 @@ val mingwTargets = listOf(
 )
 
 val linuxTargets = listOf(
-    "linuxX64"
+    "linuxX64",
+    "linuxArm64",
 )
 
 val nativeTargets = appleTargets + linuxTargets + mingwTargets
