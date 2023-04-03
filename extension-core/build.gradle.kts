@@ -43,7 +43,6 @@ wire {
     }
 
     protoPath {
-        // srcJar("bruhcollective.itaysonlab.ksteam:proto-common:r")
         srcProject(":proto-common")
     }
 }

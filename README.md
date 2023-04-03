@@ -84,7 +84,6 @@ val animatedAvatarUrl = kSteamDevEquipment.animatedAvatar?.movieMp4?.url // - mo
 ### Features so far
 - Access to the Steam network by using WebSocket approach
 - Stable and async-first architecture with proper documentation
-- Jetpack Compose friendly (using @Stable/@Immutable annotations so the compiler will recognize them - you can safely use most of kSteam classes inside Composables)
 - Extension support which can greatly decrease final application size, while still readable and comfortable to use
 - Providing Flows and suspending API for reactive UIs without any callback hell
 
