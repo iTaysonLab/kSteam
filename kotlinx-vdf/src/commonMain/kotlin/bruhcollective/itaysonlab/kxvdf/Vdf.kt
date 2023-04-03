@@ -32,11 +32,11 @@ sealed class Vdf (
     override fun <T> encodeToString(serializer: SerializationStrategy<T>, value: T): String {
         return Buffer().also { buffer ->
             VdfEncoder(this, VdfWriter(buffer)).encodeSerializableValue(serializer, value)
-        }.readString(Charsets.UTF_8)
+        }.readUtf8()
     }
 
     override fun <T> decodeFromString(deserializer: DeserializationStrategy<T>, string: String): T {
-        return Buffer().apply { writeString(string, Charsets.UTF_8) }.let { source ->
+        return Buffer().apply { writeUtf8(string) }.let { source ->
             VdfDecoder(this, if (binaryFormat) {
                 VdfReader.BinaryImpl(readFirstInt, source)
             } else {

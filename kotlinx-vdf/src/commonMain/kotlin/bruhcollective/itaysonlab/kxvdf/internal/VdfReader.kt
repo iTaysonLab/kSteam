@@ -2,6 +2,7 @@ package bruhcollective.itaysonlab.kxvdf.internal
 
 import bruhcollective.itaysonlab.kxvdf.SkipperRootNode
 import bruhcollective.itaysonlab.kxvdf.Vdf
+import de.cketti.codepoints.appendCodePoint
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialDescriptor
@@ -192,8 +193,12 @@ internal sealed class VdfReader (internal val source: BufferedSource) {
         private var inNodePair = false
         private var hierarchy = ArrayDeque<String>()
 
+        private fun isWhitespace(codePoint: Int): Boolean {
+            return (codePoint in 0x1c..0x20) || (codePoint in 0x09..0x0d)
+        }
+
         private fun consumeWhitespace() {
-            while (Character.isWhitespace(peekUtf8CodePoint())) {
+            while (isWhitespace(peekUtf8CodePoint())) {
                 source.readUtf8CodePoint()
             }
         }

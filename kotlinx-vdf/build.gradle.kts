@@ -1,42 +1,48 @@
 plugins {
-    kotlin("jvm")
+    kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab"
-version = "r25"
+version = "r26"
 
 repositories {
     mavenCentral()
 }
 
 kotlin {
+    jvmToolchain(11)
 
-}
+    jvm()
 
-java {
-    withSourcesJar()
-}
+    configureOrCreateNativePlatforms(includeApple = true, includeUnix = true, includeMingw = true)
 
-dependencies {
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.0-RC")
-    implementation("com.squareup.okio:okio:3.2.0")
-    testImplementation(kotlin("test"))
-}
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.0-RC")
+                implementation("com.squareup.okio:okio:3.2.0")
+                implementation("de.cketti.unicode:kotlin-codepoints-deluxe:0.6.1")
+            }
+        }
 
-tasks.test {
-    useJUnitPlatform()
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+    }
 }
 
 publishing {
     publications {
         create<MavenPublication>("maven") {
             pom {
-                name.set("kotlinx VDF")
-                description.set("KotlinX Serialization serializer support for VDF (Valve Data Format)")
+                name.set("VDF support for kotlinx.serialization")
+                description.set("KotlinX Serialization (de)serializer for the Valve Data Format")
                 url.set("https://github.com/itaysonlab/ksteam")
-                from(components.findByName("java"))
             }
         }
     }
