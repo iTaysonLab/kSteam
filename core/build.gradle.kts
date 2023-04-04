@@ -34,7 +34,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(project(":kotlinx-vdf"))
+                api(project(":kotlinx-vdf"))
                 api(project(":proto-common"))
 
                 implementation("io.ktor:ktor-serialization:2.2.4")
@@ -79,7 +79,6 @@ wire {
     }
 
     protoPath {
-        // srcProject(":proto-common")
         srcDir("../proto-common/src/commonMain/proto/")
     }
 }

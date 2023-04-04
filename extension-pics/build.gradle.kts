@@ -19,10 +19,10 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation(project(":core"))
-                implementation(project(":proto-common"))
-                implementation(project(":extension-core"))
-                implementation(project(":kotlinx-vdf"))
+                api(project(":core"))
+                api(project(":proto-common"))
+                api(project(":extension-core"))
+                api(project(":kotlinx-vdf"))
 
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
