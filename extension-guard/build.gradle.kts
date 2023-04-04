@@ -49,7 +49,7 @@ wire {
     }
 
     protoPath {
-        srcProject(":proto-common")
+        srcDir("../proto-common/src/commonMain/proto/")
     }
 }
 
