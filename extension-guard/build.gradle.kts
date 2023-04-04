@@ -60,7 +60,20 @@ publishing {
                 name.set("kSteam - Guard Extension")
                 description.set("Steam Guard extension for kSteam")
                 url.set("https://github.com/itaysonlab/ksteam")
-                from(components.findByName("java"))
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://www.opensource.org/licenses/mit-license.php")
+                    }
+                }
+
+                developers {
+                    developer {
+                        name.set("iTaysonLab")
+                        url.set("https://github.com/itaysonlab/")
+                    }
+                }
             }
         }
     }

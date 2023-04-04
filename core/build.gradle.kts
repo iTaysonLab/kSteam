@@ -88,9 +88,22 @@ publishing {
         create<MavenPublication>("maven") {
             pom {
                 name.set("kSteam - Core")
-                description.set("A Steam Network client library with a slice of Kotlin.")
+                description.set("A Kotlin library to access the Steam network")
                 url.set("https://github.com/itaysonlab/ksteam")
-                from(components.findByName("java"))
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://www.opensource.org/licenses/mit-license.php")
+                    }
+                }
+
+                developers {
+                    developer {
+                        name.set("iTaysonLab")
+                        url.set("https://github.com/itaysonlab/")
+                    }
+                }
             }
         }
     }

@@ -54,8 +54,22 @@ publishing {
         create<MavenPublication>("maven") {
             pom {
                 name.set("kSteam - Core Extension")
-                description.set("Core extension for kSteam - friends, personas...")
+                description.set("Core extension for kSteam")
                 url.set("https://github.com/itaysonlab/ksteam")
+
+                licenses {
+                    license {
+                        name.set("MIT License")
+                        url.set("https://www.opensource.org/licenses/mit-license.php")
+                    }
+                }
+
+                developers {
+                    developer {
+                        name.set("iTaysonLab")
+                        url.set("https://github.com/itaysonlab/")
+                    }
+                }
             }
         }
     }
