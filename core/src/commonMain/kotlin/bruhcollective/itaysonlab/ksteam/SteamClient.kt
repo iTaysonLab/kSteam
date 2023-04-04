@@ -26,6 +26,11 @@ import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.*
 import kotlin.reflect.KClass
 
+/**
+ * The actual kSteam main client which processes requests to/from Steam.
+ *
+ * For creating a kSteam instance, use the [kSteam] function instead, which provides more user-friendly configuration.
+ */
 class SteamClient internal constructor(
     internal val config: SteamClientConfiguration,
     injectedExtensions: List<Extension>
@@ -116,6 +121,11 @@ class SteamClient internal constructor(
             }.launchIn(eventsScope)
     }
 
+    /**
+     * Return a [BaseHandler] registered on the [SteamClient] initialization.
+     *
+     * A [BaseHandler] is an abstract which provides separated Steam controls.
+     */
     inline fun <reified T : BaseHandler> getHandler(): T {
         val handler = handlers[T::class]
             ?: throw IllegalStateException("No typed handler registered (trying to get: ${T::class.simpleName}).")
@@ -123,6 +133,12 @@ class SteamClient internal constructor(
             ?: throw IllegalStateException("Typed handler registered with incorrect mapping (trying to get: ${T::class.simpleName}, got: ${handler::class.simpleName}).")
     }
 
+    /**
+     * A [getHandler] alternative to find a plugin.
+     *
+     * A plugin in kSteam is a "abstract" plug-in [BaseHandler] that can be used in the core module/extensions without the need to depend on a specific implementation.
+     * For example, a "core" module might use a metadata plugin to prefer cached for saving some bandwidth.
+     */
     inline fun <reified T> getImplementingHandlerOrNull(): T? {
         return handlers.values.filterIsInstance<T>().firstOrNull()
     }
@@ -146,7 +162,24 @@ class SteamClient internal constructor(
         }
     }
 
+    /**
+     * Execute a [SteamPacket] and await for a response.
+     *
+     * Most developers won't need to use this method directly if there is a matching [BaseHandler] for the task.
+     */
     suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
+
+    /**
+     * Execute a [SteamPacket] and subscribe for a set of responses. It is the caller responsibility to close the [Flow].
+     *
+     * Most developers won't need to use this method directly if there is a matching [BaseHandler] for the task.
+     */
     suspend fun subscribe(packet: SteamPacket) = cmClient.subscribe(packet)
+
+    /**
+     * Execute a [SteamPacket] without waiting for a response.
+     *
+     * Most developers won't need to use this method directly if there is a matching [BaseHandler] for the task.
+     */
     suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)
 }

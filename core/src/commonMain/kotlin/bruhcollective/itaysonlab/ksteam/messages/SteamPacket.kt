@@ -5,14 +5,21 @@ import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
+import okio.BufferedSource
+import okio.Sink
+import okio.buffer
 
 /**
- * Structure:
- * [kMsg*][  header ][ message ]
- * - int --  bytes  --  bytes  -
+ * Definition of a packet going through Steam Network.
  *
- * packet can be both proto/structure-based
- * proto has a protobuf header + message glued
+ * **Packet structure:**
+ * < Message ID > - < Header > - < Payload >
+ *
+ * There are two types of packets:
+ * - **protobuf**, using a protobuf header and glued protobuf content
+ * - **binary**, using a binary header and content
+ *
+ * Type depends on chosen EMsg (protobuf ones uses a special mask on their ID)
  */
 class SteamPacket private constructor(
     val messageId: EMsg,
@@ -30,10 +37,17 @@ class SteamPacket private constructor(
         // Usage: Int and ProtobufClearMask
         private const val ProtobufClearMask = ProtobufMask.inv()
 
-        fun canBeExecutedWithoutAuth(packet: SteamPacket): Boolean {
+        internal fun canBeExecutedWithoutAuth(packet: SteamPacket): Boolean {
             return packet.messageId in anonymousIds
         }
 
+        /**
+         * Parses a [ByteArray] into a [SteamPacket].
+         *
+         * The byte array should be a direct copy of traffic, with the message ID and header glued.
+         *
+         * @param rawPacket raw packet bytes
+         */
         fun ofNetworkPacket(rawPacket: ByteArray): SteamPacket {
             require(rawPacket.size >= 4) { "Packet is not valid (too small)" }
 
@@ -63,7 +77,16 @@ class SteamPacket private constructor(
             )
         }
 
+        /**
+         * Creates a new [SteamPacket] with a protobuf content
+         *
+         * @param messageId message ID of the packet
+         * @param adapter wire protobuf adapter for the payload
+         * @param payload a payload - object which will be encoded in the packet
+         */
         fun <T> newProto(messageId: EMsg, adapter: ProtoAdapter<T>, payload: T): SteamPacket {
+            require((messageId.encoded and ProtobufMask) != 0) { "Provided messageId is not applicable to protobuf packets" }
+
             return SteamPacket(
                 messageId = messageId,
                 header = SteamPacketHeader.Protobuf(),
@@ -72,12 +95,31 @@ class SteamPacket private constructor(
         }
     }
 
+    /**
+     * Changes [SteamPacketHeader] of a specific [SteamPacket].
+     *
+     * For example, you can explicitly set the [bruhcollective.itaysonlab.ksteam.models.SteamId] of a specific packet.
+     */
     fun withHeader(func: SteamPacketHeader.() -> Unit): SteamPacket {
         header.apply(func)
         return this
     }
 
+    /**
+     * Encodes the content of this packet into a [ByteArray].
+     *
+     * @return [ByteArray] with the content
+     */
     fun encode(): ByteArray = Buffer().apply {
+        writeTo(this)
+    }.readByteArray()
+
+    /**
+     * Writes the content of this packet into a [Sink]
+     *
+     * @param sink okio sink to write into
+     */
+    fun writeTo(sink: Sink) = sink.buffer().apply {
         writeIntLe(messageId.encoded.let {
             if (header is SteamPacketHeader.Protobuf) {
                 it or ProtobufMask
@@ -88,8 +130,13 @@ class SteamPacket private constructor(
 
         header.write(this)
         write(payload)
-    }.readByteArray()
+    }
 
+    /**
+     * Decodes the protobuf packet content into a object.
+     *
+     * @param adapter wire protobuf adapter for the content
+     */
     fun <T> getProtoPayload(adapter: ProtoAdapter<T>): Result<T> {
         require(header is SteamPacketHeader.Protobuf) { "Message is not protobuf, but proto decoding requested" }
 
@@ -102,7 +149,7 @@ class SteamPacket private constructor(
         )
     }
 
-    fun getBinaryPayload(): Buffer {
+    fun getBinaryPayload(): BufferedSource {
         require(header is SteamPacketHeader.Binary) { "Message is not binary, but binary decoding requested" }
         return payload.buffer()
     }

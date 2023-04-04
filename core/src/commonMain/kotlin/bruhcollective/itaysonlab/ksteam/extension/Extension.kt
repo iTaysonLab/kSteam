@@ -6,6 +6,8 @@ import kotlin.reflect.KClass
 
 /**
  * Describes a kSteam extension.
+ *
+ * Extension is a resolvable-at-initialization class which supplies kSteam with [BaseHandler]'s.
  */
 interface Extension {
     /**
@@ -14,10 +16,17 @@ interface Extension {
      * This should be thought as a "finalize" function.
      */
     fun createHandlers(steamClient: SteamClient): HandlerMap
-
 }
 
+/**
+ * Describes a kSteam extension factory.
+ *
+ * Your extension's companion object should implement this interface in order to be available through [bruhcollective.itaysonlab.ksteam.KSteamConfiguration.install].
+ */
 interface ExtensionFactory <Configuration, Extension> {
+    /**
+     * A "build" function which takes your "Configuration" and returns an Extension.
+     */
     fun create(configuration: Configuration.() -> Unit): Extension
 }
 

@@ -1,12 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.messages
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import okio.Buffer
+import okio.BufferedSink
+import okio.BufferedSource
 import steam.webui.common.CMsgProtoBufHeader
 
 sealed class SteamPacketHeader private constructor() {
-    abstract fun read(buffer: Buffer)
-    abstract fun write(buffer: Buffer)
+    abstract fun read(buffer: BufferedSource)
+    abstract fun write(buffer: BufferedSink)
 
     abstract var targetJobId: Long
     abstract var sourceJobId: Long
@@ -25,7 +26,7 @@ sealed class SteamPacketHeader private constructor() {
         override var steamId: ULong = 0u
         override var sessionId: Int = 0
 
-        override fun read(buffer: Buffer) {
+        override fun read(buffer: BufferedSource) {
             headerSize = buffer.readByte()
             headerVersion = buffer.readIntLe()
             targetJobId = buffer.readLongLe()
@@ -35,7 +36,7 @@ sealed class SteamPacketHeader private constructor() {
             sessionId = buffer.readIntLe()
         }
 
-        override fun write(buffer: Buffer) {
+        override fun write(buffer: BufferedSink) {
             buffer.writeByte(headerSize.toInt())
             buffer.writeIntLe(headerVersion)
             buffer.writeLongLe(targetJobId)
@@ -85,13 +86,13 @@ sealed class SteamPacketHeader private constructor() {
 
         val result: EResult get() = EResult.byEncoded(protoHeader.eresult ?: EResult.Fail.encoded)
 
-        override fun read(buffer: Buffer) {
+        override fun read(buffer: BufferedSource) {
             val headerLength = buffer.readIntLe().toLong()
             val headerByteArray = buffer.readByteArray(headerLength)
             protoHeader = CMsgProtoBufHeader.ADAPTER.decode(headerByteArray)
         }
 
-        override fun write(buffer: Buffer) {
+        override fun write(buffer: BufferedSink) {
             CMsgProtoBufHeader.ADAPTER.encode(protoHeader).let { protoData ->
                 buffer.writeIntLe(protoData.size)
                 buffer.write(protoData)

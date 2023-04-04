@@ -13,8 +13,13 @@ import okio.Path
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPEALIAS, AnnotationTarget.TYPE, AnnotationTarget.FUNCTION)
-annotation class KsteamDsl
+internal annotation class KsteamDsl
 
+/**
+ * A starting configuration for the [SteamClient].
+ *
+ * To modify values, use the [kSteam] method.
+ */
 @KsteamDsl
 class KSteamConfiguration {
     private val extensions = mutableListOf<Extension>()
@@ -37,7 +42,7 @@ class KSteamConfiguration {
      * 
      * [KSteamLoggingVerbosity.Verbose] can output sensitive info to a chosen [LoggingTransport]. A warning will be printed if it is selected.
      *
-     * Defaults to [KSteamLoggingVerbosity.Warning], which will cover Error and Warning messages
+     * Defaults to [KSteamLoggingVerbosity.Warning], which will cover Error and Warning messages.
      */
     var loggingVerbosity: KSteamLoggingVerbosity = KSteamLoggingVerbosity.Warning
 
@@ -64,9 +69,8 @@ class KSteamConfiguration {
 
     /**
      * Specifies a language used in some Steam Web API requests.
-     *
-     * TODO: add a way to dynamically resolve this
      */
+    // TODO: add a way to dynamically resolve this
     var language: ELanguage = ELanguage.English
 
     /**
@@ -77,13 +81,25 @@ class KSteamConfiguration {
     var authPrivateIpLogic: SteamClientConfiguration.AuthPrivateIpLogic =
         SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp
 
+    /**
+     * Installs an [bruhcollective.itaysonlab.ksteam.extension.Extension] into the client.
+     *
+     * @param factory an extension's factory to be added
+     * @param configure a lambda to provide configuration (sometimes not required)
+     */
+    @KsteamDsl
     fun <Configuration, Extension: bruhcollective.itaysonlab.ksteam.extension.Extension> install(
         factory: ExtensionFactory<Configuration, Extension>,
-        configure: Configuration.() -> Unit = {}
+        configure: @KsteamDsl Configuration.() -> Unit = {}
     ) {
         extensions += factory.create(configure)
     }
 
+    /**
+     * Builds a [SteamClient] with the chosen configuration.
+     *
+     * After building, call [SteamClient.start] to send/receive packets.
+     */
     fun build(): SteamClient {
         KSteamLogging.transport = loggingTransport
         KSteamLogging.verbosity = loggingVerbosity
@@ -100,6 +116,19 @@ class KSteamConfiguration {
     }
 }
 
+/**
+ * Creates an kSteam instance with a specific configuration.
+ *
+ * An example of bare-bones configuration will look like this:
+ * ```kotlin
+ * val client = kSteam {
+ *      rootFolder = [Path]
+ * }
+ * ```
+ *
+ * **NOTE:** After creating, call [SteamClient.start] to connect to the Steam network.
+ */
+@KsteamDsl
 inline fun kSteam(crossinline configure: KSteamConfiguration.() -> Unit): SteamClient {
     return KSteamConfiguration().apply(configure).build()
 }
