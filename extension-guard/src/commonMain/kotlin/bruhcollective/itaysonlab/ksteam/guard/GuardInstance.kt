@@ -5,19 +5,17 @@ import bruhcollective.itaysonlab.ksteam.guard.clock.currentTime
 import bruhcollective.itaysonlab.ksteam.guard.clock.currentTimeMs
 import bruhcollective.itaysonlab.ksteam.guard.models.CodeModel
 import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationTicket
+import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
 import bruhcollective.itaysonlab.ksteam.guard.models.StaticAuthCode
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.proto.GuardConfiguration
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import okio.Buffer
 import okio.ByteString
-import okio.ByteString.Companion.toByteString
-import okio.buffer
+import okio.ByteString.Companion.decodeBase64
 import kotlin.experimental.and
-import kotlin.math.min
 
 /**
  * A specific Steam Guard instance for a specific Steam ID.
@@ -27,12 +25,13 @@ import kotlin.math.min
  */
 class GuardInstance(
     internal val steamId: SteamId,
-    private val configuration: GuardConfiguration,
+    private val configuration: GuardStructure,
     private val clockContext: GuardClockContext
 ) {
-    companion object {
-        internal const val AlgorithmConfirmation = "HmacSHA256"
+    private val sharedSecret = configuration.sharedSecret.decodeBase64() ?: error("This GuardStructure ($username) has no sharedSecret")
+    private val identitySecret = configuration.identitySecret.decodeBase64() ?: error("This GuardStructure ($username) has no identitySecret")
 
+    companion object {
         private const val Digits = 5
         private const val Period = 30 * 1000
         private val Alphabet = "23456789BCDFGHJKMNPQRTVWXY".toCharArray()
@@ -45,17 +44,14 @@ class GuardInstance(
         } while (currentCoroutineContext().isActive)
     }
 
-    val revocationCode get() = configuration.revocation_code
-    val username get() = configuration.account_name
-
-    private fun ByteString.sharedTotp() = hmacSha1(configuration.shared_secret)
-    private fun ByteString.identityTotp() = hmacSha1(configuration.identity_secret)
+    val revocationCode get() = configuration.revocationCode
+    val username get() = configuration.accountName
 
     private suspend fun generateCode(): CodeModel {
         val currentTime = clockContext.currentTimeMs()
 
         val progress = ((Period - ((currentTime) % Period)) / Period.toFloat()).coerceIn(0f..1f)
-        val localDigest = Buffer().writeLong(currentTime / Period).readByteString().identityTotp().toByteArray()
+        val localDigest = Buffer().writeLong(currentTime / Period).hmacSha1(sharedSecret).toByteArray()
 
         val offset = (localDigest.last() and 0xf).toInt()
         val code = localDigest.copyOfRange(offset, offset + 4)
@@ -70,43 +66,31 @@ class GuardInstance(
         }, progress, currentTime))
     }
 
-    private fun digestSha256(msg: ByteString): ByteString {
-        return msg.hmacSha256(configuration.shared_secret)
-    }
-
     suspend fun generateCodeWithTime(): StaticAuthCode {
         return generateCode().let { StaticAuthCode(it.code to it.generatedAt) }
     }
 
     fun sgCreateSignature(version: Int, clientId: Long): ByteString {
-        return ByteArrayOutputStream(2 + 8 + 8).apply {
-            sink().buffer().use { sink ->
-                sink.writeShortLe(version)
-                sink.writeLongLe(clientId)
-                sink.writeLongLe(steamId.longId)
-            }
-        }.toByteArray().let(this::digestSha256).toByteString()
+        return Buffer().apply {
+            writeShortLe(version)
+            writeLongLe(clientId)
+            writeLongLe(steamId.longId)
+        }.hmacSha256(sharedSecret)
     }
 
     fun sgCreateRevokeSignature(tokenId: Long): ByteString {
-        return ByteArrayOutputStream(20).apply {
-            sink().buffer().use { sink ->
-                sink.writeLong(tokenId)
-            }
-        }.toByteArray().let(this::digestSha256).toByteString()
+        return Buffer().apply {
+            writeLong(tokenId)
+        }.hmacSha256(sharedSecret)
     }
 
     suspend fun confirmationTicket(tag: String): ConfirmationTicket {
         val currentTime = clockContext.currentTime()
 
-        val base64Ticket = ByteArrayOutputStream(min(tag.length, 32) + 8).apply {
-            sink().buffer().use { sink ->
-                sink.writeLong(currentTime)
-                sink.writeUtf8(tag)
-            }
-        }.toByteArray().let { arr ->
-            digestIdentity.doFinal(arr)
-        }.toByteString().base64()
+        val base64Ticket = Buffer().apply {
+            writeLong(currentTime)
+            writeUtf8(tag)
+        }.hmacSha256(identitySecret).base64()
 
         return ConfirmationTicket(base64Ticket to currentTime)
     }

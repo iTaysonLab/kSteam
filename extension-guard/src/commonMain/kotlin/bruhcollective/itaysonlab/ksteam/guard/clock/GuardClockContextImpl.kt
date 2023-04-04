@@ -1,8 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.guard.clock
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.guard.models.ClockSyncConfiguration
 import bruhcollective.itaysonlab.ksteam.handlers.storage
-import java.util.*
+import bruhcollective.itaysonlab.ksteam.platform.fileProxiedObject
+import bruhcollective.itaysonlab.ksteam.platform.getValue
+import bruhcollective.itaysonlab.ksteam.platform.setValue
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
 
 /**
  * A [GuardClockContext] implementation using native Java API.
@@ -12,27 +17,30 @@ import java.util.*
 class GuardClockContextImpl(
     private val steamClient: SteamClient
 ) : GuardClockContext {
-    private val currentTzId get() = TimeZone.getDefault().id
+    private var configuration by fileProxiedObject(steamClient.storage.rootFolder / "guardClockSync.json", ClockSyncConfiguration())
+
+    private val currentTzId get() = TimeZone.currentSystemDefault().id
 
     override suspend fun provideTimeDifference(): Long {
-        if (steamClient.storage.globalConfiguration.clockSyncTz != currentTzId) {
+        if (configuration.clockSyncTz != currentTzId) {
             requestServerDifference(steamClient)
         }
 
-        return steamClient.storage.globalConfiguration.clockSyncDiff
+        return configuration.clockSyncDiff
     }
 
     private suspend fun requestServerDifference(steamClient: SteamClient) {
         steamClient.webApi.getServerTime().let { data ->
             if (data.allowCorrection) {
-                data.serverTime - (System.currentTimeMillis() / 1000L)
+                data.serverTime - Clock.System.now().epochSeconds
             } else {
                 0L
             }
         }.let { difference ->
-            steamClient.storage.modifyConfig {
-                copy(clockSyncTz = currentTzId, clockSyncDiff = difference)
-            }
+            configuration = configuration.copy(
+                clockSyncTz = currentTzId,
+                clockSyncDiff = difference
+            )
         }
     }
 }

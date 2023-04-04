@@ -5,6 +5,7 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
+import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
 import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
 import bruhcollective.itaysonlab.ksteam.guardMoveConfirm
@@ -12,14 +13,14 @@ import bruhcollective.itaysonlab.ksteam.guardMoveStart
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.proto.GuardConfiguration
+import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import okio.buffer
-import okio.sink
-import okio.source
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.okio.decodeFromBufferedSource
+import kotlinx.serialization.json.okio.encodeToBufferedSink
 import steam.webui.twofactor.*
-import java.io.File
 
 /**
  * Steam Guard provider.
@@ -28,6 +29,10 @@ class Guard(
     private val steamClient: SteamClient,
     private val configuration: GuardExtensionConfiguration
 ) : BaseHandler, SteamGuardPlugin {
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
+
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
 
     private val sgAddFlow = MutableStateFlow<SgCreationFlowState>(SgCreationFlowState.TryingToAdd)
@@ -40,17 +45,21 @@ class Guard(
      *
      * Returns null if kSteam has no auth information for this [steamId].
      */
+    @OptIn(ExperimentalSerializationApi::class)
     fun instanceFor(steamId: SteamId): GuardInstance? {
         lazyInstances[steamId]?.let {
             return it
         }
 
-        return getGuardFile(steamId).takeIf(File::exists)?.let { guardFile ->
+        val file = getGuardFile(steamId)
+
+        return provideOkioFilesystem().takeIf { fs ->
+            fs.exists(file)
+        }?.read(file) {
             GuardInstance(
                 steamId = steamId,
-                configuration = guardFile.source().buffer().use {
-                    GuardConfiguration.ADAPTER.decode(it)
-                }, clockContext = GuardClockContextImpl(steamClient)
+                configuration = json.decodeFromBufferedSource(this),
+                clockContext = GuardClockContextImpl(steamClient)
             ).also { lazyInstances[steamId] = it }
         }
     }
@@ -88,7 +97,7 @@ class Guard(
     /**
      * Confirms moving Steam Guard to another account.
      *
-     * This will send a SMS to an phone, from which you need to extract the code and send it to the server.
+     * This will send an SMS to a phone, from which you need to extract the code and send it to the server.
      */
     suspend fun confirmMove() {
         sgAddFlow.value = SgCreationFlowState.AlreadyHasGuard(true)
@@ -191,7 +200,7 @@ class Guard(
      *
      * WARNING: THIS WILL REPLACE THE CURRENT CONFIG IF IT WAS SUPPLIED!
      */
-    fun tryAddConfig(steamId: SteamId, configuration: GuardConfiguration) {
+    fun tryAddConfig(steamId: SteamId, configuration: GuardStructure) {
         lazyInstances[steamId] = GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient))
         writeGuard(steamId, configuration)
     }
@@ -229,31 +238,24 @@ class Guard(
 
             if (deleteData) {
                 try {
-                    getGuardFile(steamId).delete()
+                    provideOkioFilesystem().delete(getGuardFile(steamId), mustExist = false)
                     lazyInstances.remove(steamId)
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
             }
 
             return it?.revocation_attempts_remaining ?: 0
         }
     }
 
-    /**
-     * A special "migration" function which will import a .mafile from the old Steam Mobile app or apps like SDA.
-     */
-    suspend fun tryMigrateFromMafile() {
-        // TODO
-    }
-
-    private fun writeGuard(steamId: SteamId, configuration: GuardConfiguration) {
-        getGuardFile(steamId).apply {
-            if (!exists()) createNewFile()
-        }.sink().buffer().use {
-            GuardConfiguration.ADAPTER.encode(it, configuration)
+    @OptIn(ExperimentalSerializationApi::class)
+    private fun writeGuard(steamId: SteamId, configuration: GuardStructure) {
+        provideOkioFilesystem().write(getGuardFile(steamId)) {
+            json.encodeToBufferedSink(configuration, this)
         }
     }
 
-    private fun getGuardFile(steamId: SteamId) = File(steamClient.storage.storageFor(steamId), "guard")
+    private fun getGuardFile(steamId: SteamId) = steamClient.storage.storageFor(steamId) / "guard.json"
 
     override suspend fun onEvent(packet: SteamPacket) = Unit
     override suspend fun getCodeFor(account: SteamId) = instanceFor(account)?.generateCodeWithTime()?.codeString

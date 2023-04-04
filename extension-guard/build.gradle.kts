@@ -23,6 +23,10 @@ kotlin {
                 implementation(project(":proto-common"))
 
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
+                implementation("com.benasher44:uuid:0.7.0")
                 implementation("io.ktor:ktor-client-core:2.2.4")
 
                 api("com.squareup.wire:wire-runtime:4.5.3")

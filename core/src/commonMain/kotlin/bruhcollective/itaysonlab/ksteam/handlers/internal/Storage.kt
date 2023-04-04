@@ -18,7 +18,9 @@ import kotlinx.coroutines.withContext
 class Storage internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
-    internal var globalConfiguration by fileProxiedObject(steamClient.config.rootFolder / "config.json", GlobalConfiguration())
+    val rootFolder get() = steamClient.config.rootFolder
+
+    internal var globalConfiguration by fileProxiedObject(rootFolder / "config.json", GlobalConfiguration())
 
     internal suspend fun modifyAccount(steamId: SteamId, func: SavedAccount.() -> SavedAccount) = withContext(Dispatchers.IO) {
         globalConfiguration = globalConfiguration.copy(

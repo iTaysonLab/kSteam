@@ -24,7 +24,7 @@ data class ActiveSession internal constructor(
     val firstSeen: UsageData?,
     val lastSeen: UsageData?,
     val osType: EOSType,
-    @Suppress("PropertyName") private val _proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
+    private val _proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
 ) {
     /**
      * Get a [ByteString] of the CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription protobuf.

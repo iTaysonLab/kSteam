@@ -8,10 +8,8 @@ import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfResult
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfirmationItem
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import io.ktor.client.statement.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import io.ktor.http.*
 import kotlinx.serialization.decodeFromString
-import java.net.URLEncoder
 
 /**
  * Mobile confirmations using Steam Guard instances. (trade/market)
@@ -89,7 +87,7 @@ class GuardConfirmation(
         item: MobileConfirmationItem
     ): String {
         val sigStamp = instance.confirmationTicket("detail")
-        val b64 = withContext(Dispatchers.IO) { URLEncoder.encode(sigStamp.b64EncodedSignature, "UTF-8") }
+        val b64 = sigStamp.b64EncodedSignature.encodeURLParameter()
         return "https://steamcommunity.com/mobileconf/detailspage/${item.id}?p=${configuration.uuid}&a=${instance.steamId.longId}&k=$b64&t=${sigStamp.generationTime}&m=react&tag=detail"
     }
 

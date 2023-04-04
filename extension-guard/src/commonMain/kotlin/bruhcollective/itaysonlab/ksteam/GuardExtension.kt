@@ -7,7 +7,7 @@ import bruhcollective.itaysonlab.ksteam.extension.associate
 import bruhcollective.itaysonlab.ksteam.handlers.Guard
 import bruhcollective.itaysonlab.ksteam.handlers.GuardConfirmation
 import bruhcollective.itaysonlab.ksteam.handlers.GuardManagement
-import java.util.*
+import com.benasher44.uuid.uuid4
 
 class Guard (
     private val configuration: GuardExtensionConfiguration
@@ -33,5 +33,5 @@ class GuardExtensionConfiguration {
      *
      * By default, a random UUID is selected. If you can - save it in a separate config file.
      */
-    var uuid: String = UUID.randomUUID().toString()
+    var uuid: String = uuid4().toString()
 }

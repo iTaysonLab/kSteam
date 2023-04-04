@@ -1,7 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-import bruhcollective.itaysonlab.ksteam.proto.GuardConfiguration
-
 /**
  * A series of classes describing the logic of adding/moving a Steam Guard.
  */
@@ -25,7 +23,7 @@ sealed class SgCreationFlowState {
         val hint: String,
         val returnedBecauseOfError: Boolean,
         val moving: Boolean,
-        val guardConfiguration: GuardConfiguration?
+        val guardConfiguration: GuardStructure?
     ) : SgCreationFlowState()
 
     /**

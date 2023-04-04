@@ -1,5 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.guard.clock
 
+import kotlinx.datetime.Clock
+
 /**
  * GuardClockContext is used to correlate the difference between the server and the client.
  *
@@ -12,5 +14,5 @@ interface GuardClockContext {
     suspend fun provideTimeDifference(): Long
 }
 
-suspend fun GuardClockContext.currentTime() = (System.currentTimeMillis() / 1000L) + provideTimeDifference()
-suspend fun GuardClockContext.currentTimeMs() = System.currentTimeMillis() + (provideTimeDifference() * 1000L)
+suspend fun GuardClockContext.currentTime() = Clock.System.now().epochSeconds + provideTimeDifference()
+suspend fun GuardClockContext.currentTimeMs() = Clock.System.now().toEpochMilliseconds() + (provideTimeDifference() * 1000L)
