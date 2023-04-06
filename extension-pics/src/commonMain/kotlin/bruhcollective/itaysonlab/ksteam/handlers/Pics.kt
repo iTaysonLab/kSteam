@@ -26,17 +26,17 @@ class Pics internal constructor(
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
-    suspend fun getAppIdsAsInfos(appIds: List<AppId>, limit: Int = 0): List<AppInfo> = appIds.mapNotNull { appId ->
+    suspend fun getAppIdsAsInfos(appIds: List<AppId>): List<AppInfo> = appIds.mapNotNull { appId ->
         database.apps.get(appId.id)
     }
 
-    private suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): List<AppInfo> = database.sortAppsByDynamicFilters(filters).toList()
+    private suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): Sequence<AppInfo> = database.sortAppsByDynamicFilters(filters).take(limit)
 
-    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters, limit: Int = 0): List<AppSummary> = getAppIdsFiltered(filters, limit).map { app ->
+    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters, limit: Int = 0): Sequence<AppSummary> = getAppIdsFiltered(filters, limit).map { app ->
         AppSummary(AppId(app.appId), app.common.name)
     }
 
-    suspend fun getAppSummariesByAppId(appIds: List<AppId>, limit: Int = 0) = getAppIdsAsInfos(appIds).associate { app ->
+    suspend fun getAppSummariesByAppId(appIds: List<AppId>) = getAppIdsAsInfos(appIds).associate { app ->
         AppId(app.appId) to AppSummary(AppId(app.appId), app.common.name)
     }
 

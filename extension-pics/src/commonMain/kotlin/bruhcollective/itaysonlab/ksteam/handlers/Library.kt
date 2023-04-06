@@ -50,7 +50,7 @@ class Library(
     private val _isLoadingPlayTimes = MutableStateFlow(false)
     val isLoadingPlayTimes = _isLoadingPlayTimes.asStateFlow()
 
-    private val _ownedGames = MutableStateFlow<List<OwnedGame>>(emptyList())
+    private val _ownedGames = MutableStateFlow<Map<AppId, OwnedGame>>(emptyMap())
     val ownedGames = _ownedGames.asStateFlow()
 
     //
@@ -76,11 +76,30 @@ class Library(
      * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
     fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppSummary>> = userCollections.mapNotNull { collections ->
-        getAppsInCollection(collections[id] ?: return@mapNotNull null, limit)
+        getAppsInCollection(collections[id] ?: return@mapNotNull null, limit).toList()
     }
 
     fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<AppSummary>> = collectionFlow.map { collection ->
-        getAppsInCollection(collection, limit)
+        getAppsInCollection(collection, limit).toList()
+    }
+
+    /**
+     * Queries eligible owned apps in a collection by its [id].
+     *
+     * Recommended to use in UI apps because of automatically updating Flow based on both collection info and owned games metadata
+     *
+     * @param id collection ID
+     * @param limit how many items to show, default is 0 which means "everything"
+     * @return a [Flow] of [AppInfo] which is changed by collection editing
+     */
+    fun getOwnedAppsInCollection(id: String, limit: Int = 0): Flow<List<OwnedGame>> {
+        val collectionFlow = getCollection(id)
+
+        return collectionFlow.combine(ownedGames) { collection, ownedMap ->
+            getAppsInCollection(collection, limit).mapNotNull { summary ->
+                ownedMap[summary.id]
+            }.toList()
+        }
     }
 
     /**
@@ -88,10 +107,10 @@ class Library(
      *
      * @return a list of [AppInfo]
      */
-    suspend fun getAppsInCollection(collection: LibraryCollection, limit: Int = 0): List<AppSummary> {
+    suspend fun getAppsInCollection(collection: LibraryCollection, limit: Int = 0): Sequence<AppSummary> {
         return when (collection) {
             is LibraryCollection.Simple -> {
-                steamClient.pics.getAppSummariesByAppId(collection.added, limit).values.sortedBy { it.name }
+                steamClient.pics.getAppSummariesByAppId(collection.added).values.asSequence().sortedBy { it.name }.take(limit)
             }
 
             is LibraryCollection.Dynamic -> {
@@ -134,6 +153,9 @@ class Library(
         }
     }
 
+    /**
+     * Fetch a live-updated (every 30 minutes) list of at max 5 games, sorted by last launch date.
+     */
     fun getRecentApps(): Flow<List<AppSummary>> {
         return _playtime.map {
             it.values.sortedByDescending { a -> a.last_playtime ?: 0 }.take(5).mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }
@@ -294,7 +316,7 @@ class Library(
     }
 
     /**
-     * Awaits until PICS is ready and library is loaded.
+     * Waits until PICS is ready and library is loaded.
      */
     private suspend fun awaitInfrastructure() {
         _isLoadingLibrary.first { it }
@@ -302,7 +324,7 @@ class Library(
     }
 
     private suspend fun requestOwnedGames() {
-        _ownedGames.value = steamClient.player.getOwnedGames()
+        _ownedGames.value = steamClient.player.getOwnedGames().associateBy { it.id }
     }
 
     override suspend fun onEvent(packet: SteamPacket) {
