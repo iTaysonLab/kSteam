@@ -11,6 +11,7 @@ include(":proto-common")
 include(":extension-core")
 include(":extension-pics")
 include(":extension-guard")
+include(":extension-guard-proto-migration")
 
 pluginManagement {
     repositories {
