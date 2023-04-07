@@ -8,7 +8,9 @@ import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.ExtensionFactory
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
+import io.ktor.client.*
 import io.ktor.client.engine.*
+import io.ktor.client.engine.cio.*
 import okio.Path
 
 @DslMarker
@@ -23,6 +25,7 @@ internal annotation class KsteamDsl
 @KsteamDsl
 class KSteamConfiguration {
     private val extensions = mutableListOf<Extension>()
+    private var ktorEngineResolver: () -> HttpClient = { HttpClient(CIO) }
 
     /**
      * Specifies a logging transport where kSteam will log output
@@ -96,6 +99,17 @@ class KSteamConfiguration {
     }
 
     /**
+     * Installs a custom Ktor [HttpClient]. Defaults to using cross-platform Ktor's CIO engine.
+     *
+     * Useful if you need additional tweaks or a different engine that is more applicable for your task/platform.
+     *
+     * @param resolver lambda which returns [HttpClient] to use in kSteam
+     */
+    fun ktor(resolver: () -> HttpClient) {
+        ktorEngineResolver = resolver
+    }
+
+    /**
      * Builds a [SteamClient] with the chosen configuration.
      *
      * After building, call [SteamClient.start] to send/receive packets.
@@ -107,7 +121,7 @@ class KSteamConfiguration {
         return SteamClient(
             config = SteamClientConfiguration(
                 rootFolder = rootFolder ?: error("rootFolder must be set"),
-                ktorProxyConfig = ktorProxyConfig,
+                ktorEngineResolver = ktorEngineResolver,
                 deviceInfo = deviceInfo,
                 language = language,
                 authPrivateIpLogic = authPrivateIpLogic

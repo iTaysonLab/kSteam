@@ -5,7 +5,6 @@ import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
 import io.ktor.client.*
-import io.ktor.client.engine.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -19,9 +18,9 @@ import okio.Path
  */
 class SteamClientConfiguration(
     /**
-     * Proxy config used for Ktor's network clients.
+     * Specifies default Ktor HttpClient. Defaults to cross-platform CIO.
      */
-    private val ktorProxyConfig: ProxyConfig? = null,
+    ktorEngineResolver: () -> HttpClient = { HttpClient(CIO) },
     /**
      * Device information used for the new auth flow and Steam Guard.
      */
@@ -37,25 +36,17 @@ class SteamClientConfiguration(
     /**
      * Specifies logic used in Login ID usage when signing in.
      */
-    internal val authPrivateIpLogic: AuthPrivateIpLogic = UsePrivateIp,
+    internal val authPrivateIpLogic: AuthPrivateIpLogic = UsePrivateIp
 ) {
     init {
         provideOkioFilesystem().createDirectories(rootFolder, mustCreate = false)
     }
 
-    internal val networkClient = HttpClient(CIO) {
-        engine {
-            proxy = ktorProxyConfig
-        }
-
+    internal val networkClient = ktorEngineResolver().config {
         install(WebSockets)
     }
 
-    internal val apiClient = HttpClient(CIO) {
-        engine {
-            proxy = ktorProxyConfig
-        }
-
+    internal val apiClient = ktorEngineResolver().config {
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
