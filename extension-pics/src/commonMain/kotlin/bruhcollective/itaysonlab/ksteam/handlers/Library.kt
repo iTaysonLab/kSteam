@@ -76,11 +76,11 @@ class Library(
      * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
     fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppSummary>> = userCollections.mapNotNull { collections ->
-        getAppsInCollection(collections[id] ?: return@mapNotNull null, limit).toList()
+        getAppsInCollection(collections[id] ?: return@mapNotNull null).takeIfNotZero(limit).toList()
     }
 
     fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<AppSummary>> = collectionFlow.map { collection ->
-        getAppsInCollection(collection, limit).toList()
+        getAppsInCollection(collection).takeIfNotZero(limit).toList()
     }
 
     /**
@@ -90,15 +90,27 @@ class Library(
      *
      * @param id collection ID
      * @param limit how many items to show, default is 0 which means "everything"
-     * @return a [Flow] of [AppInfo] which is changed by collection editing
+     * @return a [Flow] of [OwnedGame] which is changed by collection editing
      */
     fun getOwnedAppsInCollection(id: String, limit: Int = 0): Flow<List<OwnedGame>> {
         val collectionFlow = getCollection(id)
 
         return collectionFlow.combine(ownedGames) { collection, ownedMap ->
-            getAppsInCollection(collection, limit).mapNotNull { summary ->
+            getAppsInCollection(collection).mapNotNull { summary ->
                 ownedMap[summary.id]
-            }.toList()
+            }.takeIfNotZero(limit).toList()
+        }
+    }
+
+    /**
+     * Queries all owned apps of the current connected account.
+     *
+     * @param limit how many items to show, default is 0 which means "everything"
+     * @return a [Flow] of [OwnedGame] which is changed by collection editing
+     */
+    fun getAllOwnedApps(limit: Int = 0): Flow<Collection<OwnedGame>> {
+        return ownedGames.map {
+            it.values
         }
     }
 
@@ -107,10 +119,10 @@ class Library(
      *
      * @return a list of [AppInfo]
      */
-    suspend fun getAppsInCollection(collection: LibraryCollection, limit: Int = 0): Sequence<AppSummary> {
+    suspend fun getAppsInCollection(collection: LibraryCollection): Sequence<AppSummary> {
         return when (collection) {
             is LibraryCollection.Simple -> {
-                steamClient.pics.getAppSummariesByAppId(collection.added).values.asSequence().sortedBy { it.name }.take(limit)
+                steamClient.pics.getAppSummariesByAppId(collection.added).values.asSequence().sortedBy { it.name }
             }
 
             is LibraryCollection.Dynamic -> {
@@ -123,7 +135,7 @@ class Library(
                     null
                 }
 
-                steamClient.pics.getAppSummariesFiltered(collection.filters, limit).let { appInfoList ->
+                steamClient.pics.getAppSummariesFiltered(collection.filters).let { appInfoList ->
                     when {
                         hasPlayStateNeverPlayed -> {
                             appInfoList.filter {
@@ -158,9 +170,9 @@ class Library(
      */
     fun getRecentApps(): Flow<List<AppSummary>> {
         return _playtime.map {
-            it.values.sortedByDescending { a -> a.last_playtime ?: 0 }.take(5).mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }
+            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }.take(5)
         }.map {
-            steamClient.pics.getAppSummariesByAppId(it).values.sortedBy { a -> a.name }
+            steamClient.pics.getAppSummariesByAppId(it.toList()).values.sortedBy { a -> a.name }
         }
     }
 
@@ -346,5 +358,13 @@ class Library(
 
             else -> Unit
         }
+    }
+}
+
+internal fun <T> Sequence<T>.takeIfNotZero(n: Int): Sequence<T> {
+    require(n >= 0) { "Requested element count $n is less than zero." }
+    return when (n) {
+        0 -> this
+        else -> take(n)
     }
 }

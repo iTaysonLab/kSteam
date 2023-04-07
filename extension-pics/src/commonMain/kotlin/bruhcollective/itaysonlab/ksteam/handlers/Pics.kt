@@ -30,9 +30,9 @@ class Pics internal constructor(
         database.apps.get(appId.id)
     }
 
-    private suspend fun getAppIdsFiltered(filters: DynamicFilters, limit: Int = 0): Sequence<AppInfo> = database.sortAppsByDynamicFilters(filters).take(limit)
+    private suspend fun getAppIdsFiltered(filters: DynamicFilters): Sequence<AppInfo> = database.sortAppsByDynamicFilters(filters)
 
-    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters, limit: Int = 0): Sequence<AppSummary> = getAppIdsFiltered(filters, limit).map { app ->
+    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters): Sequence<AppSummary> = getAppIdsFiltered(filters).map { app ->
         AppSummary(AppId(app.appId), app.common.name)
     }
 
