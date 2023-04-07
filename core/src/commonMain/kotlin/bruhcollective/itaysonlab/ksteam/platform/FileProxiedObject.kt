@@ -42,7 +42,7 @@ class FileProxiedObject <T> (
     @OptIn(ExperimentalSerializationApi::class)
     private fun commit(data: T) {
         okioFs.apply {
-            createDirectories(fileRef)
+            fileRef.parent?.let { createDirectories(it) }
 
             write(fileRef) {
                 json.encodeToBufferedSink(serializer, data, this)

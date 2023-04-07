@@ -5,9 +5,9 @@ import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
+import okio.BufferedSink
 import okio.BufferedSource
 import okio.Sink
-import okio.buffer
 
 /**
  * Definition of a packet going through Steam Network.
@@ -85,8 +85,7 @@ class SteamPacket private constructor(
          * @param payload a payload - object which will be encoded in the packet
          */
         fun <T> newProto(messageId: EMsg, adapter: ProtoAdapter<T>, payload: T): SteamPacket {
-            require((messageId.encoded and ProtobufMask) != 0) { "Provided messageId is not applicable to protobuf packets" }
-
+            // require((messageId.encoded and ProtobufMask) != 0) { "Provided messageId is not applicable to protobuf packets: $messageId" }
             return SteamPacket(
                 messageId = messageId,
                 header = SteamPacketHeader.Protobuf(),
@@ -119,7 +118,7 @@ class SteamPacket private constructor(
      *
      * @param sink okio sink to write into
      */
-    fun writeTo(sink: Sink) = sink.buffer().apply {
+    fun writeTo(sink: BufferedSink) = sink.apply {
         writeIntLe(messageId.encoded.let {
             if (header is SteamPacketHeader.Protobuf) {
                 it or ProtobufMask

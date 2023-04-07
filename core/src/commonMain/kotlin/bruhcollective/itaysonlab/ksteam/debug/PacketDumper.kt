@@ -16,12 +16,10 @@ class PacketDumper internal constructor(
     var dumpMode: DumpMode = DumpMode.Disable
     private var loggedPacketIndex: Int = 0
 
-    init {
-        provideOkioFilesystem().createDirectories(sessionFolder, mustCreate = false)
-    }
-
     fun onPacket(packet: SteamPacket, directionOut: Boolean) {
         if (dumpMode == DumpMode.Disable) return
+
+        provideOkioFilesystem().createDirectories(sessionFolder, mustCreate = false)
 
         provideOkioFilesystem().write(
             file = sessionFolder / "${loggedPacketIndex}_${if (directionOut) "out" else "in"}_${packet.messageId.name.removePrefix("k_")}.bin",

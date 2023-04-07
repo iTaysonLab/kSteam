@@ -109,14 +109,11 @@ internal class CMClient(
 
             KSteamLogging.logDebug("CMClient:WsConnection", "Connected to Steam3 network")
 
-            send(
-                Frame.Binary(
-                    fin = true,
-                    data = SteamPacket.newProto(
-                        messageId = EMsg.k_EMsgClientHello,
-                        adapter = CMsgClientHello.ADAPTER,
-                        payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
-                    ).encode()
+            outgoingPacketsQueue.send(
+                SteamPacket.newProto(
+                    messageId = EMsg.k_EMsgClientHello,
+                    adapter = CMsgClientHello.ADAPTER,
+                    payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
                 )
             )
 
