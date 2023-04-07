@@ -21,7 +21,7 @@ import kotlin.experimental.and
  * A specific Steam Guard instance for a specific Steam ID.
  *
  * Generates codes, confirms trading and market sales, returns auth sessions.
- * For creating a instance if it is not created yet, refer to the [Guard] handler.
+ * For creating an instance if it is not created yet, refer to the [Guard] handler.
  */
 class GuardInstance(
     internal val steamId: SteamId,
@@ -90,7 +90,7 @@ class GuardInstance(
         val base64Ticket = Buffer().apply {
             writeLong(currentTime)
             writeUtf8(tag)
-        }.hmacSha256(identitySecret).base64()
+        }.hmacSha1(identitySecret).base64()
 
         return ConfirmationTicket(base64Ticket to currentTime)
     }
