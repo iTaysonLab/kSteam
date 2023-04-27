@@ -8,7 +8,7 @@ data class LibraryShelf (
     val linkedCollection: String,
     val sortBy: Int,
     val lastChangedMs: Long,
-    val orderTimestamp: Long,
+    val orderTimestamp: Double,
     val version: Long,
     val remoteTimestamp: Int,
 ) {
@@ -17,6 +17,6 @@ data class LibraryShelf (
         @SerialName("strCollectionId") val linkedCollection: String,
         @SerialName("eSortBy") val sortBy: Int = 1,
         @SerialName("nLastChangedMS") val lastChangedMs: Long = 0L,
-        @SerialName("nOrder") val orderTimestamp: Long? = null,
+        @SerialName("nOrder") val orderTimestamp: Double? = null,
     )
 }

@@ -11,7 +11,7 @@ version = "1.0-SNAPSHOT"
 
 tasks.withType<KotlinCompile> {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -20,7 +20,7 @@ tasks.named<JavaExec>("run") {
 }
 
 kotlin {
-
+    jvmToolchain(11)
 }
 
 application {
@@ -32,8 +32,8 @@ dependencies {
     implementation(project(":kotlinx-vdf"))
 
     implementation(project(":extension-core"))
-    implementation(project(":extension-guard"))
-    implementation(project(":extension-pics"))
+    // implementation(project(":extension-guard"))
+    // implementation(project(":extension-pics"))
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.0-RC")
 

@@ -11,4 +11,5 @@
 - `core`: added `SteamClientConfiguration.AuthPrivateIpLogic.Generate` option for signing in (enabled by default on Apple platforms)
 - `extension-guard`: rewritten java.nio/javax.crypto (bytebuffer/hmac) usages with okio
 - `extension-pics`: collections are now filtered based on actual owned appids
+- `extension-pics`: optimize metadata updating
 - replaced `implementation` with `api` inside kSteam modules to prevent `ClassNotFoundException`

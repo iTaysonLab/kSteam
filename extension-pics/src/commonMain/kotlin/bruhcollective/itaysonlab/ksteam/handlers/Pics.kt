@@ -120,10 +120,12 @@ class Pics internal constructor(
             messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
             adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
             payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
-        )).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens
+        )).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.associateBy {
+            it.appid ?: 0
+        }
 
         // Firstly, we load cloud app metadata
-        val metadata = loadAppsInfo(tokens, withoutContent = true)
+        val metadata = loadAppsInfo(tokens.values, withoutContent = true)
 
         // Secondly, we diff the change numbers
         val requiresUpdate = metadata
@@ -132,6 +134,8 @@ class Pics internal constructor(
                 val changeNumber = sAppInfo.change_number ?: return@filter false
 
                 database.apps.containsKey(appId).not() || changeNumber > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Apps, appId)
+            }.mapNotNull {
+                tokens[it.appid]
             }
 
         if (requiresUpdate.isEmpty()) {
@@ -143,7 +147,7 @@ class Pics internal constructor(
 
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        dispatchListProcessing(loadAppsInfo(tokens, withoutContent = false).distinctBy { it.appid }) { appInfoProto ->
+        dispatchListProcessing(loadAppsInfo(requiresUpdate, withoutContent = false).distinctBy { it.appid }) { appInfoProto ->
             val appId = appInfoProto.appid ?: return@dispatchListProcessing null
             val changeNumber = appInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
@@ -158,6 +162,10 @@ class Pics internal constructor(
     }
 
     private suspend fun loadPackageInfo(licenses: List<CMsgClientLicenseList_License>): List<CMsgClientPICSProductInfoResponse_PackageInfo> {
+        if (licenses.isEmpty()) {
+            return emptyList()
+        }
+
         return requestDataFromPics(
             request = CMsgClientPICSProductInfoRequest(
                 meta_data_only = false,
@@ -173,7 +181,11 @@ class Pics internal constructor(
         )
     }
 
-    private suspend fun loadAppsInfo(tokens: List<CMsgClientPICSAccessTokenResponse_AppToken>, withoutContent: Boolean = false): List<CMsgClientPICSProductInfoResponse_AppInfo> {
+    private suspend fun loadAppsInfo(tokens: Collection<CMsgClientPICSAccessTokenResponse_AppToken>, withoutContent: Boolean = false): List<CMsgClientPICSProductInfoResponse_AppInfo> {
+        if (tokens.isEmpty()) {
+            return emptyList()
+        }
+
         return requestDataFromPics(
             request = CMsgClientPICSProductInfoRequest(
                 meta_data_only = withoutContent,

@@ -308,17 +308,17 @@ class Library(
                 linkedCollection = entry.linkedCollection,
                 sortBy = entry.sortBy,
                 lastChangedMs = entry.lastChangedMs,
-                orderTimestamp = entry.orderTimestamp ?: 0L,
+                orderTimestamp = entry.orderTimestamp ?: 0.0,
                 version = it.version ?: 0,
                 remoteTimestamp = it.timestamp ?: 0
             )
         }.filter {
             it.linkedCollection.isNotEmpty()
         }.sortedByDescending {
-            if (it.orderTimestamp != 0L) {
+            if (it.orderTimestamp != 0.0) {
                 it.orderTimestamp
             } else {
-                it.id.removePrefix("showcases.").toLongOrNull() ?: 0L
+                it.id.removePrefix("showcases.").toDoubleOrNull() ?: 0.0
             }
         }.toList().let { shelves ->
             _shelves.value = shelves
