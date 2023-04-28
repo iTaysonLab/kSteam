@@ -14,10 +14,14 @@ import bruhcollective.itaysonlab.ksteam.platform.*
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.util.convertToCmIpV4
 import bruhcollective.itaysonlab.ksteam.util.generateIpV4Int
+import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import okio.ByteString
 import okio.ByteString.Companion.decodeHex
 import okio.ByteString.Companion.toByteString
@@ -30,6 +34,10 @@ import kotlin.random.Random
 class Account internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
+    private val json = Json {
+        ignoreUnknownKeys = true
+    }
+
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
     private val deviceInfo get() = steamClient.config.deviceInfo
     private val globalConfiguration get() = steamClient.storage.globalConfiguration
@@ -325,18 +333,28 @@ class Account internal constructor(
             // Success, now we can cancel the session
             KSteamLogging.logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
 
-            val steamId = (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).steamId
+            val steamId = try {
+                SteamId(json.decodeFromString<JwtToken>(pollAnswer.refresh_token.split(".")[1].decodeBase64String()).sub.toULong())
+            } catch (e: Exception) {
+                e.printStackTrace()
+                (clientAuthState.value as? AuthorizationState.AwaitingTwoFactor)?.steamId
+            }
+
+            if (steamId == null) {
+                KSteamLogging.logError("Account:Watcher", "Received JWT, but no Steam ID exposed - couldn't continue signing in")
+                return true
+            }
 
             steamClient.storage.modifyAccount(steamId) {
                 copy(
-                    accessToken = pollAnswer.access_token.orEmpty(),
-                    refreshToken = pollAnswer.refresh_token.orEmpty(),
+                    accessToken = pollAnswer.access_token,
+                    refreshToken = pollAnswer.refresh_token,
                     accountName = pollAnswer.account_name.orEmpty()
                 )
             }
 
             sendClientLogon(
-                token = pollAnswer.refresh_token.orEmpty(),
+                token = pollAnswer.refresh_token,
                 steamId = steamId
             )
 
@@ -415,4 +433,9 @@ class Account internal constructor(
         val clientId get() = packed.first
         val requestId get() = packed.second
     }
+
+    @Serializable
+    class JwtToken (
+        val sub: String
+    )
 }
