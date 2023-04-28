@@ -23,11 +23,11 @@ kotlin {
                 api(project(":proto-common"))
                 api(project(":extension-guard"))
 
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.4.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
-                api("com.squareup.wire:wire-runtime:4.5.3")
+                api("com.squareup.wire:wire-runtime:4.5.6")
             }
         }
 

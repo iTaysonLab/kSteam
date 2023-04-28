@@ -22,10 +22,10 @@ kotlin {
                 api(project(":core"))
                 api(project(":proto-common"))
 
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-Beta")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
 
-                api("com.squareup.wire:wire-runtime:4.5.3")
+                api("com.squareup.wire:wire-runtime:4.5.6")
             }
         }
 
