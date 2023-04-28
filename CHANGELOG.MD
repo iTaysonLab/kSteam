@@ -1,3 +1,12 @@
+## r27
+
+---
+
+- **[breaking change]** updated `wire` from 4.5.3 to 4.5.6 (library users **must** also update `wire` to avoid issues)
+- **[breaking change]** `extension-pics`: fixed JSON exception when Steam can give absolutely random order values for collections (`Int` -> `Double`)
+- synchronized protobufs
+- updated `ktor`, `kotlinx-serialization` and `coroutines`
+
 ## r26
 
 ---
