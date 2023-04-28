@@ -27,6 +27,8 @@ internal class Sentry(
         return steamClient.storage.globalConfiguration.availableAccounts[steamId.id]?.sentryFileName?.let {
             if (it.isEmpty()) return@let null
             sentryFile(steamId, it)
+        }?.takeIf {
+            provideOkioFilesystem().exists(it)
         }
     }
 
