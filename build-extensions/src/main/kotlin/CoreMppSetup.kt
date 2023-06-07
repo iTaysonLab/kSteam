@@ -21,6 +21,9 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
     android {
         jvmToolchain(11)
 
+        publishLibraryVariants("release")
+        publishLibraryVariantsGroupedByFlavor = true
+
         compilations.all {
             kotlinOptions {
                 jvmTarget = "11"
