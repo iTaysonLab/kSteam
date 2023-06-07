@@ -1,39 +1,24 @@
 plugins {
+    id("build-extensions")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
-    id("build-extensions")
+    id("com.android.library")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab"
-version = "r27"
-
-repositories {
-    mavenCentral()
-}
+version = "r29"
 
 kotlin {
-    jvmToolchain(11)
+    multiplatformSetup()
+}
 
-    jvm()
+androidLibrary("bruhcollective.itaysonlab.kotlinx_vdf")
 
-    configureOrCreateNativePlatforms(includeApple = true, includeUnix = true, includeMingw = true)
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.1")
-                implementation("com.squareup.okio:okio:3.2.0")
-                implementation("de.cketti.unicode:kotlin-codepoints-deluxe:0.6.1")
-            }
-        }
-
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
-    }
+dependencies {
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.1")
+    commonMainImplementation("com.squareup.okio:okio:3.3.0")
+    commonMainImplementation("de.cketti.unicode:kotlin-codepoints-deluxe:0.6.1")
 }
 
 publishing {

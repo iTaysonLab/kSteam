@@ -1,3 +1,10 @@
+## r29
+
+---
+
+- streamline build process
+- provide `android` artifacts as well, with Compose stability bindings
+
 ## r28
 
 ---

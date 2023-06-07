@@ -1,21 +1,24 @@
 plugins {
+    id("build-extensions")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.library")
     id("com.squareup.wire")
-    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r27"
+version = "r29"
 
 kotlin {
-    jvmToolchain(11)
+    multiplatformSetup()
 
-    jvm()
-
-    configureOrCreateNativePlatforms()
+    androidDependencies {
+        implementation("androidx.compose.runtime:runtime:1.4.3")
+    }
 }
+
+androidLibrary("bruhcollective.itaysonlab.ksteam.extensions.core")
 
 dependencies {
     commonMainApi(project(":core"))

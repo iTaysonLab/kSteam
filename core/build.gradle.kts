@@ -1,22 +1,17 @@
 plugins {
+    id("build-extensions")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.library")
     id("com.squareup.wire")
-    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r27"
+version = "r29"
 
 kotlin {
-    jvmToolchain(11)
-
-    jvm {
-
-    }
-
-    configureOrCreateNativePlatforms(onEachTarget = {
+    multiplatformSetup(additionalNativeTargetConfig = {
         compilations.getByName("main") {
             cinterops {
                 val libdeflate by creating {
@@ -31,44 +26,32 @@ kotlin {
         }
     })
 
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":kotlinx-vdf"))
-                api(project(":proto-common"))
-
-                implementation("io.ktor:ktor-serialization:2.3.1")
-                implementation("io.ktor:ktor-client-core:2.3.1")
-                implementation("io.ktor:ktor-client-websockets:2.3.1")
-                implementation("io.ktor:ktor-client-content-negotiation:2.3.1")
-                implementation("io.ktor:ktor-client-cio:2.3.1")
-                implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.1")
-
-                implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-
-                implementation("com.squareup.okio:okio:3.3.0")
-                api("com.squareup.wire:wire-runtime:4.7.0")
-            }
-        }
-
-        val jvmMain by getting {
-            dependencies {
-
-            }
-        }
-
-        val nativeMain = createSourceSet("nativeMain", parent = commonMain, children = appleTargets, dependencies = {
-
-        })
-
-        createSourceSet("appleMain", parent = nativeMain, children = appleTargets, dependencies = {
-
-        })
+    androidDependencies {
+        implementation("androidx.compose.runtime:runtime:1.4.3")
     }
+}
+
+androidLibrary("bruhcollective.itaysonlab.ksteam.core")
+
+dependencies {
+    commonMainApi(project(":kotlinx-vdf"))
+    commonMainApi(project(":proto-common"))
+
+    commonMainImplementation("io.ktor:ktor-serialization:2.3.1")
+    commonMainImplementation("io.ktor:ktor-client-core:2.3.1")
+    commonMainImplementation("io.ktor:ktor-client-websockets:2.3.1")
+    commonMainImplementation("io.ktor:ktor-client-content-negotiation:2.3.1")
+    commonMainImplementation("io.ktor:ktor-client-cio:2.3.1")
+    commonMainImplementation("io.ktor:ktor-serialization-kotlinx-json:2.3.1")
+
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+
+    commonMainImplementation("com.squareup.okio:okio:3.3.0")
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
 }
 
 wire {

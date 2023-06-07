@@ -3,8 +3,9 @@ import bruhcollective.itaysonlab.ksteam.Core
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLoggingVerbosity
 import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.debug.StdoutLoggingTransport
+import bruhcollective.itaysonlab.ksteam.handlers.News
 import bruhcollective.itaysonlab.ksteam.handlers.account
-import bruhcollective.itaysonlab.ksteam.handlers.profile
+import bruhcollective.itaysonlab.ksteam.handlers.news
 import bruhcollective.itaysonlab.ksteam.kSteam
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import kotlinx.coroutines.*
@@ -30,18 +31,20 @@ class KSteamClient: CoroutineScope by CoroutineScope(Dispatchers.Default + Super
             steamClient.dumperMode = PacketDumper.DumpMode.Full
             steamClient.start()
 
-            steamClient.account.signIn(
-                username = "test", password = "123123"
-            )
-
             steamClient.account.awaitSignIn()
 
-            delay(5000L)
+            delay(2000L)
 
-            steamClient.profile.getCustomization(SteamId(76561198176883618_u), includePurchased = true, includeInactive = true).apply {
-                println(toString())
+            steamClient.news.getEventDetails(
+                eventIds = listOf(3723960129346707600),
+                clanIds = listOf(SteamId(103582791440160998_u))
+            )
+
+            steamClient.news.getUserNews(
+                showEvents = News.UserNewsFilterScenario.FriendActivity
+            ).forEach {
+                println(it)
             }
-            // steamClient.news.getUserNews(AppId(1938090))
 
             /*steamClient.executeAndForget(
                 SteamPacket.newProto(messageId = EMsg.k_EMsgClientChangeStatus, adapter = CMsgClientChangeStatus.ADAPTER, payload = CMsgClientChangeStatus(

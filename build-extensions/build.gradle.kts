@@ -5,6 +5,7 @@ plugins {
 
 repositories {
     mavenCentral()
+    google()
 }
 
 dependencies {
@@ -23,4 +24,5 @@ gradlePlugin {
 
 dependencies {
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.21")
+    implementation("com.android.library:com.android.library.gradle.plugin:8.0.2")
 }

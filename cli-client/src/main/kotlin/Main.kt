@@ -35,8 +35,4 @@ fun main(args: Array<String>) {
             println(packet.payload.toByteString().hex().chunked(512).joinToString("\n"))
         }
     }
-
-
-
-    //
 }

@@ -1,44 +1,37 @@
 plugins {
+    id("build-extensions")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.library")
     id("com.squareup.wire")
-    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r27"
+version = "r29"
 
 kotlin {
-    jvmToolchain(11)
+    multiplatformSetup()
 
-    jvm()
-
-    configureOrCreateNativePlatforms()
-
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":core"))
-                api(project(":proto-common"))
-                api(project(":extension-core"))
-                api(project(":kotlinx-vdf"))
-
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-
-                api("com.squareup.wire:wire-runtime:4.7.0")
-            }
-        }
-
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
+    androidDependencies {
+        implementation("androidx.compose.runtime:runtime:1.4.3")
     }
+}
+
+androidLibrary("bruhcollective.itaysonlab.ksteam.extensions.pics")
+
+dependencies {
+    commonMainApi(project(":core"))
+    commonMainApi(project(":proto-common"))
+    commonMainApi(project(":extension-core"))
+    commonMainApi(project(":kotlinx-vdf"))
+
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
 }
 
 wire {

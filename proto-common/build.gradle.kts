@@ -1,8 +1,16 @@
 plugins {
-    kotlin("multiplatform")
-    id("com.squareup.wire")
     id("build-extensions")
+    kotlin("multiplatform")
+    id("com.android.library")
+    id("com.squareup.wire")
     `maven-publish`
+}
+
+group = "bruhcollective.itaysonlab.ksteam"
+version = "r29"
+
+kotlin {
+    multiplatformSetup()
 }
 
 wire {
@@ -13,20 +21,7 @@ wire {
     }
 }
 
-group = "bruhcollective.itaysonlab.ksteam"
-version = "r27"
-
-kotlin {
-    jvmToolchain(11)
-
-    jvm()
-
-    configureOrCreateNativePlatforms()
-
-    sourceSets {
-        val commonMain by getting
-    }
-}
+androidLibrary("bruhcollective.itaysonlab.ksteam.proto")
 
 publishing {
     publications {

@@ -1,42 +1,34 @@
 plugins {
+    id("build-extensions")
     kotlin("multiplatform")
     kotlin("plugin.serialization")
+    id("com.android.library")
     id("com.squareup.wire")
-    id("build-extensions")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r27"
+version = "r29"
 
 kotlin {
-    jvmToolchain(11)
+    multiplatformSetup()
+}
 
-    jvm()
+androidLibrary("bruhcollective.itaysonlab.ksteam.extensions.guard_proto_migration")
 
-    configureOrCreateNativePlatforms()
+dependencies {
+    commonMainApi(project(":core"))
+    commonMainApi(project(":proto-common"))
+    commonMainApi(project(":extension-guard"))
 
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":core"))
-                api(project(":proto-common"))
-                api(project(":extension-guard"))
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
-                implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    commonMainImplementation("com.benasher44:uuid:0.7.0")
+    commonMainImplementation("io.ktor:ktor-client-core:2.3.1")
 
-                api("com.squareup.wire:wire-runtime:4.7.0")
-            }
-        }
-
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
-    }
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
 }
 
 wire {
