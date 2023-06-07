@@ -4,6 +4,7 @@ import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
+import bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import steam.webui.usernews.CUserNews_Event
 
@@ -19,9 +20,12 @@ sealed class ActivityFeedEntry (
         date: Int,
         steamId: SteamId,
         persona: Persona,
-        val app: AppSummary,
-        val announcement: bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
-    ): ActivityFeedEntry(date, steamId, persona)
+        val announcement: NewsEntry
+    ): ActivityFeedEntry(date, steamId, persona) {
+        override fun toString(): String {
+            return "PostedAnnouncement(date=$date, steamId=$steamId, persona=$persona, announcement=$announcement)"
+        }
+    }
 
     /**
      * A user now owns these games from the list.
@@ -31,7 +35,11 @@ sealed class ActivityFeedEntry (
         steamId: SteamId,
         persona: Persona,
         val apps: List<AppSummary>
-    ): ActivityFeedEntry(date, steamId, persona)
+    ): ActivityFeedEntry(date, steamId, persona) {
+        override fun toString(): String {
+            return "ReceivedNewGame(date=$date, steamId=$steamId, persona=$persona, apps=$apps)"
+        }
+    }
 
     /**
      * A user played the game for the first time.
@@ -41,7 +49,11 @@ sealed class ActivityFeedEntry (
         steamId: SteamId,
         persona: Persona,
         val app: AppSummary
-    ): ActivityFeedEntry(date, steamId, persona)
+    ): ActivityFeedEntry(date, steamId, persona) {
+        override fun toString(): String {
+            return "PlayedForFirstTime(date=$date, steamId=$steamId, persona=$persona, app=$app)"
+        }
+    }
 
     /**
      * A user has received new achievements in this game.
@@ -53,7 +65,7 @@ sealed class ActivityFeedEntry (
         val app: AppSummary,
         val achievements: List<Achievement>
     ): ActivityFeedEntry(date, steamId, persona) {
-        class Achievement(
+        data class Achievement(
             val internalName: String,
             val displayName: String,
             val displayDescription: String,
@@ -61,6 +73,10 @@ sealed class ActivityFeedEntry (
             val unlockedPercent: Double,
             val hidden: Boolean
         )
+
+        override fun toString(): String {
+            return "NewAchievements(date=$date, steamId=$steamId, persona=$persona, app=$app, achievements=[${achievements.joinToString()}])"
+        }
     }
 
     /**
@@ -72,5 +88,9 @@ sealed class ActivityFeedEntry (
         persona: Persona,
         val type: EUserNewsType,
         val proto: CUserNews_Event
-    ): ActivityFeedEntry(date, steamId, persona)
+    ): ActivityFeedEntry(date, steamId, persona) {
+        override fun toString(): String {
+            return "UnknownEvent(date=$date, steamId=$steamId, persona=$persona, type=$type, proto=$proto)"
+        }
+    }
 }

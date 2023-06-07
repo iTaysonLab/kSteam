@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab"
-version = "r26"
+version = "r27"
 
 repositories {
     mavenCentral()
@@ -22,7 +22,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.0-RC")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.1")
                 implementation("com.squareup.okio:okio:3.2.0")
                 implementation("de.cketti.unicode:kotlin-codepoints-deluxe:0.6.1")
             }

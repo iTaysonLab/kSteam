@@ -75,7 +75,7 @@ class SteamClient internal constructor(
 
     init {
         config.apiClient.plugin(HttpSend).intercept { request ->
-            if (request.url.pathSegments[request.url.pathSegments.lastIndex - 1] == "GetCMListForConnect") {
+            if (request.url.pathSegments.isEmpty() || request.url.pathSegments[request.url.pathSegments.lastIndex - 1] == "GetCMListForConnect") {
                 execute(request)
             } else {
                 execute(request.writeSteamData()).let { response ->
@@ -91,7 +91,7 @@ class SteamClient internal constructor(
 
         connectionStatus
             .onEach {
-                if (it == CMClientState.Logging) {
+                if (it == CMClientState.AwaitingAuthorization) {
                     // Now we can log in with a default account if available
                     getHandler<Account>().trySignInSaved()
                 }

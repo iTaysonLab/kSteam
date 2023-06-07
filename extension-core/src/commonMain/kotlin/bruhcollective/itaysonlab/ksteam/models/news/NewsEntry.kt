@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class NewsEntry internal constructor(
     @SerialName("announcement_body")
-    val announcementBody: bruhcollective.itaysonlab.ksteam.models.news.NewsEntry.AnnouncementBody,
+    val announcementBody: AnnouncementBody,
     @SerialName("appid")
     val appid: Int,
     @SerialName("broadcaster_accountid")

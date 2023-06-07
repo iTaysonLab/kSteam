@@ -65,8 +65,8 @@ class Pics internal constructor(
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
         KSteamLogging.logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
 
-        database.packages.initialize()
-        database.apps.initialize()
+        database.packages.preheatInitialization()
+        database.apps.preheatInitialization()
 
         val requiresUpdate = licenses.filter { sLicense ->
             if (sLicense.package_id != null && sLicense.change_number != null) {

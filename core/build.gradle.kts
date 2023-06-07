@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r26"
+version = "r27"
 
 kotlin {
     jvmToolchain(11)
@@ -37,21 +37,21 @@ kotlin {
                 api(project(":kotlinx-vdf"))
                 api(project(":proto-common"))
 
-                implementation("io.ktor:ktor-serialization:2.3.0")
-                implementation("io.ktor:ktor-client-core:2.3.0")
-                implementation("io.ktor:ktor-client-websockets:2.3.0")
-                implementation("io.ktor:ktor-client-content-negotiation:2.3.0")
-                implementation("io.ktor:ktor-client-cio:2.3.0")
-                implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.0")
+                implementation("io.ktor:ktor-serialization:2.3.1")
+                implementation("io.ktor:ktor-client-core:2.3.1")
+                implementation("io.ktor:ktor-client-websockets:2.3.1")
+                implementation("io.ktor:ktor-client-content-negotiation:2.3.1")
+                implementation("io.ktor:ktor-client-cio:2.3.1")
+                implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.1")
 
                 implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
 
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 
                 implementation("com.squareup.okio:okio:3.3.0")
-                api("com.squareup.wire:wire-runtime:4.5.6")
+                api("com.squareup.wire:wire-runtime:4.7.0")
             }
         }
 

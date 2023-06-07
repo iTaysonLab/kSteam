@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r26"
+version = "r27"
 
 kotlin {
     jvmToolchain(11)
@@ -15,26 +15,19 @@ kotlin {
     jvm()
 
     configureOrCreateNativePlatforms()
+}
 
-    sourceSets {
-        val commonMain by getting {
-            dependencies {
-                api(project(":core"))
-                api(project(":proto-common"))
+dependencies {
+    commonMainApi(project(":core"))
+    commonMainApi(project(":proto-common"))
 
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    commonMainImplementation("io.ktor:ktor-client-core:2.3.1")
 
-                api("com.squareup.wire:wire-runtime:4.5.6")
-            }
-        }
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
 
-        val commonTest by getting {
-            dependencies {
-                implementation(kotlin("test"))
-            }
-        }
-    }
+    commonTestImplementation(kotlin("test"))
 }
 
 wire {

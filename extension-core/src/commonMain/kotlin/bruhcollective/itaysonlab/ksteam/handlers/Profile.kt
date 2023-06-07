@@ -47,7 +47,12 @@ class Profile internal constructor(
         ).data.let { ProfileEquipment(it) }
     }
 
-    private suspend fun getAchievementsProgress(steamId: SteamId, appIds: List<AppId>): Map<AppId, CPlayer_GetAchievementsProgress_Response_AchievementProgress> {
+    /**
+     * Returns achievement progress in specific games of a user.
+     *
+     * **NOTE:** returns raw proto data until a replacement API is made.
+     */
+    suspend fun getAchievementsProgress(steamId: SteamId, appIds: List<AppId>): Map<AppId, CPlayer_GetAchievementsProgress_Response_AchievementProgress> {
         return steamClient.unifiedMessages.execute(
             methodName = "Player.GetAchievementsProgress",
             requestAdapter = CPlayer_GetAchievementsProgress_Request.ADAPTER,
@@ -56,7 +61,12 @@ class Profile internal constructor(
         ).data.achievement_progress.associateBy { AppId(it.appid ?: 0) }
     }
 
-    private suspend fun getTopAchievements(steamId: SteamId, appIds: List<AppId>, count: Int = 5): Map<AppId, List<CPlayer_GetTopAchievementsForGames_Response_Achievement>> {
+    /**
+     * Returns top achievements in a specific game.
+     *
+     * **NOTE:** returns raw proto data until a replacement API is made.
+     */
+    suspend fun getTopAchievements(steamId: SteamId, appIds: List<AppId>, count: Int = 5): Map<AppId, List<CPlayer_GetTopAchievementsForGames_Response_Achievement>> {
         return steamClient.unifiedMessages.execute(
             methodName = "Player.GetTopAchievementsForGames",
             requestAdapter = CPlayer_GetTopAchievementsForGames_Request.ADAPTER,
@@ -67,6 +77,8 @@ class Profile internal constructor(
 
     /**
      * Returns customization of a specific user.
+     *
+     * This includes Points Shop data as well as widgets (not all are supported without scraping HTML)
      */
     suspend fun getCustomization(steamId: SteamId, includePurchased: Boolean = false, includeInactive: Boolean = false): ProfileCustomization {
         fun List<steam.webui.player.ProfileCustomization>.mapEntriesToAppIds() = this.map { it.slots.mapNotNull { s -> s.appid } }

@@ -11,7 +11,12 @@ import bruhcollective.itaysonlab.ksteam.platform.dispatchListProcessing
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
@@ -219,41 +224,45 @@ internal class PicsVdfKvDatabase (
 internal class SuspendableReadOnlyMap <Key, Value> (
     private val initFunc: suspend () -> Map<Key, Value> = { emptyMap() }
 ) {
-    private var initializationJob: Job? = null
     private val internalList = mutableMapOf<Key, Value>()
 
-    private fun requireInitialization() = require(initializationJob != null) { "CallbackSuspendableMap must be initialized first!" }
-    private suspend fun awaitInitialization() = initializationJob?.join()
+    private val initializationMutex = Mutex()
+    private var initializationCompleted = false
 
-    private suspend fun awaitRequiredInitialization() {
-        requireInitialization()
+    private suspend fun awaitInitialization() {
+        if (initializationCompleted) {
+            return // short-circuit
+        }
+
+        initializationMutex.withLock {
+            if (initializationCompleted) {
+                return // short-circuit if executed in parallel
+            }
+
+            coroutineScope {
+                internalList.putAll(initFunc())
+            }
+
+            initializationCompleted = true
+        }
+    }
+
+    suspend fun preheatInitialization() {
         awaitInitialization()
     }
 
-    suspend fun initialize() {
-        if (initializationJob != null) {
-            return
-        }
-
-        coroutineScope {
-            initializationJob = launch {
-                internalList.putAll(initFunc())
-            }
-        }
-    }
-
     suspend fun get(key: Key): Value? {
-        awaitRequiredInitialization()
+        awaitInitialization()
         return internalList[key]
     }
 
     suspend fun getKeys(): Sequence<Key> {
-        awaitRequiredInitialization()
+        awaitInitialization()
         return internalList.keys.asSequence()
     }
 
     suspend fun getEntries(): Sequence<Value> {
-        awaitRequiredInitialization()
+        awaitInitialization()
         return internalList.values.asSequence()
     }
 

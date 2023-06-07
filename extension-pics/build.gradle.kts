@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r26"
+version = "r27"
 
 kotlin {
     jvmToolchain(11)
@@ -24,12 +24,12 @@ kotlin {
                 api(project(":extension-core"))
                 api(project(":kotlinx-vdf"))
 
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.0")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
                 implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0-RC")
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 
-                api("com.squareup.wire:wire-runtime:4.5.6")
+                api("com.squareup.wire:wire-runtime:4.7.0")
             }
         }
 

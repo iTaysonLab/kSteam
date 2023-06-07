@@ -1,9 +1,29 @@
+## r28
+
+---
+
+- **[breaking change]** redone `CMClientState` featuring new `AwaitingAuthorization` state (connected as a guest) and renamed `Logging` to `Authorizing` + `Idle` to `Offline`
+- `core`: improved `CMClientState` exposing
+- `core`: introduce `extractAccountIdFromSteam` and `toSteamId` extensions for `Long` and `Int`
+- `core`: fixed rare Web API call crash
+- `core/player`: make `getAchievementsProgress` and `getTopAchievements` public (proto API only for now)
+- 
+- `extension-pics`: optimized database lists, fixing `CallbackSuspendableMap must be initialized first!` crash
+- `extension-core/news`: finalized parameters for `getUserNews`, introduced `UserNewsFilterScenario`
+- `extension-core/news`
+- updated `kotlin` from `1.8.20` to `1.8.21`
+- updated `kotlinx-coroutines` from `1.7.0-RC` to `1.7.1`
+- updated `kotlinx-serialization` from `1.5.0` to `1.5.1`
+- updated `wire` from `4.6.0` to `4.7.0`
+- updated `ktor` from `2.3.0` to `2.3.1`
+
 ## r27
 
 ---
 
-- **[breaking change]** updated `wire` from 4.5.3 to 4.5.6 (library users **must** also update `wire` to avoid issues)
+- **[breaking change]** updated `wire` from 4.5.3 to 4.6.0 (library consumers **must** also update `wire` to avoid issues)
 - **[breaking change]** `extension-pics`: fixed JSON exception when Steam can give absolutely random order values for collections (`Int` -> `Double`)
+- `core`: redone sign in process to extract Steam ID from JWT token (fixes QR login - btw I think that there is an easier way to know SteamID in QR logins...) 
 - synchronized protobufs
 - updated `ktor`, `kotlinx-serialization` and `coroutines`
 

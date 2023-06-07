@@ -23,14 +23,17 @@ import steam.webui.common.CMsgClientHeartBeat
 import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.common.CMsgMulti
 
+/**
+ * This class manages connection to the CM network on Steam.
+ */
 internal class CMClient(
     private val serverList: CMList,
     private val configuration: SteamClientConfiguration
 ) {
     // A scope used to hold WSS connection
-    private val internalScope = CreateSupervisedCoroutineScope("cmClient", Dispatchers.IO) { _, throwable ->
+    private val internalScope = CreateSupervisedCoroutineScope("kSteam-cmClient", Dispatchers.IO) { _, throwable ->
         throwable.printStackTrace()
-        mutableClientState.value = CMClientState.Idle
+        mutableClientState.value = CMClientState.Offline
         launchConnectionCoroutine(reconnect = true)
     }
 
@@ -61,7 +64,7 @@ internal class CMClient(
     /**
      * CMClient state
      */
-    private val mutableClientState = MutableStateFlow(CMClientState.Idle)
+    private val mutableClientState = MutableStateFlow(CMClientState.Offline)
     val clientState = mutableClientState.asStateFlow()
 
     /**
@@ -78,13 +81,13 @@ internal class CMClient(
             if (authRequired) {
                 it == CMClientState.Connected
             } else {
-                it == CMClientState.Logging || it == CMClientState.Connected
+                it == CMClientState.AwaitingAuthorization || it == CMClientState.Authorizing || it == CMClientState.Connected
             }
         }
     }
 
     private fun launchConnectionCoroutine(reconnect: Boolean = false) {
-        if (clientState.value != CMClientState.Idle) return
+        if (clientState.value != CMClientState.Offline) return
 
         internalScope.launch {
             if (reconnect) {
@@ -117,7 +120,7 @@ internal class CMClient(
                 )
             )
 
-            mutableClientState.value = CMClientState.Logging
+            mutableClientState.value = CMClientState.AwaitingAuthorization
 
             while (true) {
                 // Check if a message from server is present
@@ -161,6 +164,11 @@ internal class CMClient(
                 // Check if outgoing messages are in queue
                 if (outgoingPacketsQueue.isEmpty.not()) {
                     val packetToSend = outgoingPacketsQueue.receive()
+
+                    if (packetToSend.messageId == EMsg.k_EMsgClientLogon) {
+                        mutableClientState.value = CMClientState.Authorizing
+                    }
+
                     KSteamLogging.logVerbose("CMClient:WsConnection", "Sending packet: ${packetToSend.messageId.name}")
                     KSteamLogging.logVerbose("CMClient:WsConnection", "> [header] ${packetToSend.header}")
                     dumper.onPacket(packetToSend, true)
@@ -229,6 +237,8 @@ internal class CMClient(
 
     /**
      * Add a packet to a outgoing queue and then awaits for a response with the attached job ID.
+     *
+     * @param packet the packet which needs to be queued for sending
      */
     suspend fun execute(packet: SteamPacket): SteamPacket {
         return subscribe(packet).first()
@@ -236,6 +246,9 @@ internal class CMClient(
 
     /**
      * Add a packet to a outgoing queue and then awaits for a (multiple) responses with the attached job ID.
+     *
+     * @param packet the packet which needs to be queued for sending
+     * @return a [Flow] of [SteamPacket]s related to this packet
      */
     suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> {
         awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
@@ -253,6 +266,8 @@ internal class CMClient(
 
     /**
      * Add a packet to a outgoing queue and forget about it (no job IDs and awaits)
+     *
+     * @param packet the packet which needs to be queued for sending
      */
     suspend fun executeAndForget(packet: SteamPacket) {
         awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())

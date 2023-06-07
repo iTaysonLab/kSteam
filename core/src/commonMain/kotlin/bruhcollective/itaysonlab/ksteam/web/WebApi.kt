@@ -50,8 +50,8 @@ class WebApi(
         baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
         path: List<String>,
         parameters: Map<String, String>,
-        extraParameters: Map<String, List<String>> = emptyMap()
-    ): T = ajaxGet(baseUrl, path, parameters, extraParameters).body()
+        repeatingParameters: Map<String, List<String>> = emptyMap()
+    ): T = ajaxGet(baseUrl, path, parameters, repeatingParameters).body()
 
     suspend fun submitForm(
         baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
@@ -74,21 +74,38 @@ class WebApi(
         baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
         path: List<String>,
         parameters: Map<String, String>,
-        extraParameters: Map<String, List<String>> = emptyMap()
+        repeatingParameters: Map<String, List<String>> = emptyMap()
     ): HttpResponse {
         return apiClient.get(URLBuilder(baseUrl).appendPathSegments(path).apply {
             parameters.forEach { entry ->
                 this.parameters[entry.key] = entry.value
             }
 
-            extraParameters.forEach { (key, values) ->
+            repeatingParameters.forEach { (key, values) ->
                 this.parameters.appendAll(key, values)
             }
-        }.build())
+        }.build()) {
+            headers {
+                append(HttpHeaders.Accept, "application/json")
+                append(HttpHeaders.UserAgent, "kSteam/1.0")
+            }
+        }
     }
 
     @Serializable
     internal class WebApiBoxedResponse<T>(
         val response: T
     )
+
+    operator fun get(path: String) = WebApiOperatorScope(path = path)
+
+    inner class WebApiOperatorScope(
+        val baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
+        val path: String
+    ) {
+        suspend inline fun <reified T> ajaxGetTyped(
+            parameters: Map<String, String>,
+            repeatingParameters: Map<String, List<String>> = emptyMap()
+        ): T = ajaxGet(baseUrl, listOf(path), parameters, repeatingParameters).body()
+    }
 }
