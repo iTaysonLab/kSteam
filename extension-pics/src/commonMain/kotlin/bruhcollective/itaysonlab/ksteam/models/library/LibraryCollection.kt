@@ -2,7 +2,12 @@ package bruhcollective.itaysonlab.ksteam.models.library
 
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.*
+import bruhcollective.itaysonlab.ksteam.models.enums.EAppFeature
+import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
+import bruhcollective.itaysonlab.ksteam.models.enums.EGenre
+import bruhcollective.itaysonlab.ksteam.models.enums.EPartner
+import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,6 +16,7 @@ import kotlinx.serialization.Serializable
  *
  * A library collection is a defined set of filters which is used to sort applications in user's Steam library.
  */
+@Immutable
 sealed class LibraryCollection (
     val id: String,
     val name: String,

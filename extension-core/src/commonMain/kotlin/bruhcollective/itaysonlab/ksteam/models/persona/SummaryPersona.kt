@@ -2,10 +2,12 @@ package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 /**
  * A persona is a user in the Steam network.
  */
+@Immutable
 data class SummaryPersona internal constructor(
     /**
      * The [SteamId] of the user.

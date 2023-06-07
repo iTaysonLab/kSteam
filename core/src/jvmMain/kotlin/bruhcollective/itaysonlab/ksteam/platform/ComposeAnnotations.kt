@@ -2,7 +2,7 @@ package bruhcollective.itaysonlab.ksteam.platform
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.SOURCE)
-actual annotation class Immutable
+actual annotation class Immutable actual constructor()
 
 @Target(
     AnnotationTarget.CLASS,
@@ -11,4 +11,4 @@ actual annotation class Immutable
     AnnotationTarget.PROPERTY
 )
 @Retention(AnnotationRetention.SOURCE)
-actual annotation class Stable
+actual annotation class Stable actual constructor()

@@ -6,8 +6,10 @@ import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.usernews.CUserNews_Event
 
+@Immutable
 sealed class ActivityFeedEntry (
     val date: Int,
     val steamId: SteamId,
@@ -16,6 +18,7 @@ sealed class ActivityFeedEntry (
     /**
      * A new blog post was posted about this app.
      */
+    @Immutable
     class PostedAnnouncement(
         date: Int,
         steamId: SteamId,
@@ -30,6 +33,7 @@ sealed class ActivityFeedEntry (
     /**
      * A user now owns these games from the list.
      */
+    @Immutable
     class ReceivedNewGame(
         date: Int,
         steamId: SteamId,
@@ -44,6 +48,7 @@ sealed class ActivityFeedEntry (
     /**
      * A user played the game for the first time.
      */
+    @Immutable
     class PlayedForFirstTime(
         date: Int,
         steamId: SteamId,
@@ -58,6 +63,7 @@ sealed class ActivityFeedEntry (
     /**
      * A user has received new achievements in this game.
      */
+    @Immutable
     class NewAchievements(
         date: Int,
         steamId: SteamId,
@@ -82,6 +88,7 @@ sealed class ActivityFeedEntry (
     /**
      * kSteam does not know about this event.
      */
+    @Immutable
     class UnknownEvent(
         date: Int,
         steamId: SteamId,

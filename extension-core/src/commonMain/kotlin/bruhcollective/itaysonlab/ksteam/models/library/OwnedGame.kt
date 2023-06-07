@@ -1,8 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
 import bruhcollective.itaysonlab.ksteam.models.AppId
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.player.CPlayer_GetOwnedGames_Response_Game
 
+@Immutable
 data class OwnedGame internal constructor(
     val id: AppId,
     val name: String,

@@ -1,10 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 /**
  * Information about the current persona signed into the account.
  */
+@Immutable
 data class CurrentPersona internal constructor(
     /**
      * The [SteamId] of the user.

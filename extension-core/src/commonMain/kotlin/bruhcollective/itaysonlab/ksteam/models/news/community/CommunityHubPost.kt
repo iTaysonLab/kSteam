@@ -1,10 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.models.news.community
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable(with = CommunityHubSerializer::class)
+@Immutable
 sealed class CommunityHubPost {
     @SerialName("published_file_id")
     abstract val fileId: String
@@ -37,12 +39,13 @@ sealed class CommunityHubPost {
     abstract val description: String
 
     @SerialName("reactions")
-    abstract val reactions: List<bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubReactionItem>
+    abstract val reactions: List<CommunityHubReactionItem>
 
     @SerialName("creator")
-    abstract val creator: bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPersonaInformation
+    abstract val creator: CommunityHubPersonaInformation
 
     @Serializable
+    @Immutable
     data class Artwork(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -54,11 +57,12 @@ sealed class CommunityHubPost {
         @SerialName("votes_for") override val votes: Int,
         @SerialName("rating_stars") override val starRating: Int,
         @SerialName("description") override val description: String,
-        @SerialName("reactions") override val reactions: List<bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubReactionItem>,
-        @SerialName("creator") override val creator: bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPersonaInformation,
-    ): bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost()
+        @SerialName("reactions") override val reactions: List<CommunityHubReactionItem>,
+        @SerialName("creator") override val creator: CommunityHubPersonaInformation,
+    ): CommunityHubPost()
 
     @Serializable
+    @Immutable
     data class Video(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -70,12 +74,13 @@ sealed class CommunityHubPost {
         @SerialName("votes_for") override val votes: Int,
         @SerialName("rating_stars") override val starRating: Int,
         @SerialName("description") override val description: String,
-        @SerialName("reactions") override val reactions: List<bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubReactionItem>,
-        @SerialName("creator") override val creator: bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPersonaInformation,
+        @SerialName("reactions") override val reactions: List<CommunityHubReactionItem>,
+        @SerialName("creator") override val creator: CommunityHubPersonaInformation,
         @SerialName("youtube_video_id") val youtubeVideoId: String
-    ): bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost()
+    ): CommunityHubPost()
 
     @Serializable
+    @Immutable
     data class Screenshot(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -87,11 +92,12 @@ sealed class CommunityHubPost {
         @SerialName("votes_for") override val votes: Int,
         @SerialName("rating_stars") override val starRating: Int,
         @SerialName("description") override val description: String,
-        @SerialName("reactions") override val reactions: List<bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubReactionItem>,
-        @SerialName("creator") override val creator: bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPersonaInformation,
-    ): bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost()
+        @SerialName("reactions") override val reactions: List<CommunityHubReactionItem>,
+        @SerialName("creator") override val creator: CommunityHubPersonaInformation,
+    ): CommunityHubPost()
 
     @Serializable
+    @Immutable
     data class CommunityItem(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -103,12 +109,13 @@ sealed class CommunityHubPost {
         @SerialName("votes_for") override val votes: Int,
         @SerialName("rating_stars") override val starRating: Int,
         @SerialName("description") override val description: String,
-        @SerialName("reactions") override val reactions: List<bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubReactionItem>,
-        @SerialName("creator") override val creator: bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPersonaInformation,
-    ): bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost()
+        @SerialName("reactions") override val reactions: List<CommunityHubReactionItem>,
+        @SerialName("creator") override val creator: CommunityHubPersonaInformation,
+    ): CommunityHubPost()
 }
 
 @Serializable
+@Immutable
 class CommunityHubPersonaInformation(
     val name: String,
     val steamid: String,
@@ -118,6 +125,7 @@ class CommunityHubPersonaInformation(
 }
 
 @Serializable
+@Immutable
 class CommunityHubReactionItem(
     @SerialName("reaction_type") val reactionId: Int,
     val count: Int

@@ -2,14 +2,18 @@ package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.player.EProfileCustomizationType
 
+@Immutable
 sealed class ProfileWidget {
+    @Immutable
     data class FavoriteGame internal constructor(
         val app: AppSummary,
         val achievementProgress: AchievementProgress,
         val playedSeconds: Int
     ): ProfileWidget() {
+        @Immutable
         data class AchievementProgress internal constructor(
             val totalAchievements: Int,
             val currentAchivements: Int,
@@ -17,6 +21,7 @@ sealed class ProfileWidget {
         )
     }
 
+    @Immutable
     data class GameCollector internal constructor(
         val featuredApps: List<AppSummary>,
         val ownedGamesCount: Int
@@ -25,6 +30,7 @@ sealed class ProfileWidget {
     /**
      * Unknown to kSteam widget
      */
+    @Immutable
     data class Unknown internal constructor(
         val type: EProfileCustomizationType
     ): ProfileWidget()

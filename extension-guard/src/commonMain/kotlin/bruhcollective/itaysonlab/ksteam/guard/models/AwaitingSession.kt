@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.authentication.CAuthentication_GetAuthSessionInfo_Response
 import steam.webui.authentication.EAuthSessionSecurityHistory
 import steam.webui.authentication.EAuthTokenPlatformType
@@ -8,6 +9,7 @@ import steam.webui.authentication.ESessionPersistence
 /**
  * Represents a session which is waiting to be confirmed/rejected.
  */
+@Immutable
 data class AwaitingSession internal constructor(
     val id: Long,
     val ip: String,

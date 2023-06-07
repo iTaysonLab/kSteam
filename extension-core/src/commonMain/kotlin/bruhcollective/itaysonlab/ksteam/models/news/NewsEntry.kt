@@ -1,10 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.models.news
 
 
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Immutable
 data class NewsEntry internal constructor(
     @SerialName("announcement_body")
     val announcementBody: AnnouncementBody,
@@ -80,6 +82,7 @@ data class NewsEntry internal constructor(
     val votesUp: Int
 ) {
     @Serializable
+    @Immutable
     data class AnnouncementBody(
         @SerialName("ban_check_result")
         val banCheckResult: Int,

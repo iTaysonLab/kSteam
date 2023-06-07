@@ -2,7 +2,9 @@ package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.cdn.CdnUrl
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityPublicAssetImageUrl
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
+@Immutable
 data class ProfileItem internal constructor(
     val imageSmall: CdnUrl?,
     val imageLarge: CdnUrl?,

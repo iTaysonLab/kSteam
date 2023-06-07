@@ -2,7 +2,7 @@ package bruhcollective.itaysonlab.ksteam.platform
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
-expect annotation class Immutable
+expect annotation class Immutable()
 
 @Target(
     AnnotationTarget.CLASS,
@@ -11,4 +11,4 @@ expect annotation class Immutable
     AnnotationTarget.PROPERTY
 )
 @Retention(AnnotationRetention.BINARY)
-expect annotation class Stable
+expect annotation class Stable()

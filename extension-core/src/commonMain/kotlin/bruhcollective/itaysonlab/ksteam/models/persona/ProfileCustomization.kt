@@ -1,9 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.player.EBanContentCheckResult
 import steam.webui.player.EProfileCustomizationStyle
 import steam.webui.player.EProfileCustomizationType
 
+@Immutable
 data class ProfileCustomization internal constructor(
     val profileWidgets: List<ProfileWidget>,
     val slotsAvailable: Int,
@@ -11,6 +13,7 @@ data class ProfileCustomization internal constructor(
     val profilePreferences: ProfilePreferences?
 )
 
+@Immutable
 data class ProfileCustomizationEntry internal constructor(
     val customizationType: EProfileCustomizationType,
     val level: Int,
@@ -29,6 +32,7 @@ data class ProfileCustomizationEntry internal constructor(
     )
 }
 
+@Immutable
 data class ProfileCustomizationSlot internal constructor(
     val appId: Int,
     val publishedFileId: Long,
@@ -59,6 +63,7 @@ data class ProfileCustomizationSlot internal constructor(
     )
 }
 
+@Immutable
 data class ProfileTheme internal constructor(
     val themeId: String,
     val title: String
@@ -69,6 +74,7 @@ data class ProfileTheme internal constructor(
     )
 }
 
+@Immutable
 data class ProfilePreferences internal constructor(
     val hideProfileAwards: Boolean
 ) {

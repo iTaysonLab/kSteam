@@ -3,15 +3,18 @@ package bruhcollective.itaysonlab.ksteam.models.pics
 import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.cdn.StaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
+import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+@Immutable
 data class AppInfo internal constructor(
     @SerialName("appid") val appId: Int,
     val common: AppInfoCommon = AppInfoCommon()
 ) {
     @Serializable
+    @Immutable
     data class AppInfoCommon internal constructor(
         val name: String = "",
         val type: String = "",
@@ -42,11 +45,13 @@ data class AppInfo internal constructor(
         @SerialName("logo") val logoId: String = "",
     ) {
         @Serializable
+        @Immutable
         data class SteamDeckCompatibility internal constructor(
             val category: Int = 0,
             val tests: List<SteamDeckCompatTestEntry> = emptyList()
         ) {
             @Serializable
+            @Immutable
             data class SteamDeckCompatTestEntry internal constructor(
                 val display: Int = 0,
                 val token: String = ""
@@ -54,6 +59,7 @@ data class AppInfo internal constructor(
         }
 
         @Serializable
+        @Immutable
         data class AppInfoAssociation internal constructor(
             val type: String = "",
             val name: String = ""
