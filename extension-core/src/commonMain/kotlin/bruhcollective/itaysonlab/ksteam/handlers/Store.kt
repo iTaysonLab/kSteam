@@ -2,9 +2,13 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
-import steam.webui.common.*
+import steam.webui.common.CStoreBrowse_GetItems_Request
+import steam.webui.common.CStoreBrowse_GetItems_Response
+import steam.webui.common.StoreBrowseContext
+import steam.webui.common.StoreBrowseItemDataRequest
+import steam.webui.common.StoreItem
+import steam.webui.common.StoreItemID
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
 
@@ -17,10 +21,10 @@ class Store internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
     // TODO: make it "compressable" or store in some kind of LRU cache with on-disk
-    private val appSummaryDetailMap = mutableMapOf<AppId, AppSummary>()
-    private val rpLocalizationMap = mutableMapOf<AppId, Map<String, String>>()
+    private val storeItemsMap = mutableMapOf<StoreItemID, StoreItem>()
+    private val rpLocalizationMap = mutableMapOf<Int, Map<String, String>>()
 
-    suspend fun getRichPresenceLocalization(appId: AppId): Map<String, String> {
+    suspend fun getRichPresenceLocalization(appId: Int): Map<String, String> {
         if (rpLocalizationMap.containsKey(appId)) {
             return rpLocalizationMap[appId] ?: emptyMap()
         }
@@ -30,74 +34,119 @@ class Store internal constructor(
             requestAdapter = CCommunity_GetAppRichPresenceLocalization_Request.ADAPTER,
             responseAdapter = CCommunity_GetAppRichPresenceLocalization_Response.ADAPTER,
             requestData = CCommunity_GetAppRichPresenceLocalization_Request(
-                appid = appId.id, language = steamClient.language.vdfName
+                appid = appId, language = steamClient.language.vdfName
             )
         ).dataNullable?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap()).also {
             rpLocalizationMap[appId] = it
         }
     }
 
-    suspend fun getAppSummaries(appIds: List<AppId>): Map<AppId, AppSummary> {
+    suspend fun getAppSummaries(appIds: List<Int>): Map<Int, AppSummary> {
         if (appIds.isEmpty()) return emptyMap()
 
         val picsSummaries = steamClient.getImplementingHandlerOrNull<MetadataPlugin>()?.getMetadataFor(appIds) ?: emptyMap()
 
         val netSummaries = if (picsSummaries.isNotEmpty()) {
-            getApps(appIds.filterNot { picsSummaries.containsKey(it) })
+            getNetworkApps(appIds.filterNot { picsSummaries.containsKey(it) })
         } else {
-            getApps(appIds)
+            getNetworkApps(appIds)
         }
 
         return netSummaries + picsSummaries
     }
 
     /**
-     * Gets app details from Store.
-     *
-     * This request will be cached in a temporary "DB" which will be reset at kSteam relaunch.
+     * Gets app summaries from the Steam Store.
      */
-    suspend fun getApps(appIds: List<AppId>): Map<AppId, AppSummary> {
-        if (appIds.isEmpty()) return emptyMap()
-
-        val appIdsParts = appIds.partition {
-            appSummaryDetailMap.containsKey(it)
-        }
-
-        val networkAppSummaries = if (appIdsParts.second.isNotEmpty()) {
-            steamClient.unifiedMessages.execute(
-                methodName = "StoreBrowse.GetItems",
-                requestAdapter = CStoreBrowse_GetItems_Request.ADAPTER,
-                responseAdapter = CStoreBrowse_GetItems_Response.ADAPTER,
-                requestData = CStoreBrowse_GetItems_Request(
-                    ids = appIdsParts.second.map { StoreItemID(appid = it.id) },
-                    context = StoreBrowseContext(
-                        language = steamClient.language.vdfName,
-                        country_code = steamClient.persona.currentPersona.value.country
-                    ), data_request = StoreBrowseItemDataRequest(
-                        include_assets = true,
-                        include_release = true,
-                        include_platforms = true,
-                        include_all_purchase_options = true,
-                        include_screenshots = false,
-                        include_trailers = false,
-                        include_ratings = false,
-                        include_tag_count = 5,
-                        include_reviews = true,
-                        include_basic_info = true,
-                        include_supported_languages = true
-                    )
-                )
-            ).data.store_items.map {
-                AppSummary(it)
-            }.also { appSummaryDetailMap.putAll(it.associateBy { p -> p.id }) }
-        } else {
-            emptyList()
-        }
-
-        return (appIdsParts.first.map { appSummaryDetailMap[it]!! } + networkAppSummaries).associateBy {
-            it.id
+    suspend fun getNetworkApps(ids: List<Int>): Map<Int, AppSummary> {
+        return getStoreItemsTyped(
+            ids = ids.map { StoreItemID(appid = it) },
+            transformer = ::AppSummary
+        ).mapKeys {
+            it.key.appid ?: error("Store/GetAppSummaries: mapKeys key is null appid?")
         }
     }
 
-    suspend fun getApp(appId: AppId): AppSummary = getApps(listOf(appId)).values.first()
+    suspend fun getNetworkApp(appId: Int): AppSummary = getNetworkApps(listOf(appId)).values.first()
+
+    suspend fun getNetworkPackages(ids: List<Int>): Map<Int, AppSummary> {
+        return getStoreItemsTyped(
+            ids = ids.map { StoreItemID(appid = it) },
+            transformer = ::AppSummary
+        ).mapKeys {
+            it.key.appid ?: error("Store/GetAppSummaries: mapKeys key is null appid?")
+        }
+    }
+
+    suspend fun getNetworkPackage(appId: Int): AppSummary = getNetworkApps(listOf(appId)).values.first()
+
+    /**
+     * Gets details from Store.
+     *
+     * This request will be cached in a temporary "DB" which will be reset at kSteam relaunch.
+     */
+    suspend fun <T> getStoreItemsTyped(ids: List<StoreItemID>, transformer: (StoreItem) -> T): Map<StoreItemID, T> {
+        return getStoreItems(ids).mapValues { transformer(it.value) }
+    }
+
+    suspend fun getStoreItems(ids: List<StoreItemID>): Map<StoreItemID, StoreItem> {
+        if (ids.isEmpty()) {
+            return emptyMap() // short-circuit
+        }
+
+        browseOnlineStoreForIds(ids.filterNot(storeItemsMap::containsKey)).forEach { onlineStoreItem ->
+            storeItemsMap[storeItemToId(onlineStoreItem)] = onlineStoreItem
+        }
+
+        return ids.asSequence().filter(storeItemsMap::containsKey).associateWith(storeItemsMap::getValue)
+    }
+
+    private suspend fun browseOnlineStoreForIds(
+        ids: List<StoreItemID>,
+        request: StoreBrowseItemDataRequest = DefaultStoreBrowseItemDataRequest
+    ): List<StoreItem> {
+        if (ids.isEmpty()) {
+            return emptyList() // short-circuit
+        }
+
+        return steamClient.unifiedMessages.execute(
+            methodName = "StoreBrowse.GetItems",
+            requestAdapter = CStoreBrowse_GetItems_Request.ADAPTER,
+            responseAdapter = CStoreBrowse_GetItems_Response.ADAPTER,
+            requestData = CStoreBrowse_GetItems_Request(
+                ids = ids,
+                context = StoreBrowseContext(
+                    language = steamClient.language.vdfName,
+                    country_code = steamClient.persona.currentPersona.value.country
+                ), data_request = request
+            )
+        ).data.store_items
+    }
+
+    private fun storeItemToId(item: StoreItem) = when (item.item_type) {
+        0 -> StoreItemID(appid = item.appid)
+        1 -> StoreItemID(packageid = item.id)
+        2 -> StoreItemID(bundleid = item.id)
+        4 -> StoreItemID(tagid = item.id)
+        5 -> StoreItemID(creatorid = item.id)
+        6 -> StoreItemID(hubcategoryid = item.id)
+        else -> error("[storeItemToId] unsupported type ${item.item_type} for proto item ${item}")
+    }
+
+    private companion object {
+        // Include everything
+        val DefaultStoreBrowseItemDataRequest = StoreBrowseItemDataRequest(
+            include_assets = true,
+            include_release = true,
+            include_platforms = true,
+            include_all_purchase_options = true,
+            include_screenshots = true,
+            include_trailers = true,
+            include_ratings = true,
+            include_tag_count = 5,
+            include_reviews = true,
+            include_basic_info = true,
+            include_supported_languages = true
+        )
+    }
 }
