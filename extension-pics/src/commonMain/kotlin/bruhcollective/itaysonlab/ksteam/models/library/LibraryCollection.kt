@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EAppFeature
 import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
@@ -41,8 +40,8 @@ sealed class LibraryCollection (
                     name = remote.name,
                     timestamp = timestamp,
                     version = version,
-                    added = remote.added.map(::AppId),
-                    removed = remote.removed.map(::AppId)
+                    added = remote.added,
+                    removed = remote.removed
                 )
             }
         }
@@ -58,8 +57,8 @@ sealed class LibraryCollection (
         name: String,
         timestamp: Int,
         version: Long = 0,
-        val added: List<AppId> = emptyList(),
-        val removed: List<AppId> = emptyList(),
+        val added: List<Int> = emptyList(),
+        val removed: List<Int> = emptyList(),
     ): LibraryCollection(id, name, timestamp, version)
 
     /**
