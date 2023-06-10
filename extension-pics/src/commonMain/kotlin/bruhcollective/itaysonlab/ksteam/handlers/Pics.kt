@@ -5,7 +5,6 @@ import bruhcollective.itaysonlab.ksteam.database.keyvalue.PicsVdfKvDatabase
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
@@ -13,8 +12,23 @@ import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.ksteam.platform.dispatchListProcessing
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.*
-import steam.webui.common.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.transformWhile
+import steam.webui.common.CMsgClientLicenseList
+import steam.webui.common.CMsgClientLicenseList_License
+import steam.webui.common.CMsgClientPICSAccessTokenRequest
+import steam.webui.common.CMsgClientPICSAccessTokenResponse
+import steam.webui.common.CMsgClientPICSAccessTokenResponse_AppToken
+import steam.webui.common.CMsgClientPICSProductInfoRequest
+import steam.webui.common.CMsgClientPICSProductInfoRequest_AppInfo
+import steam.webui.common.CMsgClientPICSProductInfoRequest_PackageInfo
+import steam.webui.common.CMsgClientPICSProductInfoResponse
+import steam.webui.common.CMsgClientPICSProductInfoResponse_AppInfo
+import steam.webui.common.CMsgClientPICSProductInfoResponse_PackageInfo
 
 /**
  * A handler to access the PICS infrastructure
@@ -26,21 +40,21 @@ class Pics internal constructor(
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
-    suspend fun getAppIdsAsInfos(appIds: List<AppId>): List<AppInfo> = appIds.mapNotNull { appId ->
-        database.apps.get(appId.id)
+    suspend fun getAppIdsAsInfos(appIds: List<Int>): List<AppInfo> = appIds.mapNotNull { appId ->
+        database.apps.get(appId)
     }
 
     private suspend fun getAppIdsFiltered(filters: DynamicFilters): Sequence<AppInfo> = database.sortAppsByDynamicFilters(filters)
 
     internal suspend fun getAppSummariesFiltered(filters: DynamicFilters): Sequence<AppSummary> = getAppIdsFiltered(filters).map { app ->
-        AppSummary(AppId(app.appId), app.common.name)
+        AppSummary(app.appId, app.common.name)
     }
 
-    suspend fun getAppSummariesByAppId(appIds: List<AppId>) = getAppIdsAsInfos(appIds).associate { app ->
-        AppId(app.appId) to AppSummary(AppId(app.appId), app.common.name)
+    suspend fun getAppSummariesByAppId(appIds: List<Int>) = getAppIdsAsInfos(appIds).associate { app ->
+        app.appId to AppSummary(app.appId, app.common.name)
     }
 
-    suspend fun getAppInfo(id: AppId): AppInfo? = database.apps.get(id.id)
+    suspend fun getAppInfo(id: Int): AppInfo? = database.apps.get(id)
 
     // region Internal stuff
 
@@ -228,5 +242,5 @@ class Pics internal constructor(
         Ready
     }
 
-    override suspend fun getMetadataFor(appIds: List<AppId>) = getAppSummariesByAppId(appIds)
+    override suspend fun getMetadataFor(appIds: List<Int>) = getAppSummariesByAppId(appIds)
 }

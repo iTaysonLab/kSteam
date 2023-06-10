@@ -18,12 +18,21 @@ import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.web.WebApi
-import io.ktor.client.plugins.*
-import io.ktor.client.request.*
-import io.ktor.http.*
+import io.ktor.client.plugins.HttpSend
+import io.ktor.client.plugins.plugin
+import io.ktor.client.request.HttpRequestBuilder
+import io.ktor.client.request.header
+import io.ktor.client.request.host
+import io.ktor.client.request.parameter
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlin.reflect.KClass
 
 /**
@@ -104,10 +113,10 @@ class SteamClient internal constructor(
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
             }.onEach { packet ->
-                KSteamLogging.logVerbose("SteamClient:EventFlow", "Dispatching packet to [${handlers.values.joinToString { it::class.simpleName.orEmpty() }}]")
+                // KSteamLogging.logVerbose("SteamClient:EventFlow", "Dispatching packet to [${handlers.values.joinToString { it::class.simpleName.orEmpty() }}]")
                 handlers.values.forEach { handler ->
                     try {
-                        KSteamLogging.logVerbose("SteamClient:EventFlow", "- Dispatching packet to ${handler::class.simpleName.orEmpty()}")
+                        // KSteamLogging.logVerbose("SteamClient:EventFlow", "- Dispatching packet to ${handler::class.simpleName.orEmpty()}")
                         if (packet.messageId == EMsg.k_EMsgServiceMethod) {
                             handler.onRpcEvent((packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(), packet)
                         } else {

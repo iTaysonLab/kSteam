@@ -2,13 +2,11 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.notifications.Notification
 import bruhcollective.itaysonlab.ksteam.models.notifications.NotificationFeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Request
 import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Response
@@ -81,7 +79,7 @@ class Notifications internal constructor(
                             unread = not.read?.not() ?: false,
                             hidden = not.hidden ?: false,
                             appSummary = if (appId != 0) {
-                                steamClient.store.getAppSummaries(listOf(AppId(appId))).values.first()
+                                steamClient.store.getAppSummaries(listOf(appId)).values.first()
                             } else {
                                 null
                             }

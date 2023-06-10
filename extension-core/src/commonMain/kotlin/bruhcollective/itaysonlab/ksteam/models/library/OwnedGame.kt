@@ -1,12 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.player.CPlayer_GetOwnedGames_Response_Game
 
 @Immutable
 data class OwnedGame internal constructor(
-    val id: AppId,
+    val id: Int,
     val name: String,
     val recentPlaytime: Int,
     val totalPlaytime: Int,
@@ -26,7 +25,7 @@ data class OwnedGame internal constructor(
     val sortAs: String
 ) {
     internal constructor(proto: CPlayer_GetOwnedGames_Response_Game) : this(
-        id = AppId(proto.appid ?: 0),
+        id = proto.appid ?: 0,
         name = proto.name.orEmpty(),
         recentPlaytime = proto.playtime_2weeks ?: 0,
         totalPlaytime = proto.playtime_forever ?: 0,

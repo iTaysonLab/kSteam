@@ -3,7 +3,6 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
@@ -14,9 +13,22 @@ import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.models.library.RemoteCollectionModel
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
-import kotlinx.serialization.decodeFromString
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import steam.webui.cloudconfigstore.CCloudConfigStore_Entry
 import steam.webui.common.CMsgClientLogonResponse
@@ -50,7 +62,7 @@ class Library(
     private val _isLoadingPlayTimes = MutableStateFlow(false)
     val isLoadingPlayTimes = _isLoadingPlayTimes.asStateFlow()
 
-    private val _ownedGames = MutableStateFlow<Map<AppId, OwnedGame>>(emptyMap())
+    private val _ownedGames = MutableStateFlow<Map<Int, OwnedGame>>(emptyMap())
     val ownedGames = _ownedGames.asStateFlow()
 
     //
@@ -67,7 +79,7 @@ class Library(
     private val _shelves = MutableStateFlow<List<LibraryShelf>>(emptyList())
     val shelves = _shelves.asStateFlow()
 
-    private val _playtime = MutableStateFlow<Map<AppId, CPlayer_GetLastPlayedTimes_Response_Game>>(emptyMap())
+    private val _playtime = MutableStateFlow<Map<Int, CPlayer_GetLastPlayedTimes_Response_Game>>(emptyMap())
     val playtime = _playtime.asStateFlow()
 
     /**
@@ -170,7 +182,7 @@ class Library(
      */
     fun getRecentApps(): Flow<List<AppSummary>> {
         return _playtime.map {
-            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> AppId(a.appid ?: return@mapNotNull null) }.take(5)
+            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> a.appid }.take(5)
         }.map {
             steamClient.pics.getAppSummariesByAppId(it.toList()).values.sortedBy { a -> a.name }
         }
@@ -214,7 +226,7 @@ class Library(
     /**
      * Checks if a current user is actually owning an [appId].
      */
-    fun ownsThisApp(appId: AppId) = steamClient.pics.appIds.contains(appId.id)
+    fun ownsThisApp(appId: Int) = steamClient.pics.appIds.contains(appId)
 
     private suspend fun startCollector() {
         // Collect user play time
@@ -232,7 +244,7 @@ class Library(
                             requestAdapter = CPlayer_GetLastPlayedTimes_Request.ADAPTER,
                             responseAdapter = CPlayer_GetLastPlayedTimes_Response.ADAPTER,
                             requestData = CPlayer_GetLastPlayedTimes_Request()
-                        ).dataNullable?.games?.associateBy { AppId(it.appid ?: 0) }.orEmpty()
+                        ).dataNullable?.games?.associateBy { it.appid ?: 0 }.orEmpty()
                     }
 
                     _isLoadingPlayTimes.value = false

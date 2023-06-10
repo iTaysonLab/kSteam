@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.extension.plugins
 
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 
 /**
@@ -20,5 +19,5 @@ interface MetadataPlugin {
      *
      * @return mapped [AppSummary] by their [AppId]'s
      */
-    suspend fun getMetadataFor(appIds: List<AppId>): Map<AppId, AppSummary>
+    suspend fun getMetadataFor(appIds: List<Int>): Map<Int, AppSummary>
 }

@@ -2,10 +2,9 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
+import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.persona.*
@@ -52,13 +51,13 @@ class Profile internal constructor(
      *
      * **NOTE:** returns raw proto data until a replacement API is made.
      */
-    suspend fun getAchievementsProgress(steamId: SteamId, appIds: List<AppId>): Map<AppId, CPlayer_GetAchievementsProgress_Response_AchievementProgress> {
+    suspend fun getAchievementsProgress(steamId: SteamId, appIds: List<Int>): Map<Int, CPlayer_GetAchievementsProgress_Response_AchievementProgress> {
         return steamClient.unifiedMessages.execute(
             methodName = "Player.GetAchievementsProgress",
             requestAdapter = CPlayer_GetAchievementsProgress_Request.ADAPTER,
             responseAdapter = CPlayer_GetAchievementsProgress_Response.ADAPTER,
-            requestData = CPlayer_GetAchievementsProgress_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds.map(AppId::id))
-        ).data.achievement_progress.associateBy { AppId(it.appid ?: 0) }
+            requestData = CPlayer_GetAchievementsProgress_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds)
+        ).data.achievement_progress.associateBy { it.appid ?: 0 }
     }
 
     /**
@@ -66,13 +65,13 @@ class Profile internal constructor(
      *
      * **NOTE:** returns raw proto data until a replacement API is made.
      */
-    suspend fun getTopAchievements(steamId: SteamId, appIds: List<AppId>, count: Int = 5): Map<AppId, List<CPlayer_GetTopAchievementsForGames_Response_Achievement>> {
+    suspend fun getTopAchievements(steamId: SteamId, appIds: List<Int>, count: Int = 5): Map<Int, List<CPlayer_GetTopAchievementsForGames_Response_Achievement>> {
         return steamClient.unifiedMessages.execute(
             methodName = "Player.GetTopAchievementsForGames",
             requestAdapter = CPlayer_GetTopAchievementsForGames_Request.ADAPTER,
             responseAdapter = CPlayer_GetTopAchievementsForGames_Response.ADAPTER,
-            requestData = CPlayer_GetTopAchievementsForGames_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds.map(AppId::id), max_achievements = count)
-        ).data.games.associate { AppId(it.appid ?: 0) to it.achievements }
+            requestData = CPlayer_GetTopAchievementsForGames_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds, max_achievements = count)
+        ).data.games.associate { (it.appid ?: 0) to it.achievements }
     }
 
     /**
@@ -83,7 +82,6 @@ class Profile internal constructor(
     suspend fun getCustomization(steamId: SteamId, includePurchased: Boolean = false, includeInactive: Boolean = false): ProfileCustomization {
         fun List<steam.webui.player.ProfileCustomization>.mapEntriesToAppIds() = this.map { it.slots.mapNotNull { s -> s.appid } }
             .flatten()
-            .map(::AppId)
 
         val ownedGames = steamClient.player.getOwnedGames(steamId, includeFreeGames = true).associateBy { it.id }
 
@@ -114,22 +112,22 @@ class Profile internal constructor(
             when (val enumType = EProfileCustomizationType.fromValue(protoWidget.customization_type ?: 0) ?: EProfileCustomizationType.k_EProfileCustomizationTypeInvalid) {
                 EProfileCustomizationType.k_EProfileCustomizationTypeGameCollector -> {
                     ProfileWidget.GameCollector(
-                        featuredApps = protoWidget.slots.mapNotNull { it.appid }.mapNotNull { appSummaries[AppId(it)] },
+                        featuredApps = protoWidget.slots.mapNotNull { it.appid }.mapNotNull { appSummaries[it] },
                         ownedGamesCount = ownedGames.size
                     )
                 }
 
                 EProfileCustomizationType.k_EProfileCustomizationTypeFavoriteGame -> {
-                    val appId = AppId(protoWidget.slots.first().appid ?: return@mapNotNull null)
+                    val appId = protoWidget.slots.first().appid ?: return@mapNotNull null
 
                     ProfileWidget.FavoriteGame(
                         app = appSummaries[appId] ?: return@mapNotNull null,
                         playedSeconds = ownedGames[appId]?.totalPlaytime ?: 0,
                         achievementProgress = achievements.second[appId]?.let { progress ->
                             ProfileWidget.FavoriteGame.AchievementProgress(
-                                currentAchivements = progress.unlocked ?: 0,
+                                currentAchievements = progress.unlocked ?: 0,
                                 totalAchievements = progress.total ?: 0,
-                                topPictures = achievements.first[appId]?.sortedBy { it.player_percent_unlocked }?.map { CommunityAppImageUrl(appId.id to it.icon.orEmpty()) } ?: emptyList()
+                                topPictures = achievements.first[appId]?.sortedBy { it.player_percent_unlocked }?.map { SteamCdn.formatCommunityImageUrl(appId, it.icon.orEmpty()) } ?: emptyList()
                             )
                         } ?: return@mapNotNull null
                     )
@@ -156,28 +154,28 @@ class Profile internal constructor(
      *
      * Data is returned as a [Flow] with a update rate of 5 minutes.
      */
-    fun getProfiles(steamIds: List<SteamId>): Flow<List<SummaryPersona>> {
+    fun getProfileSummariesAsFlow(steamIds: List<SteamId>): Flow<List<SummaryPersona>> {
         return flow {
             while (true) {
-                emit(
-                    steamClient.webApi.ajaxGetTyped<PlayerSummaries>(
-                        baseUrl = EnvironmentConstants.WEB_API_BASE,
-                        path = listOf("ISteamUserOAuth", "GetUserSummaries", "v2"),
-                        parameters = mapOf(
-                            "steamids" to steamIds.joinToString(",") { it.longId.toString() }
-                        )
-                    ).players.map(::SummaryPersona)
-                )
-
+                emit(getProfileSummaries(steamIds))
                 delay(5.minutes)
             }
         }
     }
 
-    fun getProfile(steamId: SteamId) = getProfiles(listOf(steamId)).map(List<SummaryPersona>::first)
+    fun getProfileSummaryAsFlow(steamId: SteamId) = getProfileSummariesAsFlow(listOf(steamId)).map(List<SummaryPersona>::first)
 
-    suspend fun getProfilesNow(steamIds: List<SteamId>) = getProfiles(steamIds).first()
-    suspend fun getProfileNow(steamId: SteamId) = getProfile(steamId).first()
+    suspend fun getProfileSummaries(steamIds: List<SteamId>): List<SummaryPersona> {
+        return steamClient.webApi.ajaxGetTyped<PlayerSummaries>(
+            baseUrl = EnvironmentConstants.WEB_API_BASE,
+            path = listOf("ISteamUserOAuth", "GetUserSummaries", "v2"),
+            parameters = mapOf(
+                "steamids" to steamIds.joinToString(",") { it.longId.toString() }
+            )
+        ).players.map(::SummaryPersona)
+    }
+
+    suspend fun getProfileSummary(steamId: SteamId) = getProfileSummaries(listOf(steamId)).first()
 
     private suspend fun requestMyEquipment() {
         _currentProfileEquipment.update {

@@ -5,6 +5,10 @@ import kotlin.jvm.JvmInline
 
 @JvmInline
 value class AvatarHash internal constructor(private val hash: String) {
+    companion object {
+        val Empty = AvatarHash("")
+    }
+
     val hasAvatar get() = hash.isNotEmpty()
 
     val small get() = "${base}.jpg"

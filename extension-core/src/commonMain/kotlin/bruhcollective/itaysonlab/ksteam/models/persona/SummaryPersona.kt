@@ -34,6 +34,17 @@ data class SummaryPersona internal constructor(
      */
     val profileUrl: String,
 ) {
+    companion object {
+        val Unknown = SummaryPersona(
+            id = SteamId.Empty,
+            name = "<unknown>",
+            avatar = AvatarHash.Empty,
+            lastSeen = Persona.LastSeen(0, 0, 0),
+            onlineStatus = EPersonaState.Offline,
+            profileUrl = ""
+        )
+    }
+
     internal constructor(obj: PlayerSummary) : this(
         id = SteamId(obj.steamid.toULong()),
         name = obj.personaname,

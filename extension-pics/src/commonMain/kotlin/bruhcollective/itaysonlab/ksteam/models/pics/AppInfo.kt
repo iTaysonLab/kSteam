@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.pics
 
-import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
-import bruhcollective.itaysonlab.ksteam.cdn.StaticAppImageUrl
+import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatCommunityImageUrl
+import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatStaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
@@ -71,12 +71,12 @@ data class AppInfo internal constructor(
 
 val AppInfo.type get() = EAppType.values().firstOrNull { it.name.equals(common.type, ignoreCase = true) } ?: EAppType.Invalid
 
-val AppInfo.icon get() = CommunityAppImageUrl(appId to common.iconId)
-val AppInfo.logo get() = CommunityAppImageUrl(appId to common.logoId)
-val AppInfo.header get() = StaticAppImageUrl(appId to "header.jpg")
-val AppInfo.capsuleSmall get() = StaticAppImageUrl(appId to "capsule_231x87.jpg")
-val AppInfo.capsuleLarge get() = StaticAppImageUrl(appId to "capsule_616x353.jpg")
-val AppInfo.pageBackground get() = StaticAppImageUrl(appId to "page_bg_raw.jpg")
-val AppInfo.logoLarge get() = StaticAppImageUrl(appId to "logo.png")
-val AppInfo.libraryEntry get() = StaticAppImageUrl(appId to "library_600x900.jpg")
-val AppInfo.libraryHeader get() = StaticAppImageUrl(appId to "library_hero.jpg")
+val AppInfo.icon get() = formatCommunityImageUrl(appId, "${common.iconId}.jpg")
+val AppInfo.logo get() = formatCommunityImageUrl(appId, "${common.logoId}.jpg")
+val AppInfo.header get() = formatStaticAppImageUrl(appId, "header.jpg")
+val AppInfo.capsuleSmall get() = formatStaticAppImageUrl(appId, "capsule_231x87.jpg")
+val AppInfo.capsuleLarge get() = formatStaticAppImageUrl(appId, "capsule_616x353.jpg")
+val AppInfo.pageBackground get() = formatStaticAppImageUrl(appId, "page_bg_raw.jpg")
+val AppInfo.logoLarge get() = formatStaticAppImageUrl(appId, "logo.png")
+val AppInfo.libraryEntry get() = formatStaticAppImageUrl(appId, "library_600x900.jpg")
+val AppInfo.libraryHeader get() = formatStaticAppImageUrl(appId, "library_hero.jpg")

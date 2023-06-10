@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.player.EProfileCustomizationType
@@ -16,8 +15,8 @@ sealed class ProfileWidget {
         @Immutable
         data class AchievementProgress internal constructor(
             val totalAchievements: Int,
-            val currentAchivements: Int,
-            val topPictures: List<CommunityAppImageUrl>
+            val currentAchievements: Int,
+            val topPictures: List<String>
         )
     }
 

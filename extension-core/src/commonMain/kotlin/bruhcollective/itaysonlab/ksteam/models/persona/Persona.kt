@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
@@ -36,7 +35,7 @@ data class Persona internal constructor(
     /**
      * If in game, this will be game's AppID.
      */
-    val ingameAppId: AppId,
+    val ingameAppId: Int,
     /**
      * If in game, this will be game's rich presence information.
      */
@@ -49,7 +48,7 @@ data class Persona internal constructor(
             avatar = AvatarHash(""),
             lastSeen = LastSeen(0, 0, 0),
             onlineStatus = EPersonaState.Offline,
-            ingameAppId = AppId(0),
+            ingameAppId = 0,
             ingameRichPresence = emptyMap()
         )
     }
@@ -64,7 +63,7 @@ data class Persona internal constructor(
             lastSeenOnline = obj.last_seen_online ?: 0
         ),
         onlineStatus = EPersonaState.byEncoded(obj.persona_state ?: 0),
-        ingameAppId = AppId(obj.gameid?.toInt() ?: 0),
+        ingameAppId = obj.gameid?.toInt() ?: 0,
         ingameRichPresence = obj.rich_presence.associate { it.key.orEmpty() to it.value_.orEmpty() }
     )
 
