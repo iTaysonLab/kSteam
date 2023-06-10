@@ -2,10 +2,9 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.cdn.CommunityAppImageUrl
+import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.enums.plus
@@ -16,9 +15,8 @@ import bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
 import bruhcollective.itaysonlab.ksteam.models.news.usernews.ActivityFeedEntry
-import bruhcollective.itaysonlab.ksteam.models.persona.Persona
+import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
-import kotlinx.coroutines.flow.first
 import steam.webui.usernews.CUserNews_GetUserNews_Request
 import steam.webui.usernews.CUserNews_GetUserNews_Response
 
@@ -49,7 +47,7 @@ class News internal constructor(
         ascending: Boolean = false,
         eventTypes: List<EventType> = EventType.values().toList(),
         appTypes: List<AppType> = AppType.values().toList(),
-        filterByAppIds: List<AppId> = emptyList(),
+        filterByAppIds: List<Int> = emptyList(),
         filterByClanIds: List<SteamId> = emptyList(),
     ) {
         steamClient.webApi.ajaxGetTyped<NewsCalendarResponse>(path = listOf("events", "ajaxgetusereventcalendarrange", ""), parameters = mapOf(
@@ -63,10 +61,10 @@ class News internal constructor(
      * @param appId
      */
     suspend fun getCommunityHub(
-        appId: AppId
+        appId: Int
     ): List<CommunityHubPost> {
         return steamClient.webApi.ajaxGetTyped<CommunityHubResponse>(
-            path = listOf("library", "appcommunityfeed", appId.id.toString()),
+            path = listOf("library", "appcommunityfeed", appId.toString()),
             parameters = mapOf(
                 "p" to "1",
                 "filterLanguage" to steamClient.language.vdfName,
@@ -85,7 +83,7 @@ class News internal constructor(
      * @param count limit the size of events
      */
     suspend fun getUserNews(
-        appId: AppId = AppId(0),
+        appId: Int = 0,
         showEvents: Int = UserNewsFilterScenario.AppOverviewList,
         count: Int = 100,
         startTime: Int = 0,
@@ -96,7 +94,7 @@ class News internal constructor(
             requestAdapter = CUserNews_GetUserNews_Request.ADAPTER,
             responseAdapter = CUserNews_GetUserNews_Response.ADAPTER,
             requestData = CUserNews_GetUserNews_Request(
-                filterappid = appId.id,
+                filterappid = appId,
                 filterflags = showEvents,
                 count = count,
                 starttime = startTime,
@@ -105,22 +103,30 @@ class News internal constructor(
             )
         ).data
 
-        val achievementMap = newsProto.achievement_display_data.associate { displayData ->
-            AppId(displayData.appid ?: 0) to displayData.achievements.associate { achievement ->
-                achievement.name.orEmpty() to ActivityFeedEntry.NewAchievements.Achievement(
+        // region Mapping achievements
+
+        val achievementMap = mutableMapOf<String, ActivityFeedEntry.NewAchievements.Achievement>()
+
+        newsProto.achievement_display_data.forEach { displayData ->
+            val achAppId = displayData.appid ?: return@forEach
+
+            displayData.achievements.forEach { achievement ->
+                achievementMap[achievement.name.orEmpty()] = ActivityFeedEntry.NewAchievements.Achievement(
                     internalName = achievement.name.orEmpty(),
                     displayName = achievement.display_name.orEmpty(),
                     displayDescription = achievement.display_description.orEmpty(),
-                    icon = CommunityAppImageUrl((displayData.appid ?: 0) to achievement.icon.orEmpty()),
+                    icon = SteamCdn.formatCommunityImageUrl(achAppId, achievement.icon.orEmpty()),
                     unlockedPercent = (achievement.unlocked_pct ?: 0f).toDouble(),
                     hidden = achievement.hidden ?: false
                 )
             }
         }
 
+        // endregion
+
         // region Mapping content IDs to proper objects
 
-        val totalAppIds = mutableListOf<AppId>()
+        val totalAppIds = mutableListOf<Int>()
         val totalUserIds = mutableListOf<SteamId>()
 
         val totalClanSteamIds = mutableListOf<SteamId>()
@@ -130,78 +136,109 @@ class News internal constructor(
             (event.gameid != null && event.gameid != 0L)
                     || (event.steamid_actor != null && event.steamid_actor != 0L)
                     || (event.appids.isNotEmpty())
+                    || (event.packageid != null && event.packageid != 0)
                     || (event.clan_announcementid != null && event.clan_announcementid != 0L)
         }.forEach { event ->
             if (event.clan_announcementid != null) {
                 totalClanSteamIds.add(event.steamid_actor.toSteamId())
                 totalClanAnnouncementIds.add(event.clan_announcementid)
             } else {
-                event.steamid_actor?.let { totalUserIds.add(SteamId(it.toULong())) }
+                event.steamid_actor?.let { totalUserIds.add(it.toSteamId()) }
             }
 
-            event.gameid?.let(::AppId)?.let(totalAppIds::add)
-            event.appids.map(::AppId).let(totalAppIds::addAll)
+            event.gameid?.toInt()?.let(totalAppIds::add)
+            event.appids.let(totalAppIds::addAll)
         }
 
         // endregion
 
         val totalSteamIds = (totalUserIds + totalClanSteamIds).distinctBy(SteamId::id)
-
         val summariesMap = steamClient.store.getAppSummaries(totalAppIds)
-        val userMap = steamClient.persona.personas(totalSteamIds).first().associateBy { it.id }
+        val userMap = steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
+
         // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
 
-        return newsProto.news.mapNotNull { event ->
-            KSteamLogging.logVerbose("News:GetUserNews", event.toString())
+        val entries = mutableListOf<ActivityFeedEntry>()
 
-            val eventType = EUserNewsType.byApiEnum(event.eventtype ?: 0) ?: return@mapNotNull null
-            val actorSteamId = SteamId(event.steamid_actor?.toULong() ?: return@mapNotNull null)
-            val eventDate = event.eventtime ?: return@mapNotNull null
-            val actorPersona = userMap[actorSteamId] ?: Persona.Unknown
+        val totalEventSize = newsProto.news.size
+        val totalEventSizeLastIndex = newsProto.news.lastIndex
+
+        val stringDuplicateStack = DuplicateStack<String>()
+        val intDuplicateStack = DuplicateStack<Int>()
+
+        for (i in 0 until totalEventSize) {
+            val event = newsProto.news[i]
+            val eventNext = newsProto.news.getOrNull(i + 1)
+
+            val eventType = EUserNewsType.byApiEnum(event.eventtype ?: 0) ?: continue
+            val actorSteamId = SteamId(event.steamid_actor?.toULong() ?: continue)
+            val eventDate = event.eventtime ?: continue
+            val actorPersona = userMap[actorSteamId] ?: SummaryPersona.Unknown
 
             when (eventType) {
                 EUserNewsType.AchievementUnlocked -> {
-                    val gameId = AppId(event.gameid?.toInt() ?: return@mapNotNull null)
+                    if (ActivityFeedEntry.NewAchievements.canMergeWith(event, eventNext)) {
+                        stringDuplicateStack += event.achievement_names
+                        continue
+                    }
+
+                    val gameId = event.gameid?.toInt() ?: continue
+                    val achievements = stringDuplicateStack.use { saved -> event.achievement_names + saved }.mapNotNull(achievementMap::get)
 
                     ActivityFeedEntry.NewAchievements(
                         date = eventDate,
                         steamId = actorSteamId,
-                        app = summariesMap[gameId] ?: return@mapNotNull null,
+                        app = summariesMap[gameId] ?: continue,
                         persona = actorPersona,
-                        achievements = event.achievement_names.mapNotNull { acName ->
-                            achievementMap[gameId]?.get(acName)
-                        }
+                        achievements = achievements
                     )
                 }
 
                 EUserNewsType.PlayedGameFirstTime -> {
-                    val gameId = AppId(event.gameid?.toInt() ?: return@mapNotNull null)
+                    // val gameId = AppId(event.gameid?.toInt() ?: continue)
 
                     ActivityFeedEntry.PlayedForFirstTime(
                         date = eventDate,
                         steamId = actorSteamId,
                         persona = actorPersona,
-                        app = summariesMap[gameId] ?: return@mapNotNull null
+                        apps = emptyList() // summariesMap[gameId] ?: continue
                     )
                 }
 
                 EUserNewsType.ReceivedNewGame -> {
+                    if (ActivityFeedEntry.ReceivedNewGame.canMergeWith(event, eventNext)) {
+                        intDuplicateStack += event.appids
+                        continue
+                    }
+
+                    val apps = intDuplicateStack.use { saved -> event.appids + saved }.mapNotNull { summariesMap[it] }
+
                     ActivityFeedEntry.ReceivedNewGame(
                         date = eventDate,
                         steamId = actorSteamId,
                         persona = actorPersona,
-                        apps = event.appids.map(::AppId).mapNotNull { summariesMap[it] }
+                        apps = apps,
+                        packages = emptyList()
                     )
                 }
 
-                /*EUserNewsType.PostedAnnouncement -> {
-                    ActivityFeedEntry.PostedAnnouncement(
+                EUserNewsType.AddedGameToWishlist -> {
+                    if (ActivityFeedEntry.ReceivedNewGame.canMergeWith(event, eventNext)) {
+                        intDuplicateStack += event.appids
+                        continue
+                    }
+
+                    val apps = intDuplicateStack.use { saved -> event.appids + saved }.mapNotNull { summariesMap[it] }
+
+                    ActivityFeedEntry.ReceivedNewGame(
                         date = eventDate,
                         steamId = actorSteamId,
                         persona = actorPersona,
-                        announcement = event.clan_announcementid?.toString().let(announcementMap::get) ?: return@mapNotNull null,
+                        apps = apps,
+                        packages = emptyList()
                     )
-                }*/
+                }
+
 
                 else -> {
                     KSteamLogging.logDebug("News:GetUserNews", "Unknown event received, enum type: $eventType - dumping proto data below")
@@ -215,8 +252,10 @@ class News internal constructor(
                         proto = event
                     )
                 }
-            }
+            }.let(entries::add)
         }
+
+        return entries
     }
 
     /**
@@ -263,4 +302,28 @@ class News internal constructor(
     }
 
     override suspend fun onEvent(packet: SteamPacket) = Unit
+
+    private class DuplicateStack <T> {
+        private val stack = mutableListOf<T>()
+
+        fun push(item: T) {
+            stack.add(item)
+        }
+
+        fun <Out> use(action: (List<T>) -> Out): Out {
+            return try {
+                action(stack)
+            } finally {
+                stack.clear()
+            }
+        }
+
+        operator fun plusAssign(item: T) {
+            stack.add(item)
+        }
+
+        operator fun plusAssign(list: List<T>) {
+            stack.addAll(list)
+        }
+    }
 }
