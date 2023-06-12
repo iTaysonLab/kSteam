@@ -7,6 +7,8 @@ import bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.usernews.CUserNews_Event
+import kotlin.contracts.ExperimentalContracts
+import kotlin.contracts.contract
 
 @Immutable
 sealed class ActivityFeedEntry (
@@ -14,6 +16,17 @@ sealed class ActivityFeedEntry (
     val steamId: SteamId,
     val persona: SummaryPersona,
 ) {
+    companion object {
+        @OptIn(ExperimentalContracts::class)
+        fun defaultMatch(event: CUserNews_Event, eventNext: CUserNews_Event?, type: EUserNewsType): Boolean {
+            contract {
+                returns(true) implies (eventNext != null)
+            }
+
+            return eventNext != null && eventNext.eventtime == event.eventtime && eventNext.eventtype == type.apiEnum && eventNext.steamid_actor == event.steamid_actor
+        }
+    }
+
     /**
      * A new blog post was posted about this app.
      */
@@ -41,10 +54,7 @@ sealed class ActivityFeedEntry (
         val packages: List<AppSummary>,
     ): ActivityFeedEntry(date, steamId, persona) {
         companion object {
-            // Usecase: cart buying
-            fun canMergeWith(event: CUserNews_Event, eventNext: CUserNews_Event?): Boolean {
-                return eventNext != null && eventNext.eventtime == event.eventtime && eventNext.eventtype == EUserNewsType.ReceivedNewGame.apiEnum && eventNext.steamid_actor == event.steamid_actor
-            }
+            fun canMergeWith(event: CUserNews_Event, eventNext: CUserNews_Event?) = defaultMatch(event, eventNext, EUserNewsType.ReceivedNewGame)
         }
 
         override fun toString(): String {
@@ -60,18 +70,14 @@ sealed class ActivityFeedEntry (
         date: Int,
         steamId: SteamId,
         persona: SummaryPersona,
-        val apps: List<AppSummary>,
-        val packages: List<AppSummary>,
+        val apps: List<AppSummary>
     ): ActivityFeedEntry(date, steamId, persona) {
         companion object {
-            // Usecase: cart buying
-            fun canMergeWith(event: CUserNews_Event, eventNext: CUserNews_Event?): Boolean {
-                return eventNext != null && eventNext.eventtime == event.eventtime && eventNext.eventtype == EUserNewsType.ReceivedNewGame.apiEnum && eventNext.steamid_actor == event.steamid_actor
-            }
+            fun canMergeWith(event: CUserNews_Event, eventNext: CUserNews_Event?) = defaultMatch(event, eventNext, EUserNewsType.AddedGameToWishlist)
         }
 
         override fun toString(): String {
-            return "ReceivedNewGame(date=$date, steamId=$steamId, persona=$persona, apps=${apps.joinToString()}, packages=${packages.joinToString()})"
+            return "AddedToWishlist(date=$date, steamId=$steamId, persona=$persona, apps=${apps.joinToString()})"
         }
     }
 
@@ -83,10 +89,10 @@ sealed class ActivityFeedEntry (
         date: Int,
         steamId: SteamId,
         persona: SummaryPersona,
-        val apps: List<AppSummary>
+        val app: AppSummary
     ): ActivityFeedEntry(date, steamId, persona) {
         override fun toString(): String {
-            return "PlayedForFirstTime(date=$date, steamId=$steamId, persona=$persona, apps=${apps.joinToString()})"
+            return "PlayedForFirstTime(date=$date, steamId=$steamId, persona=$persona, app=$app)"
         }
     }
 
@@ -103,7 +109,7 @@ sealed class ActivityFeedEntry (
     ): ActivityFeedEntry(date, steamId, persona) {
         companion object {
             fun canMergeWith(event: CUserNews_Event, eventNext: CUserNews_Event?): Boolean {
-                return eventNext != null && eventNext.gameid == event.gameid && eventNext.eventtime == event.eventtime && eventNext.eventtype == EUserNewsType.AchievementUnlocked.apiEnum && eventNext.steamid_actor == event.steamid_actor
+                return defaultMatch(event, eventNext, EUserNewsType.AchievementUnlocked) && eventNext.gameid == event.gameid
             }
         }
 

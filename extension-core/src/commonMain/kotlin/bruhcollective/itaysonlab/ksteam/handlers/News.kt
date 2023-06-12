@@ -139,15 +139,20 @@ class News internal constructor(
                     || (event.packageid != null && event.packageid != 0)
                     || (event.clan_announcementid != null && event.clan_announcementid != 0L)
         }.forEach { event ->
-            if (event.clan_announcementid != null) {
+            if (event.clan_announcementid != null && event.steamid_actor != 0L) {
                 totalClanSteamIds.add(event.steamid_actor.toSteamId())
                 totalClanAnnouncementIds.add(event.clan_announcementid)
-            } else {
+            } else if (event.steamid_actor != 0L) {
                 event.steamid_actor?.let { totalUserIds.add(it.toSteamId()) }
             }
 
-            event.gameid?.toInt()?.let(totalAppIds::add)
-            event.appids.let(totalAppIds::addAll)
+            if (event.gameid != 0L) {
+                totalAppIds.add(event.gameid?.toInt() ?: return@forEach)
+            }
+
+            if (event.appids.isNotEmpty()) {
+                totalAppIds.addAll(event.appids)
+            }
         }
 
         // endregion
@@ -195,13 +200,13 @@ class News internal constructor(
                 }
 
                 EUserNewsType.PlayedGameFirstTime -> {
-                    // val gameId = AppId(event.gameid?.toInt() ?: continue)
+                    val gameId = event.gameid?.toInt() ?: continue
 
                     ActivityFeedEntry.PlayedForFirstTime(
                         date = eventDate,
                         steamId = actorSteamId,
                         persona = actorPersona,
-                        apps = emptyList() // summariesMap[gameId] ?: continue
+                        app = summariesMap[gameId] ?: continue
                     )
                 }
 
@@ -223,22 +228,20 @@ class News internal constructor(
                 }
 
                 EUserNewsType.AddedGameToWishlist -> {
-                    if (ActivityFeedEntry.ReceivedNewGame.canMergeWith(event, eventNext)) {
-                        intDuplicateStack += event.appids
+                    if (ActivityFeedEntry.AddedToWishlist.canMergeWith(event, eventNext)) {
+                        intDuplicateStack += event.gameid?.toInt() ?: continue
                         continue
                     }
 
-                    val apps = intDuplicateStack.use { saved -> event.appids + saved }.mapNotNull { summariesMap[it] }
+                    val apps = intDuplicateStack.use { saved -> listOf(event.gameid?.toInt() ?: 0) + saved }.mapNotNull { summariesMap[it] }
 
-                    ActivityFeedEntry.ReceivedNewGame(
+                    ActivityFeedEntry.AddedToWishlist(
                         date = eventDate,
                         steamId = actorSteamId,
                         persona = actorPersona,
-                        apps = apps,
-                        packages = emptyList()
+                        apps = apps
                     )
                 }
-
 
                 else -> {
                     KSteamLogging.logDebug("News:GetUserNews", "Unknown event received, enum type: $eventType - dumping proto data below")
@@ -305,10 +308,6 @@ class News internal constructor(
 
     private class DuplicateStack <T> {
         private val stack = mutableListOf<T>()
-
-        fun push(item: T) {
-            stack.add(item)
-        }
 
         fun <Out> use(action: (List<T>) -> Out): Out {
             return try {
