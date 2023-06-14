@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
@@ -50,9 +49,18 @@ class News internal constructor(
         filterByAppIds: List<Int> = emptyList(),
         filterByClanIds: List<SteamId> = emptyList(),
     ) {
-        steamClient.webApi.ajaxGetTyped<NewsCalendarResponse>(path = listOf("events", "ajaxgetusereventcalendarrange", ""), parameters = mapOf(
+        steamClient.webApi.store.method("events/ajaxgetusereventcalendarrange/") {
+            "minTime" with range.first
+            "maxTime" with range.last
 
-        ))
+            "ascending" with ascending
+            "maxResults" with count
+
+            "populateEvents" with "15" // research
+
+            "appTypes" with appTypes.joinToString(separator = ",", transform = AppType::apiName)
+            "eventTypes" with eventTypes.joinToString(separator = ",") { it.internalTypes.joinToString(separator = ",") }
+        }.body<NewsCalendarResponse>()
     }
 
     /**
@@ -63,16 +71,13 @@ class News internal constructor(
     suspend fun getCommunityHub(
         appId: Int
     ): List<CommunityHubPost> {
-        return steamClient.webApi.ajaxGetTyped<CommunityHubResponse>(
-            path = listOf("library", "appcommunityfeed", appId.toString()),
-            parameters = mapOf(
-                "p" to "1",
-                "filterLanguage" to steamClient.language.vdfName,
-                "languageTag" to steamClient.language.vdfName,
-                "nMaxInappropriateScore" to "1"
-            ),
-            repeatingParameters = mapOf("rgSections[]" to listOf("2", "3", "4", "9"))
-        ).hub
+        return steamClient.webApi.community.method("library/appcommunityfeed/${appId}") {
+            "p" with 1
+            "nMaxInappropriateScore" with 1
+            "filterLanguage" with steamClient.language.vdfName
+            "languageTag" with steamClient.language.vdfName
+            "rgSections[]" with listOf("2", "3", "4", "9")
+        }.body<CommunityHubResponse>().hub
     }
 
     /**
@@ -268,10 +273,10 @@ class News internal constructor(
         eventIds: List<Long>,
         clanIds: List<SteamId>
     ): List<NewsEntry> {
-        return steamClient.webApi.ajaxGetTyped<NewsCalendarResponse>(baseUrl = EnvironmentConstants.STORE_API_BASE, path = listOf("events", "ajaxgeteventdetails"), parameters = mapOf(
-            "uniqueid_list" to eventIds.distinct().joinToString(separator = ","),
-            "clanid_list" to clanIds.distinct().joinToString(separator = ",") { it.accountId.toString() }
-        )).events
+        return steamClient.webApi.store.method("events/ajaxgeteventdetails") {
+            "uniqueid_list" with eventIds.distinct().joinToString(separator = ",")
+            "clanid_list" with clanIds.distinct().joinToString(separator = ",") { it.accountId.toString() }
+        }.body<NewsCalendarResponse>().events
     }
 
     /**

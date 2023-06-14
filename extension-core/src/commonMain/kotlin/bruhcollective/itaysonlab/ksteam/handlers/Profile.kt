@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
@@ -166,13 +165,9 @@ class Profile internal constructor(
     fun getProfileSummaryAsFlow(steamId: SteamId) = getProfileSummariesAsFlow(listOf(steamId)).map(List<SummaryPersona>::first)
 
     suspend fun getProfileSummaries(steamIds: List<SteamId>): List<SummaryPersona> {
-        return steamClient.webApi.ajaxGetTyped<PlayerSummaries>(
-            baseUrl = EnvironmentConstants.WEB_API_BASE,
-            path = listOf("ISteamUserOAuth", "GetUserSummaries", "v2"),
-            parameters = mapOf(
-                "steamids" to steamIds.joinToString(",") { it.longId.toString() }
-            )
-        ).players.map(::SummaryPersona)
+        return steamClient.webApi.gateway.method("ISteamUserOAuth/GetUserSummaries/v2") {
+            "steamids" to steamIds.joinToString(",") { it.longId.toString() }
+        }.body<PlayerSummaries>().players.map(::SummaryPersona)
     }
 
     suspend fun getProfileSummary(steamId: SteamId) = getProfileSummaries(listOf(steamId)).first()

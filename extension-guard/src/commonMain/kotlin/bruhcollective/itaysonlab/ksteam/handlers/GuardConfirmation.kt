@@ -7,9 +7,8 @@ import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfResult
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfirmationItem
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import io.ktor.client.statement.*
-import io.ktor.http.*
-import kotlinx.serialization.decodeFromString
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.encodeURLParameter
 
 /**
  * Mobile confirmations using Steam Guard instances. (trade/market)
@@ -24,17 +23,14 @@ class GuardConfirmation(
     suspend fun getConfirmations(instance: GuardInstance): ConfirmationListState {
         return try {
             instance.confirmationTicket("list").let { sigStamp ->
-                steamClient.webApi.ajaxGet(
-                    path = listOf("mobileconf", "getlist"),
-                    parameters = mapOf(
-                        "p" to configuration.uuid,
-                        "a" to instance.steamId.longId.toString(),
-                        "t" to sigStamp.generationTime.toString(),
-                        "k" to sigStamp.b64EncodedSignature,
-                        "m" to "react",
-                        "tag" to "list"
-                    )
-                ).bodyAsText().let {
+                steamClient.webApi.community.method("mobileconf/getlist") {
+                    "p" with configuration.uuid
+                    "a" with instance.steamId.longId
+                    "t" with sigStamp.generationTime
+                    "k" with sigStamp.b64EncodedSignature
+                    "m" with "react"
+                    "tag" with "list"
+                }.get().bodyAsText().let {
                     ConfirmationListState.Decoder.decodeFromString(it)
                 }
             }
@@ -62,20 +58,17 @@ class GuardConfirmation(
         }
 
         return instance.confirmationTicket(tag).let { sigStamp ->
-            steamClient.webApi.ajaxGetTyped<MobileConfResult>(
-                path = listOf("mobileconf", "ajaxop"),
-                parameters = mapOf(
-                    "p" to configuration.uuid,
-                    "a" to instance.steamId.longId.toString(),
-                    "t" to sigStamp.generationTime.toString(),
-                    "k" to sigStamp.b64EncodedSignature,
-                    "m" to "react",
-                    "tag" to tag,
-                    "op" to operation,
-                    "cid" to item.id,
-                    "ck" to item.nonce
-                )
-            ).success
+            steamClient.webApi.community.method("mobileconf/ajaxop") {
+                "p" with configuration.uuid
+                "a" with instance.steamId.longId.toString()
+                "t" with sigStamp.generationTime.toString()
+                "k" with sigStamp.b64EncodedSignature
+                "m" with "react"
+                "tag" with tag
+                "op" with operation
+                "cid" with item.id
+                "ck" with item.nonce
+            }.body<MobileConfResult>().success
         }
     }
 

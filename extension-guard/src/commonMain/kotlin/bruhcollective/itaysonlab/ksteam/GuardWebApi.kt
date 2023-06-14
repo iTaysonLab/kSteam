@@ -7,7 +7,7 @@ import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_
 internal suspend fun WebApi.guardMoveStart(accessToken: String) {
     submitForm(
         baseUrl = EnvironmentConstants.WEB_API_BASE,
-        path = listOf("ITwoFactorService", "RemoveAuthenticatorViaChallengeStart", "v1"),
+        path = "ITwoFactorService/RemoveAuthenticatorViaChallengeStart/v1",
         parameters = mapOf("access_token" to accessToken),
         formParameters = emptyMap()
     )
@@ -17,7 +17,7 @@ internal suspend fun WebApi.guardMoveConfirm(accessToken: String, obj: CTwoFacto
     return try {
         submitFormTyped<ByteArray>(
             baseUrl = EnvironmentConstants.WEB_API_BASE,
-            path = listOf("ITwoFactorService", "RemoveAuthenticatorViaChallengeContinue", "v1"),
+            path = "ITwoFactorService/RemoveAuthenticatorViaChallengeContinue/v1",
             parameters = mapOf("access_token" to accessToken),
             formParameters = mapOf("input_protobuf_encoded" to obj.encodeByteString().base64().dropLast(1))
         ).let { response ->
