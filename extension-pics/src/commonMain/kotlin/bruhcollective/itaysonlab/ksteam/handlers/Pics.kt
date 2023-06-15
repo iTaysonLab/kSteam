@@ -44,15 +44,18 @@ class Pics internal constructor(
         database.apps.get(appId)
     }
 
-    private suspend fun getAppIdsFiltered(filters: DynamicFilters): Sequence<AppInfo> = database.sortAppsByDynamicFilters(filters)
+    private suspend fun getAppIdsFiltered(filters: DynamicFilters): Sequence<AppInfo> =
+        database.sortAppsByDynamicFilters(filters)
 
-    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters): Sequence<AppSummary> = getAppIdsFiltered(filters).map { app ->
-        AppSummary(app.appId, app.common.name)
-    }
+    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters): Sequence<AppSummary> =
+        getAppIdsFiltered(filters).map { app ->
+            AppSummary(app.appId, app.common.name)
+        }
 
-    suspend fun getAppSummariesByAppId(appIds: List<Int>) = getAppIdsAsInfos(appIds).associate { app ->
-        app.appId to AppSummary(app.appId, app.common.name)
-    }
+    suspend fun getAppSummariesByAppId(appIds: List<Int>) =
+        getAppIdsAsInfos(appIds).associate { app ->
+            app.appId to AppSummary(app.appId, app.common.name)
+        }
 
     suspend fun getAppInfo(id: Int): AppInfo? = database.apps.get(id)
 
@@ -77,7 +80,7 @@ class Pics internal constructor(
     }
 
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
-        KSteamLogging.logVerbose("Pics:HandleLicenses", "Got licenses: ${licenses.size}")
+        KSteamLogging.logVerbose("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
 
         database.packages.preheatInitialization()
         database.apps.preheatInitialization()
@@ -87,7 +90,11 @@ class Pics internal constructor(
                 val packageId = sLicense.package_id ?: return@filter false
                 val changeNumber = sLicense.change_number ?: return@filter false
 
-                database.packages.containsKey(packageId).not() || changeNumber > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Packages, packageId)
+                database.packages.containsKey(packageId)
+                    .not() || changeNumber > database.getChangeNumberFor(
+                    PicsVdfKvDatabase.Keys.Packages,
+                    packageId
+                )
             } else {
                 false
             }
@@ -103,19 +110,30 @@ class Pics internal constructor(
         _isPicsAvailable.value = PicsState.UpdatingPackages
 
         if (requiresUpdate.isEmpty()) {
-            KSteamLogging.logDebug("Pics:HandleLicenses", "Package metadata is in up-to-date state, no update required")
+            KSteamLogging.logDebug("Pics:HandleLicenses") {
+                "Package metadata is in up-to-date state, no update required"
+            }
             return
         } else {
-            KSteamLogging.logDebug("Pics:HandleLicenses", "Requesting metadata for ${requiresUpdate.size} packages")
+            KSteamLogging.logDebug("Pics:HandleLicenses") {
+                "Requesting metadata for ${requiresUpdate.size} packages"
+            }
         }
 
         dispatchListProcessing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { packageInfoProto ->
             val packageId = packageInfoProto.packageid ?: return@dispatchListProcessing null
-            val changeNumber = packageInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
-            val buffer = packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
+            val changeNumber = packageInfoProto.change_number?.toUInt()?.toLong()
+                ?: return@dispatchListProcessing null
+            val buffer =
+                packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
             database.parseBinaryVdf<PackageInfo>(buffer)?.also { packageInfo ->
-                database.putPicsMetadata(PicsVdfKvDatabase.Keys.Packages, packageId, changeNumber, buffer)
+                database.putPicsMetadata(
+                    PicsVdfKvDatabase.Keys.Packages,
+                    packageId,
+                    changeNumber,
+                    buffer
+                )
                 database.packages.put(packageId, packageInfo)
             }?.appIds
         }
@@ -130,11 +148,14 @@ class Pics internal constructor(
             .distinct()
 
         // Firstly, we request app tokens to access metadata
-        val tokens = steamClient.execute(SteamPacket.newProto(
-            messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
-            adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
-            payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
-        )).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.associateBy {
+        val tokens = steamClient.execute(
+            SteamPacket.newProto(
+                messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
+                adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
+                payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
+            )
+        )
+            .getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.associateBy {
             it.appid ?: 0
         }
 
@@ -147,23 +168,36 @@ class Pics internal constructor(
                 val appId = sAppInfo.appid ?: return@filter false
                 val changeNumber = sAppInfo.change_number ?: return@filter false
 
-                database.apps.containsKey(appId).not() || changeNumber > database.getChangeNumberFor(PicsVdfKvDatabase.Keys.Apps, appId)
+                database.apps.containsKey(appId)
+                    .not() || changeNumber > database.getChangeNumberFor(
+                    PicsVdfKvDatabase.Keys.Apps,
+                    appId
+                )
             }.mapNotNull {
                 tokens[it.appid]
             }
 
         if (requiresUpdate.isEmpty()) {
-            KSteamLogging.logDebug("Pics:HandleLicenses", "App metadata is in up-to-date state, no update required")
+            KSteamLogging.logDebug("Pics:HandleLicenses") {
+                "App metadata is in up-to-date state, no update required"
+            }
             return appIds
         } else {
-            KSteamLogging.logDebug("Pics:HandleLicenses", "Requesting metadata for ${requiresUpdate.size} apps")
+            KSteamLogging.logDebug("Pics:HandleLicenses") {
+                "Requesting metadata for ${requiresUpdate.size} apps"
+            }
         }
 
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        dispatchListProcessing(loadAppsInfo(requiresUpdate, withoutContent = false).distinctBy { it.appid }) { appInfoProto ->
+        dispatchListProcessing(
+            loadAppsInfo(
+                requiresUpdate,
+                withoutContent = false
+            ).distinctBy { it.appid }) { appInfoProto ->
             val appId = appInfoProto.appid ?: return@dispatchListProcessing null
-            val changeNumber = appInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
+            val changeNumber =
+                appInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
             val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
 
             database.parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
@@ -195,7 +229,10 @@ class Pics internal constructor(
         )
     }
 
-    private suspend fun loadAppsInfo(tokens: Collection<CMsgClientPICSAccessTokenResponse_AppToken>, withoutContent: Boolean = false): List<CMsgClientPICSProductInfoResponse_AppInfo> {
+    private suspend fun loadAppsInfo(
+        tokens: Collection<CMsgClientPICSAccessTokenResponse_AppToken>,
+        withoutContent: Boolean = false
+    ): List<CMsgClientPICSProductInfoResponse_AppInfo> {
         if (tokens.isEmpty()) {
             return emptyList()
         }
@@ -216,12 +253,17 @@ class Pics internal constructor(
     }
 
     @OptIn(FlowPreview::class)
-    private suspend fun <T> requestDataFromPics(request: CMsgClientPICSProductInfoRequest, emitter: (CMsgClientPICSProductInfoResponse) -> List<T>): List<T> {
-        return steamClient.subscribe(SteamPacket.newProto(
-            messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
-            adapter = CMsgClientPICSProductInfoRequest.ADAPTER,
-            payload = request
-        )).transformWhile { packet ->
+    private suspend fun <T> requestDataFromPics(
+        request: CMsgClientPICSProductInfoRequest,
+        emitter: (CMsgClientPICSProductInfoResponse) -> List<T>
+    ): List<T> {
+        return steamClient.subscribe(
+            SteamPacket.newProto(
+                messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
+                adapter = CMsgClientPICSProductInfoRequest.ADAPTER,
+                payload = request
+            )
+        ).transformWhile { packet ->
             packet.getProtoPayload(CMsgClientPICSProductInfoResponse.ADAPTER).data.let { response ->
                 emit(response.let(emitter))
                 response.response_pending ?: false
@@ -234,10 +276,13 @@ class Pics internal constructor(
     enum class PicsState {
         // 1. Awaiting information from the server
         Initialization,
+
         // 2. Updating PICS information - Packages
         UpdatingPackages,
+
         // 2. Updating PICS information - APps
         UpdatingApps,
+
         // 3. PICS is ready to use
         Ready
     }

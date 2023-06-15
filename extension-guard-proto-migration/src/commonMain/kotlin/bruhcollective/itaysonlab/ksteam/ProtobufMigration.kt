@@ -20,8 +20,12 @@ private const val LOG_TAG = "GuardMigration"
  * @param removeOldFiles delete protobuf data after successfully migrating it
  */
 @Suppress("SpellCheckingInspection")
-suspend fun Guard.tryMigratingProtobufs(clientRef: SteamClient, testRun: Boolean = false, removeOldFiles: Boolean = true) {
-    KSteamLogging.logDebug(LOG_TAG, "Preparing to migrate SG data")
+suspend fun Guard.tryMigratingProtobufs(
+    clientRef: SteamClient,
+    testRun: Boolean = false,
+    removeOldFiles: Boolean = true
+) {
+    KSteamLogging.logDebug(LOG_TAG) { "Preparing to migrate SG data" }
 
     val fs = provideOkioFilesystem()
     val dataStorage = clientRef.storage.rootFolder
@@ -31,21 +35,23 @@ suspend fun Guard.tryMigratingProtobufs(clientRef: SteamClient, testRun: Boolean
     }
 
     if (directoriesWithGuard.isEmpty()) {
-        KSteamLogging.logDebug(LOG_TAG, "No files to migrate, aborting")
+        KSteamLogging.logDebug(LOG_TAG) { "No files to migrate, aborting" }
         return
     }
 
-    KSteamLogging.logDebug(LOG_TAG, "Available directories: ${directoriesWithGuard.joinToString()}")
+    KSteamLogging.logDebug(LOG_TAG) { "Available directories: ${directoriesWithGuard.joinToString()}" }
 
     directoriesWithGuard.forEach { directory ->
         val guardConfig = fs.read(directory / "guard") {
             GuardConfiguration.ADAPTER.decode(this)
         }
 
-        KSteamLogging.logDebug(LOG_TAG, "Migrating configuration for user ${guardConfig.steam_id}")
+        KSteamLogging.logDebug(LOG_TAG) { "Migrating configuration for user ${guardConfig.steam_id}" }
 
         if (testRun) {
-            KSteamLogging.logDebug(LOG_TAG, "Test run, skipping migration for user ${guardConfig.steam_id}")
+            KSteamLogging.logDebug(LOG_TAG) {
+                "Test run, skipping migration for user ${guardConfig.steam_id}"
+            }
         } else {
             tryAddConfig(
                 SteamId(guardConfig.steam_id.toULong()), GuardStructure(
@@ -65,12 +71,16 @@ suspend fun Guard.tryMigratingProtobufs(clientRef: SteamClient, testRun: Boolean
             if (removeOldFiles) {
                 fs.delete(directory / "guard")
 
-                KSteamLogging.logDebug(LOG_TAG, "Deleted old configuration for user ${guardConfig.steam_id}")
+                KSteamLogging.logDebug(LOG_TAG) {
+                    "Deleted old configuration for user ${guardConfig.steam_id}"
+                }
             }
         }
 
-        KSteamLogging.logDebug(LOG_TAG, "Completed configuration migration for user ${guardConfig.steam_id}")
+        KSteamLogging.logDebug(LOG_TAG) {
+            "Completed configuration migration for user ${guardConfig.steam_id}"
+        }
     }
 
-    KSteamLogging.logDebug(LOG_TAG, "Migration completed")
+    KSteamLogging.logDebug(LOG_TAG) { "Migration completed" }
 }

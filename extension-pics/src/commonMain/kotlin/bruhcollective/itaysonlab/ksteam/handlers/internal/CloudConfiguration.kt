@@ -40,12 +40,16 @@ internal class CloudConfiguration(
                 )
             ),
         ).dataNullable?.data_?.firstOrNull().let { newNamespace ->
-            KSteamLogging.logDebug("CloudConfig:Rpc", "Namespace received: $newNamespace")
+            KSteamLogging.logDebug("CloudConfig:Rpc") { "Namespace received: $newNamespace" }
             currentState.update { map ->
                 map.toMutableMap().apply {
                     put(
                         namespace,
-                        newNamespace ?: CCloudConfigStore_NamespaceData(version = version, enamespace = namespace, horizon = 0L)
+                        newNamespace ?: CCloudConfigStore_NamespaceData(
+                            version = version,
+                            enamespace = namespace,
+                            horizon = 0L
+                        )
                     )
                 }
             }
@@ -56,7 +60,7 @@ internal class CloudConfiguration(
         if (rpcMethod == "CloudConfigStoreClient.NotifyChange#1") {
             packet.getProtoPayload(CCloudConfigStore_Change_Notification.ADAPTER).dataNullable?.let { notification ->
                 notification.versions.forEach { updatedNamespace ->
-                    KSteamLogging.logDebug("CloudConfig:Rpc", "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}")
+                    KSteamLogging.logDebug("CloudConfig:Rpc") { "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}" }
                     downloadAndSet(updatedNamespace.enamespace ?: return@forEach)
                 }
             }

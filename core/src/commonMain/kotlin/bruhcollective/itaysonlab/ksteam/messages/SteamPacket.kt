@@ -29,7 +29,11 @@ class SteamPacket private constructor(
     companion object {
         // Whitelist of EMsg ID's that can be executed without auth
         private val anonymousIds =
-            arrayOf(EMsg.k_EMsgClientHello, EMsg.k_EMsgServiceMethodCallFromClientNonAuthed, EMsg.k_EMsgClientLogon)
+            arrayOf(
+                EMsg.k_EMsgClientHello,
+                EMsg.k_EMsgServiceMethodCallFromClientNonAuthed,
+                EMsg.k_EMsgClientLogon
+            )
 
         // Usage: EMsg and ProtobufMask
         private const val ProtobufMask = 0x80000000.toInt()
@@ -55,10 +59,9 @@ class SteamPacket private constructor(
             val messageIdRaw = packetBuffer.readIntLe()
             val messageId = EMsg.byEncoded(messageIdRaw and ProtobufClearMask)
 
-            KSteamLogging.logVerbose(
-                "SteamPacket:ParseNet",
+            KSteamLogging.logVerbose("SteamPacket:ParseNet") {
                 "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})"
-            )
+            }
 
             val header: SteamPacketHeader = if ((messageIdRaw and ProtobufMask) != 0) {
                 SteamPacketHeader.Protobuf()
@@ -66,7 +69,7 @@ class SteamPacket private constructor(
                 SteamPacketHeader.Binary()
             }.apply { read(packetBuffer) }
 
-            KSteamLogging.logVerbose("SteamPacket:ParseNet", "> [header] $header")
+            KSteamLogging.logVerbose("SteamPacket:ParseNet") { "> [header] $header" }
 
             val payload = packetBuffer.readByteArray()
 

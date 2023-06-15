@@ -105,7 +105,7 @@ class SteamClient internal constructor(
                     getHandler<Account>().trySignInSaved()
                 }
             }.catch { throwable ->
-                KSteamLogging.logError("SteamClient:EventFlow", "Error occurred when collecting a client state: ${throwable.message}")
+                KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a client state: ${throwable.message}" }
             }.launchIn(eventsScope)
 
         cmClient.incomingPacketsQueue
@@ -118,12 +118,15 @@ class SteamClient internal constructor(
                     try {
                         // KSteamLogging.logVerbose("SteamClient:EventFlow", "- Dispatching packet to ${handler::class.simpleName.orEmpty()}")
                         if (packet.messageId == EMsg.k_EMsgServiceMethod) {
-                            handler.onRpcEvent((packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(), packet)
+                            handler.onRpcEvent(
+                                (packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(),
+                                packet
+                            )
                         } else {
                             handler.onEvent(packet)
                         }
                     } catch (e: Exception) {
-                        KSteamLogging.logError("SteamClient:EventFlow", "Error occurred when collecting a packet: ${e.message}")
+                        KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a packet: ${e.message}" }
                         e.printStackTrace()
                     }
                 }

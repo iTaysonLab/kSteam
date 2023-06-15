@@ -124,10 +124,9 @@ class Account internal constructor(
             AuthorizationResult.InvalidPassword
         } else {
             with(signInResult.data) {
-                KSteamLogging.logVerbose(
-                    "Account:SignIn",
+                KSteamLogging.logVerbose("Account:SignIn") {
                     "Success, waiting for 2FA. Available confirmations: ${this.allowed_confirmations.joinToString()}"
-                )
+                }
 
                 pollInfo = PollInfo(this.client_id!! to this.request_id!!)
                 authState.emit(AuthorizationState.AwaitingTwoFactor(this))
@@ -140,11 +139,13 @@ class Account internal constructor(
                     createWatcherFlow(this.interval ?: 5f)
                 }
 
-                if (allowed_confirmations.mapNotNull { it.confirmation_type }.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
-                    val guardCode = steamClient.getImplementingHandlerOrNull<SteamGuardPlugin>()?.getCodeFor(SteamId(this.steamid?.toULong() ?: 0u))
+                if (allowed_confirmations.mapNotNull { it.confirmation_type }
+                        .contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
+                    val guardCode = steamClient.getImplementingHandlerOrNull<SteamGuardPlugin>()
+                        ?.getCodeFor(SteamId(this.steamid?.toULong() ?: 0u))
 
                     if (guardCode != null) {
-                        KSteamLogging.logVerbose("Account:SignIn", "This SteamID has a registered Guard instance, we can skip 2FA")
+                        KSteamLogging.logVerbose("Account:SignIn") { "This SteamID has a registered Guard instance, we can skip 2FA" }
                         updateCurrentSessionWithCode(guardCode)
                     }
                 }
@@ -223,10 +224,9 @@ class Account internal constructor(
             true
         } else {
             if (steamId != null) {
-                KSteamLogging.logWarning(
-                    "Account:AutoSignIn",
+                KSteamLogging.logWarning("Account:AutoSignIn") {
                     "No accounts found on the kSteam database. Please log in manually to use this feature."
-                )
+                }
             }
 
             false
@@ -330,7 +330,7 @@ class Account internal constructor(
 
         return if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
             // Success, now we can cancel the session
-            KSteamLogging.logVerbose("Account:Watcher", "Succesfully logged in: $pollAnswer")
+            KSteamLogging.logVerbose("Account:Watcher") { "Succesfully logged in: $pollAnswer" }
 
             val steamId = try {
                 SteamId(json.decodeFromString<JwtToken>(pollAnswer.refresh_token.split(".")[1].decodeBase64String()).sub.toULong())
@@ -340,7 +340,9 @@ class Account internal constructor(
             }
 
             if (steamId == null) {
-                KSteamLogging.logError("Account:Watcher", "Received JWT, but no Steam ID exposed - couldn't continue signing in")
+                KSteamLogging.logError("Account:Watcher") {
+                    "Received JWT, but no Steam ID exposed - couldn't continue signing in"
+                }
                 return true
             }
 

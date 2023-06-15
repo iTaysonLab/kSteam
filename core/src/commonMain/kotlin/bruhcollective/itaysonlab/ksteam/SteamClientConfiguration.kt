@@ -50,6 +50,7 @@ class SteamClientConfiguration(
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
+                coerceInputValues = true
             })
         }
 

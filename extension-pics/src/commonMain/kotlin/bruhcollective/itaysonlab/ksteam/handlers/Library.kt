@@ -236,7 +236,7 @@ class Library(
                 _isLoadingPlayTimes.value = true
 
                 while (true) {
-                    KSteamLogging.logDebug("Library:Collector", "Requesting last played times")
+                    KSteamLogging.logDebug("Library:Collector") { "Requesting last played times" }
 
                     _playtime.update {
                         steamClient.unifiedMessages.execute(
@@ -263,7 +263,7 @@ class Library(
                 cloudCollector = null
 
                 if (it != null && it !is CancellationException) {
-                    KSteamLogging.logError("Library:Collector", "Error occurred when collecting library data: ${it.message}")
+                    KSteamLogging.logError("Library:Collector") { "Error occurred when collecting library data: ${it.message}" }
                     it.printStackTrace()
 
                     delay(1000L)
@@ -278,10 +278,10 @@ class Library(
         _isLoadingLibrary.value = true
 
         if (KSteamLogging.enableVerboseLogs) {
-            KSteamLogging.logVerbose("Library:Cloud", "Printing cloud keys:")
+            KSteamLogging.logVerbose("Library:Cloud") { "Printing cloud keys:" }
 
             entries.forEach { entry ->
-                KSteamLogging.logVerbose("Library:Cloud", entry.toString())
+                KSteamLogging.logVerbose("Library:Cloud") { entry.toString() }
             }
         }
 
@@ -290,7 +290,7 @@ class Library(
             val entryObject = json.decodeFromString<RemoteCollectionModel>(entry.value_ ?: return@mapNotNull null)
 
             LibraryCollection.fromJsonCollection(entryObject, entry.timestamp ?: return@mapNotNull null, entry.version ?: return@mapNotNull null).also { c ->
-                KSteamLogging.logVerbose("Library:Collection", c.toString())
+                KSteamLogging.logVerbose("Library:Collection") { c.toString() }
             }
         }.filter {
             when (it.id) {

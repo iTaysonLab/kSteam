@@ -32,7 +32,7 @@ class Persona internal constructor(
     val currentFriendList = _currentFriendList.asStateFlow()
 
     private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
-        KSteamLogging.logVerbose("Persona:NewState", "Incoming: ${incoming.joinToString()}")
+        KSteamLogging.logVerbose("Persona:NewState") { "Incoming: ${incoming.joinToString()}" }
 
         personas.update { map ->
             map.toMutableMap().apply {
@@ -113,7 +113,8 @@ class Persona internal constructor(
         _currentFriendList.update {
             // 1. Request persona states
             requestPersonas(if (newList.bincremental == true) {
-                newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }.map { f -> f.steamId }
+                newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }
+                    .map { f -> f.steamId }
             } else {
                 newList.friends.map { f -> f.steamId }
             })
@@ -136,7 +137,9 @@ class Persona internal constructor(
     private suspend fun requestPersonas(ids: List<SteamId>) {
         if (ids.isEmpty()) return
 
-        KSteamLogging.logDebug("Handlers:Persona", "Requesting persona states for: ${ids.joinToString { it.id.toString() }}")
+        KSteamLogging.logDebug("Handlers:Persona") {
+            "Requesting persona states for: ${ids.joinToString { it.id.toString() }}"
+        }
 
         steamClient.executeAndForget(SteamPacket.newProto(
             messageId = EMsg.k_EMsgClientRequestFriendData,

@@ -26,7 +26,6 @@ class WebApi(
     val store = this[EnvironmentConstants.STORE_API_BASE]
 
     suspend fun getCmList(): List<CMServerEntry> {
-        // New
         return gateway.method("ISteamDirectory/GetCMListForConnect/v1") {
             "cmtype" with "websockets"
             "realm" with "steamglobal"
@@ -81,7 +80,7 @@ class WebApi(
     inner class WebApiOperatorScope(
         val baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
     ) {
-        fun method(path: String, configurator: WebApiMethodScope.() -> Unit): WebApiMethodScope {
+        fun method(path: String, configurator: WebApiMethodScope.() -> Unit = {}): WebApiMethodScope {
             return WebApiMethodScope(baseUrl, path).apply(configurator)
         }
     }
@@ -92,12 +91,16 @@ class WebApi(
     ) {
         private val urlBuilder = URLBuilder(baseUrl).appendPathSegments(path)
 
-        infix fun String.with(other: String) {
-            urlBuilder.parameters.append(this, other)
+        infix fun String.with(other: String?) {
+            if (other != null) {
+                urlBuilder.parameters.append(this, other)
+            }
         }
 
-        infix fun String.with(other: Any) {
-            urlBuilder.parameters.append(this, other.toString())
+        infix fun String.with(other: Any?) {
+            if (other != null) {
+                urlBuilder.parameters.append(this, other.toString())
+            }
         }
 
         infix fun String.with(other: List<String>) {

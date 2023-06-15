@@ -186,8 +186,9 @@ class Profile internal constructor(
 
     override suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) {
         if (rpcMethod == "PlayerClient.NotifyFriendEquippedProfileItemsChanged#1") {
-            val accountIdContainer = packet.getProtoPayload(CPlayer_FriendEquippedProfileItemsChanged_Notification.ADAPTER).dataNullable
-            KSteamLogging.logDebug("Profile:RpcEvent", "Received NotifyFriendEquippedProfileItemsChanged, target account id: ${accountIdContainer?.accountid} [current account id: ${steamClient.currentSessionSteamId.accountId}]")
+            val accountIdContainer =
+                packet.getProtoPayload(CPlayer_FriendEquippedProfileItemsChanged_Notification.ADAPTER).dataNullable
+            KSteamLogging.logDebug("Profile:RpcEvent") { "Received NotifyFriendEquippedProfileItemsChanged, target account id: ${accountIdContainer?.accountid} [current account id: ${steamClient.currentSessionSteamId.accountId}]" }
             if (accountIdContainer != null && accountIdContainer.accountid == steamClient.currentSessionSteamId.accountId) {
                 requestMyEquipment()
             }

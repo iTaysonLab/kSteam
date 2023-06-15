@@ -2,16 +2,40 @@ package bruhcollective.itaysonlab.ksteam.debug
 
 object KSteamLogging {
     var transport: LoggingTransport = NoopLoggingTransport
-
-    fun logVerbose(tag: String, message: String) = transport.printVerbose(tag, message)
-    fun logDebug(tag: String, message: String) = transport.printDebug(tag, message)
-    fun logWarning(tag: String, message: String) = transport.printWarning(tag, message)
-    fun logError(tag: String, message: String) = transport.printError(tag, message)
-
-    var verbosity: KSteamLoggingVerbosity
-        get() = transport.verbosity
         set(value) {
-            transport.verbosity = value
+            field = value
+            field.onVerbosityChanged(verbosity)
+        }
+
+    inline fun logVerbose(tag: String, crossinline message: () -> String) {
+        if (verbosity.atLeast(KSteamLoggingVerbosity.Verbose)) {
+            transport.printVerbose(tag, message())
+        }
+    }
+
+    inline fun logDebug(tag: String, crossinline message: () -> String) {
+        if (verbosity.atLeast(KSteamLoggingVerbosity.Debug)) {
+            transport.printDebug(tag, message())
+        }
+    }
+
+    inline fun logWarning(tag: String, crossinline message: () -> String) {
+        if (verbosity.atLeast(KSteamLoggingVerbosity.Warning)) {
+            transport.printWarning(tag, message())
+        }
+    }
+
+    inline fun logError(tag: String, crossinline message: () -> String) {
+        if (verbosity.atLeast(KSteamLoggingVerbosity.Error)) {
+            transport.printError(tag, message())
+        }
+    }
+
+    var verbosity: KSteamLoggingVerbosity = KSteamLoggingVerbosity.Warning
+        set(value) {
+            field = value
+            transport.onVerbosityChanged(value)
+
             if (value == KSteamLoggingVerbosity.Verbose) {
                 transport.printError(
                     "Global:Logging",
@@ -31,8 +55,7 @@ enum class KSteamLoggingVerbosity {
 }
 
 interface LoggingTransport {
-    var verbosity: KSteamLoggingVerbosity
-
+    fun onVerbosityChanged(verbosity: KSteamLoggingVerbosity) {}
     fun printError(tag: String, message: String)
     fun printWarning(tag: String, message: String)
     fun printDebug(tag: String, message: String)
@@ -40,10 +63,6 @@ interface LoggingTransport {
 }
 
 object NoopLoggingTransport : LoggingTransport {
-    override var verbosity: KSteamLoggingVerbosity
-        get() = KSteamLoggingVerbosity.Disable
-        set(value) {}
-
     override fun printError(tag: String, message: String) = Unit
     override fun printWarning(tag: String, message: String) = Unit
     override fun printDebug(tag: String, message: String) = Unit
@@ -51,28 +70,19 @@ object NoopLoggingTransport : LoggingTransport {
 }
 
 object StdoutLoggingTransport : LoggingTransport {
-    override var verbosity: KSteamLoggingVerbosity = KSteamLoggingVerbosity.Verbose
     override fun printError(tag: String, message: String) {
-        if (verbosity.atLeast(KSteamLoggingVerbosity.Error)) {
-            println("[E] [$tag] $message")
-        }
+        println("[E] [$tag] $message")
     }
 
     override fun printWarning(tag: String, message: String) {
-        if (verbosity.atLeast(KSteamLoggingVerbosity.Warning)) {
-            println("[W] [$tag] $message")
-        }
+        println("[W] [$tag] $message")
     }
 
     override fun printDebug(tag: String, message: String) {
-        if (verbosity.atLeast(KSteamLoggingVerbosity.Debug)) {
-            println("[D] [$tag] $message")
-        }
+        println("[D] [$tag] $message")
     }
 
     override fun printVerbose(tag: String, message: String) {
-        if (verbosity.atLeast(KSteamLoggingVerbosity.Verbose)) {
-            println("[V] [$tag] $message")
-        }
+        println("[V] [$tag] $message")
     }
 }

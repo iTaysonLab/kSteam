@@ -74,12 +74,14 @@ internal class PicsVdfKvDatabase (
 
     inline fun <reified T> parseVdf(vdf: Vdf, source: ByteArray): T? {
         return try {
-            vdf.decodeFromBufferedSource<T>(RootNodeSkipperDeserializationStrategy(), Buffer().also { buffer ->
-                buffer.write(source)
-            })
+            vdf.decodeFromBufferedSource<T>(
+                RootNodeSkipperDeserializationStrategy(),
+                Buffer().also { buffer ->
+                    buffer.write(source)
+                })
         } catch (mfe: Exception) {
             // We try to cover almost all types, but sometimes stuff... happens
-            KSteamLogging.logVerbose("Pics:Unknown", source.toByteString().hex())
+            KSteamLogging.logVerbose("Pics:Unknown") { source.toByteString().hex() }
             null
         }
     }
