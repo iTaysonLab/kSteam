@@ -26,6 +26,8 @@ dependencies {
 
     commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+
     commonMainImplementation("io.ktor:ktor-client-core:2.3.1")
 
     commonMainApi("com.squareup.wire:wire-runtime:4.7.0")

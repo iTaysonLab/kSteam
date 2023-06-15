@@ -1,23 +1,23 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
-import bruhcollective.itaysonlab.ksteam.models.enums.plus
+import bruhcollective.itaysonlab.ksteam.models.enums.EAccountType
 import bruhcollective.itaysonlab.ksteam.models.news.AppType
-import bruhcollective.itaysonlab.ksteam.models.news.EventType
+import bruhcollective.itaysonlab.ksteam.models.news.ClanSummary
 import bruhcollective.itaysonlab.ksteam.models.news.NewsCalendarResponse
+import bruhcollective.itaysonlab.ksteam.models.news.NewsCalendarResponseApp
+import bruhcollective.itaysonlab.ksteam.models.news.NewsDocument
 import bruhcollective.itaysonlab.ksteam.models.news.NewsEntry
+import bruhcollective.itaysonlab.ksteam.models.news.NewsEvent
+import bruhcollective.itaysonlab.ksteam.models.news.NewsEventType
+import bruhcollective.itaysonlab.ksteam.models.news.NewsJsonData
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
-import bruhcollective.itaysonlab.ksteam.models.news.usernews.ActivityFeedEntry
-import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
-import bruhcollective.itaysonlab.ksteam.models.toSteamId
-import steam.webui.usernews.CUserNews_GetUserNews_Request
-import steam.webui.usernews.CUserNews_GetUserNews_Response
+import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
 
 /**
  * Access Steam news using this handler.
@@ -25,31 +25,57 @@ import steam.webui.usernews.CUserNews_GetUserNews_Response
 class News internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
+    private companion object {
+        private const val LOG_TAG = "CoreExt:News"
+    }
+
+    private val json = Json {
+        coerceInputValues = true
+        ignoreUnknownKeys = true
+    }
+
+    private val currentSeconds get() = Clock.System.now().epochSeconds
+
+    /**
+     * Returns upcoming events. Thee are
+     *
+     */
+    suspend fun getUpcomingEvents(
+        count: Int = 250,
+        eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
+        appTypes: List<AppType> = AppType.values().toList()
+    ) = getEventsInCalendarRange(
+        range = currentSeconds..0,
+        count = count,
+        eventTypes = eventTypes,
+        appTypes = appTypes
+    )
+
     /**
      * Get events in the given calendar range.
      *
      * @param range between two unix timestamps
-     * @param collectionId the collection ID for news. For example, it could be "steam" for the Global News -> Steam Official section of the official news app.
+     * @param collectionId the collection ID for news. For example, it could be "steam" for the Global News -> Steam Official section of the official news app. For ease of use, Steam's collection IDs are provided in [Collections] object.
      * @param count count of news to return
      * @param ascending sort from the earliest event
      * @param eventTypes show only chosen event types
      * @param appTypes show only chosen app types
-     * @param filterByAppIds get data only for specific [AppId]s
+     * @param filterByAppIds get data only for specific application IDs
      * @param filterByClanIds get data only for specific [SteamId] with a "clan" state
      *
      * @return a well-formed and parsed page ready to be shown in "News" screen
      */
     suspend fun getEventsInCalendarRange(
-        range: LongRange,
+        range: LongRange = 0..currentSeconds,
         collectionId: String? = null,
         count: Int = 250,
         ascending: Boolean = false,
-        eventTypes: List<EventType> = EventType.values().toList(),
+        eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
         appTypes: List<AppType> = AppType.values().toList(),
         filterByAppIds: List<Int> = emptyList(),
         filterByClanIds: List<SteamId> = emptyList(),
-    ) {
-        steamClient.webApi.store.method("events/ajaxgetusereventcalendarrange/") {
+    ): List<NewsEvent> {
+        val calendar = steamClient.webApi.store.method("events/ajaxgetusereventcalendarrange/") {
             "minTime" with range.first
             "maxTime" with range.last
 
@@ -59,8 +85,68 @@ class News internal constructor(
             "populateEvents" with "15" // research
 
             "appTypes" with appTypes.joinToString(separator = ",", transform = AppType::apiName)
-            "eventTypes" with eventTypes.joinToString(separator = ",") { it.internalTypes.joinToString(separator = ",") }
+            "eventTypes" with eventTypes.joinToString(separator = ",") { it.ordinal.toString() }
+
+            "collectionID" with collectionId // featured, steam, press
         }.body<NewsCalendarResponse>()
+
+        // Get documents aka events references
+        // 30 is the chunk limit in SteamJS
+
+        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting event entries, total: ${calendar.documents.size}" }
+
+        val alreadyReturned = calendar.events.map(NewsEntry::gid)
+        val entries = calendar.events.toMutableList()
+
+        calendar.documents.filterNot { alreadyReturned.contains(it.uniqueId) }.chunked(30).forEach { docChunk ->
+            entries += getEventDetails(docChunk)
+        }
+
+        // Get app summaries
+
+        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting apps, total: ${calendar.apps.size}" }
+        val apps = steamClient.store.getAppSummaries(calendar.apps.map(NewsCalendarResponseApp::appId))
+
+        // Get clans summaries
+
+        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
+        val clans = calendar.clans.associate { clan -> SteamId.fromAccountId(id = clan.clanId, type = EAccountType.Clan).toString() to resolveClanInfo(SteamId.fromAccountId(id = clan.clanId, type = EAccountType.Clan)) }
+
+        // Now we have all required data, we can parse them to NewsEvent's
+
+        return entries.map { entry ->
+            val jsonDescription = json.decodeFromString<NewsJsonData>(entry.jsondata.let {
+                if (it == "[]") {
+                    "{}"  // why do they provide broken data
+                } else {
+                    it
+                }
+            })
+
+            NewsEvent(
+                id = entry.gid,
+                type = NewsEventType.values().getOrElse(entry.eventType) { NewsEventType.Unknown },
+                clanSteamId = SteamId(entry.clanSteamid.toULong()),
+                creatorSteamId = SteamId(entry.creatorSteamid.toULong()),
+                updaterSteamId = SteamId(entry.lastUpdateSteamid.toULong()),
+                clanSummary = clans[entry.clanSteamid],
+                title = entry.eventName,
+                subtitle = jsonDescription.subtitles.firstOrNull().orEmpty(),
+                description = jsonDescription.summaries.firstOrNull().orEmpty(),
+                header = jsonDescription.titleImages.firstOrNull().orEmpty(),
+                capsule = jsonDescription.capsuleImages.firstOrNull().orEmpty(),
+                likeCount = entry.votesUp,
+                dislikeCount = entry.votesDown,
+                commentCount = entry.commentCount,
+                forumTopicId = entry.forumTopicId,
+                publishedAt = entry.announcementBody.posttime,
+                lastUpdatedAt = entry.announcementBody.updatetime,
+                relatedApp = apps[entry.appid],
+                content = entry.announcementBody.body,
+                eventStartDate = entry.rtime32StartTime,
+                eventEndDate = entry.rtime32EndTime,
+            )
+        }
     }
 
     /**
@@ -81,192 +167,6 @@ class News internal constructor(
     }
 
     /**
-     * Get activity events for a specific [AppId].
-     *
-     * @param appId filter events for the specific app, set it to zero to show everything
-     * @param showEvents filter events by their type, use [UserNewsFilterScenario] for ready-made presets
-     * @param count limit the size of events
-     */
-    suspend fun getUserNews(
-        appId: Int = 0,
-        showEvents: Int = UserNewsFilterScenario.AppOverviewList,
-        count: Int = 100,
-        startTime: Int = 0,
-        endTime: Int = 0,
-    ): List<ActivityFeedEntry> {
-        val newsProto = steamClient.unifiedMessages.execute(
-            methodName = "UserNews.GetUserNews",
-            requestAdapter = CUserNews_GetUserNews_Request.ADAPTER,
-            responseAdapter = CUserNews_GetUserNews_Response.ADAPTER,
-            requestData = CUserNews_GetUserNews_Request(
-                filterappid = appId,
-                filterflags = showEvents,
-                count = count,
-                starttime = startTime,
-                endtime = endTime,
-                language = steamClient.language.vdfName
-            )
-        ).data
-
-        // region Mapping achievements
-
-        val achievementMap = mutableMapOf<String, ActivityFeedEntry.NewAchievements.Achievement>()
-
-        newsProto.achievement_display_data.forEach { displayData ->
-            val achAppId = displayData.appid ?: return@forEach
-
-            displayData.achievements.forEach { achievement ->
-                achievementMap[achievement.name.orEmpty()] = ActivityFeedEntry.NewAchievements.Achievement(
-                    internalName = achievement.name.orEmpty(),
-                    displayName = achievement.display_name.orEmpty(),
-                    displayDescription = achievement.display_description.orEmpty(),
-                    icon = SteamCdn.formatCommunityImageUrl(achAppId, achievement.icon.orEmpty()),
-                    unlockedPercent = (achievement.unlocked_pct ?: 0f).toDouble(),
-                    hidden = achievement.hidden ?: false
-                )
-            }
-        }
-
-        // endregion
-
-        // region Mapping content IDs to proper objects
-
-        val totalAppIds = mutableListOf<Int>()
-        val totalUserIds = mutableListOf<SteamId>()
-
-        val totalClanSteamIds = mutableListOf<SteamId>()
-        val totalClanAnnouncementIds = mutableListOf<Long>()
-
-        newsProto.news.asSequence().filter { event ->
-            (event.gameid != null && event.gameid != 0L)
-                    || (event.steamid_actor != null && event.steamid_actor != 0L)
-                    || (event.appids.isNotEmpty())
-                    || (event.packageid != null && event.packageid != 0)
-                    || (event.clan_announcementid != null && event.clan_announcementid != 0L)
-        }.forEach { event ->
-            if (event.clan_announcementid != null && event.steamid_actor != 0L) {
-                totalClanSteamIds.add(event.steamid_actor.toSteamId())
-                totalClanAnnouncementIds.add(event.clan_announcementid)
-            } else if (event.steamid_actor != 0L) {
-                event.steamid_actor?.let { totalUserIds.add(it.toSteamId()) }
-            }
-
-            if (event.gameid != 0L) {
-                totalAppIds.add(event.gameid?.toInt() ?: return@forEach)
-            }
-
-            if (event.appids.isNotEmpty()) {
-                totalAppIds.addAll(event.appids)
-            }
-        }
-
-        // endregion
-
-        val totalSteamIds = (totalUserIds + totalClanSteamIds).distinctBy(SteamId::id)
-        val summariesMap = steamClient.store.getAppSummaries(totalAppIds)
-        val userMap = steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
-
-        // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
-
-        val entries = mutableListOf<ActivityFeedEntry>()
-
-        val totalEventSize = newsProto.news.size
-        val totalEventSizeLastIndex = newsProto.news.lastIndex
-
-        val stringDuplicateStack = DuplicateStack<String>()
-        val intDuplicateStack = DuplicateStack<Int>()
-
-        for (i in 0 until totalEventSize) {
-            val event = newsProto.news[i]
-            val eventNext = newsProto.news.getOrNull(i + 1)
-
-            val eventType = EUserNewsType.byApiEnum(event.eventtype ?: 0) ?: continue
-            val actorSteamId = SteamId(event.steamid_actor?.toULong() ?: continue)
-            val eventDate = event.eventtime ?: continue
-            val actorPersona = userMap[actorSteamId] ?: SummaryPersona.Unknown
-
-            when (eventType) {
-                EUserNewsType.AchievementUnlocked -> {
-                    if (ActivityFeedEntry.NewAchievements.canMergeWith(event, eventNext)) {
-                        stringDuplicateStack += event.achievement_names
-                        continue
-                    }
-
-                    val gameId = event.gameid?.toInt() ?: continue
-                    val achievements = stringDuplicateStack.use { saved -> event.achievement_names + saved }.mapNotNull(achievementMap::get)
-
-                    ActivityFeedEntry.NewAchievements(
-                        date = eventDate,
-                        steamId = actorSteamId,
-                        app = summariesMap[gameId] ?: continue,
-                        persona = actorPersona,
-                        achievements = achievements
-                    )
-                }
-
-                EUserNewsType.PlayedGameFirstTime -> {
-                    val gameId = event.gameid?.toInt() ?: continue
-
-                    ActivityFeedEntry.PlayedForFirstTime(
-                        date = eventDate,
-                        steamId = actorSteamId,
-                        persona = actorPersona,
-                        app = summariesMap[gameId] ?: continue
-                    )
-                }
-
-                EUserNewsType.ReceivedNewGame -> {
-                    if (ActivityFeedEntry.ReceivedNewGame.canMergeWith(event, eventNext)) {
-                        intDuplicateStack += event.appids
-                        continue
-                    }
-
-                    val apps = intDuplicateStack.use { saved -> event.appids + saved }.mapNotNull { summariesMap[it] }
-
-                    ActivityFeedEntry.ReceivedNewGame(
-                        date = eventDate,
-                        steamId = actorSteamId,
-                        persona = actorPersona,
-                        apps = apps,
-                        packages = emptyList()
-                    )
-                }
-
-                EUserNewsType.AddedGameToWishlist -> {
-                    if (ActivityFeedEntry.AddedToWishlist.canMergeWith(event, eventNext)) {
-                        intDuplicateStack += event.gameid?.toInt() ?: continue
-                        continue
-                    }
-
-                    val apps = intDuplicateStack.use { saved -> listOf(event.gameid?.toInt() ?: 0) + saved }.mapNotNull { summariesMap[it] }
-
-                    ActivityFeedEntry.AddedToWishlist(
-                        date = eventDate,
-                        steamId = actorSteamId,
-                        persona = actorPersona,
-                        apps = apps
-                    )
-                }
-
-                else -> {
-                    KSteamLogging.logDebug("News:GetUserNews", "Unknown event received, enum type: $eventType - dumping proto data below")
-                    KSteamLogging.logDebug("News:GetUserNews", event.toString())
-
-                    ActivityFeedEntry.UnknownEvent(
-                        date = eventDate,
-                        steamId = actorSteamId,
-                        type = eventType,
-                        persona = actorPersona,
-                        proto = event
-                    )
-                }
-            }.let(entries::add)
-        }
-
-        return entries
-    }
-
-    /**
      * Returns event metadata by their IDs and owner clan SteamIDs.
      */
     suspend fun getEventDetails(
@@ -279,55 +179,26 @@ class News internal constructor(
         }.body<NewsCalendarResponse>().events
     }
 
-    /**
-     * A container for Steam user activity.
-     */
-    data class UserNews (
-        /**
-         * Entries for UI clients to show
-         */
-        val entries: List<ActivityFeedEntry>,
-        /**
-         * A paging link.
-         */
-        val nextFrom: Int
-    )
+    private suspend fun getEventDetails(
+        documents: List<NewsDocument>
+    ): List<NewsEntry> {
+        return steamClient.webApi.store.method("events/ajaxgeteventdetails") {
+            "uniqueid_list" with documents.joinToString(separator = ",") { doc -> doc.uniqueId }
+            "clanid_list" with documents.joinToString(separator = ",") { clan -> clan.clanId.toString() }
+        }.body<NewsCalendarResponse>().events
+    }
 
-    object UserNewsFilterScenario {
-        /**
-         * Mimics the filter in Steam Desktop's event feed when an app is selected.
-         *
-         * Shows: unlocked achievements, published screenshots + videos, user status ("Post about this game"), new user + curator reviews, wishlist additions, first-time play
-         */
-        val AppOverviewList = EUserNewsType.AchievementUnlocked + EUserNewsType.FilePublished_Screenshot + EUserNewsType.FilePublished_Video + EUserNewsType.UserStatus + EUserNewsType.RecommendedGame + EUserNewsType.CuratorRecommendedGame + EUserNewsType.AddedGameToWishlist + EUserNewsType.PlayedGameFirstTime // + EUserNewsType.PostedAnnouncement
-
-        /**
-         * Mimics what is shown in "Friend Activity" webpage
-         *
-         * Shows: unlocked achievements, published screenshots + videos, user status ("Post about this game"), new user + curator reviews, wishlist additions, first-time play, game events, added/removed friends
-         */
-        val FriendActivity = AppOverviewList + EUserNewsType.FriendAdded + EUserNewsType.FriendRemoved
+    private suspend fun resolveClanInfo(
+        id: SteamId
+    ): ClanSummary {
+        return steamClient.webApi.community.method("gid/$id/ajaxgetvanityandclanid/").body<ClanSummary>()
     }
 
     override suspend fun onEvent(packet: SteamPacket) = Unit
 
-    private class DuplicateStack <T> {
-        private val stack = mutableListOf<T>()
-
-        fun <Out> use(action: (List<T>) -> Out): Out {
-            return try {
-                action(stack)
-            } finally {
-                stack.clear()
-            }
-        }
-
-        operator fun plusAssign(item: T) {
-            stack.add(item)
-        }
-
-        operator fun plusAssign(list: List<T>) {
-            stack.addAll(list)
-        }
+    object Collections {
+        const val Featured = "featured"
+        const val Steam = "steam"
+        const val Press = "press"
     }
 }
