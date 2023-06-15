@@ -34,6 +34,8 @@ value class SteamId(val id: ULong) {
         }
     }
 
+    val debugDescription: String get() = "SteamId(id=$id, accountId=$accountId, accountInstance=$accountInstance, accountType=$accountType, accountUniverse=$accountUniverse)"
+
     val longId get() = id.toLong()
     val accountId get() = (longId and 0xFFFFFFFF).toInt()
     val accountInstance get() = (longId ushr 32 and 0xFFFFF).let { SteamInstance.byApiRepresentation(it.toInt()) }
@@ -44,6 +46,8 @@ value class SteamId(val id: ULong) {
     val isClan get() = accountType == EAccountType.Clan
 
     fun equalsTo(other: SteamId) = other.id == id
+
+    override fun toString() = id.toString()
 }
 
 private fun Long.setMask(bitoffset: Int, valuemask: Long, value: Long): Long {
