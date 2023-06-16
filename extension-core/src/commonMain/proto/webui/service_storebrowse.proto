@@ -1,5 +1,10 @@
-import "common.proto";
-import "common_base.proto";
+import "webui/common.proto";
+import "webui/common_base.proto";
+
+option optimize_for = SPEED;
+option java_package = "steam.webui.storebrowse";
+option java_generic_services = true;
+option java_multiple_files = true;
 
 message CStoreBrowse_GetDLCForApps_Request {
 	optional .StoreBrowseContext context = 1;
