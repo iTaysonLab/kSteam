@@ -165,8 +165,12 @@ class Profile internal constructor(
     fun getProfileSummaryAsFlow(steamId: SteamId) = getProfileSummariesAsFlow(listOf(steamId)).map(List<SummaryPersona>::first)
 
     suspend fun getProfileSummaries(steamIds: List<SteamId>): List<SummaryPersona> {
+        if (steamIds.isEmpty()) {
+            return emptyList() // short-circuit
+        }
+        
         return steamClient.webApi.gateway.method("ISteamUserOAuth/GetUserSummaries/v2") {
-            "steamids" to steamIds.joinToString(",") { it.longId.toString() }
+            "steamids" with steamIds.joinToString(",") { it.longId.toString() }
         }.body<PlayerSummaries>().players.map(::SummaryPersona)
     }
 
