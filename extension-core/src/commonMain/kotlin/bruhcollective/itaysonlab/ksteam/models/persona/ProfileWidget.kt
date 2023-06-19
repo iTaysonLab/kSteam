@@ -2,7 +2,7 @@ package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
-import steam.webui.player.EProfileCustomizationType
+import steam.enums.EProfileCustomizationType
 
 @Immutable
 sealed class ProfileWidget {

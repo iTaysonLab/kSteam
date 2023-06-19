@@ -12,6 +12,7 @@ import bruhcollective.itaysonlab.ksteam.models.persona.ProfilePreferences
 import bruhcollective.itaysonlab.ksteam.models.persona.ProfileTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import steam.enums.EProfileCustomizationType
 import steam.webui.player.*
 import kotlin.time.Duration.Companion.minutes
 
@@ -168,7 +169,7 @@ class Profile internal constructor(
         if (steamIds.isEmpty()) {
             return emptyList() // short-circuit
         }
-        
+
         return steamClient.webApi.gateway.method("ISteamUserOAuth/GetUserSummaries/v2") {
             "steamids" with steamIds.joinToString(",") { it.longId.toString() }
         }.body<PlayerSummaries>().players.map(::SummaryPersona)

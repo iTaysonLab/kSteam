@@ -25,19 +25,15 @@ class Store internal constructor(
     private val rpLocalizationMap = mutableMapOf<Int, Map<String, String>>()
 
     suspend fun getRichPresenceLocalization(appId: Int): Map<String, String> {
-        if (rpLocalizationMap.containsKey(appId)) {
-            return rpLocalizationMap[appId] ?: emptyMap()
-        }
-
-        return (steamClient.unifiedMessages.execute(
-            methodName = "Community.GetAppRichPresenceLocalization",
-            requestAdapter = CCommunity_GetAppRichPresenceLocalization_Request.ADAPTER,
-            responseAdapter = CCommunity_GetAppRichPresenceLocalization_Response.ADAPTER,
-            requestData = CCommunity_GetAppRichPresenceLocalization_Request(
-                appid = appId, language = steamClient.language.vdfName
-            )
-        ).dataNullable?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap()).also {
-            rpLocalizationMap[appId] = it
+        return rpLocalizationMap.getOrPut(appId) {
+            (steamClient.unifiedMessages.execute(
+                methodName = "Community.GetAppRichPresenceLocalization",
+                requestAdapter = CCommunity_GetAppRichPresenceLocalization_Request.ADAPTER,
+                responseAdapter = CCommunity_GetAppRichPresenceLocalization_Response.ADAPTER,
+                requestData = CCommunity_GetAppRichPresenceLocalization_Request(
+                    appid = appId, language = steamClient.language.vdfName
+                )
+            ).dataNullable?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap())
         }
     }
 

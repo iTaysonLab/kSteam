@@ -49,12 +49,12 @@ class Pics internal constructor(
 
     internal suspend fun getAppSummariesFiltered(filters: DynamicFilters): Sequence<AppSummary> =
         getAppIdsFiltered(filters).map { app ->
-            AppSummary(app.appId, app.common.name)
+            AppSummary(app.appId, app.common.name, app.common.iconId)
         }
 
     suspend fun getAppSummariesByAppId(appIds: List<Int>) =
         getAppIdsAsInfos(appIds).associate { app ->
-            app.appId to AppSummary(app.appId, app.common.name)
+            app.appId to AppSummary(app.appId, app.common.name, app.common.iconId)
         }
 
     suspend fun getAppInfo(id: Int): AppInfo? = database.apps.get(id)

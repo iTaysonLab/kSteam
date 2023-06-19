@@ -28,7 +28,7 @@ dependencies {
     commonMainImplementation("com.benasher44:uuid:0.7.0")
     commonMainImplementation("io.ktor:ktor-client-core:2.3.1")
 
-    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.2")
 }
 
 wire {

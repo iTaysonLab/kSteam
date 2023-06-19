@@ -51,12 +51,12 @@ class SteamClient internal constructor(
     private val serverList = CMList(webApi)
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
-    val handlers: HandlerMap = mapOf<KClass<*>, BaseHandler>(
+    val handlers: HandlerMap = mutableMapOf<KClass<*>, BaseHandler>(
         Account(this).createAssociation(),
         UnifiedMessages(this).createAssociation(),
         Sentry(this).createAssociation(),
         Storage(this).createAssociation(),
-    ) + extensionsToHandlers(injectedExtensions)
+    ) bindExtensions injectedExtensions
 
     val language get() = config.language
 
@@ -167,10 +167,9 @@ class SteamClient internal constructor(
         }
     }
 
-    private fun extensionsToHandlers(extensions: List<Extension>): HandlerMap {
-        return extensions.map { it.createHandlers(this) }.fold(mutableMapOf()) { map, extensionHandlers ->
-            map += extensionHandlers
-            map
+    private infix fun MutableMap<KClass<*>, BaseHandler>.bindExtensions(extensions: List<Extension>) = apply {
+        extensions.forEach {
+            putAll(it.createHandlers(this@SteamClient))
         }
     }
 

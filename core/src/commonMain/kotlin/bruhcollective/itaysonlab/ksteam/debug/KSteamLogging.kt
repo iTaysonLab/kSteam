@@ -38,7 +38,7 @@ object KSteamLogging {
 
             if (value == KSteamLoggingVerbosity.Verbose) {
                 transport.printError(
-                    "Global:Logging",
+                    "KSteamLogging:SetVerbosity",
                     "Verbosity level set to VERBOSE. This exposures message contents, which includes sign in information and other private data. Be careful and don't forget to redact/review data in the output."
                 )
             }

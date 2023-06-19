@@ -10,6 +10,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.Notifications
 import bruhcollective.itaysonlab.ksteam.handlers.Persona
 import bruhcollective.itaysonlab.ksteam.handlers.Player
 import bruhcollective.itaysonlab.ksteam.handlers.Profile
+import bruhcollective.itaysonlab.ksteam.handlers.PublishedFiles
 import bruhcollective.itaysonlab.ksteam.handlers.Store
 import bruhcollective.itaysonlab.ksteam.handlers.UserNews
 
@@ -25,6 +26,7 @@ class Core (
         Store(steamClient).associate(),
         Player(steamClient).associate(),
         UserNews(steamClient).associate(),
+        PublishedFiles(steamClient).associate(),
     )
 
     companion object Builder: ExtensionFactory<CoreExtensionConfiguration, Core> {

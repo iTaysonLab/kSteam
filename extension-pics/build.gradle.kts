@@ -31,7 +31,7 @@ dependencies {
     commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
     commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 
-    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.2")
 }
 
 wire {

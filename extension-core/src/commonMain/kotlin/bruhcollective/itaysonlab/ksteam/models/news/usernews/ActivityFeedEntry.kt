@@ -2,7 +2,6 @@ package bruhcollective.itaysonlab.ksteam.models.news.usernews
 
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
-import bruhcollective.itaysonlab.ksteam.models.news.NewsEvent
 import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.usernews.CUserNews_Event
@@ -24,19 +23,6 @@ sealed class ActivityFeedEntry (
             }
 
             return eventNext != null && eventNext.eventtime == event.eventtime && eventNext.eventtype == type.apiEnum && eventNext.steamid_actor == event.steamid_actor
-        }
-    }
-
-    /**
-     * A synthetic entry which holds a [NewsEvent]. Useful for unified feeds.
-     */
-    @Immutable
-    class NewsfeedEvent(
-        date: Int,
-        val event: NewsEvent
-    ): ActivityFeedEntry(id = event.id, date) {
-        override fun toString(): String {
-            return "NewsfeedEvent(date=$date, event=$event"
         }
     }
 
@@ -130,7 +116,7 @@ sealed class ActivityFeedEntry (
         val persona: SummaryPersona,
         val type: EUserNewsType,
         val proto: CUserNews_Event
-    ): ActivityFeedEntry(id = buildId(date, persona, "unk_${proto.hashCode()}"), date) {
+    ): ActivityFeedEntry(id = buildId(date, persona, "unk_${persona.id}_${type.apiEnum}_${proto.hashCode()}"), date) {
         override fun toString(): String {
             return "UnknownEvent(date=$date, persona=$persona, type=$type, proto=$proto)"
         }

@@ -46,7 +46,7 @@ class Notifications internal constructor(
         _confirmationCount.value = rawNotifications.data.confirmation_count ?: 0
 
         val parsedNotifications = rawNotifications.data.notifications
-            .partition { it.notification_type == SteamNotificationType.Item }
+            .partition { SteamNotificationType.fromValue(it.notification_type ?: 0) == SteamNotificationType.Item }
             .let { itemsAndOthers ->
                 val itemWithExtras = if (itemsAndOthers.first.isNotEmpty()) {
                     itemsAndOthers.first.maxBy {
@@ -70,7 +70,7 @@ class Notifications internal constructor(
                 val not = notificationAndExtrasPair.first
                 val rawJson = not.body_data ?: "{}"
 
-                when (not.notification_type) {
+                when (SteamNotificationType.fromValue(not.notification_type ?: 0)) {
                     SteamNotificationType.Wishlist -> {
                         val appId = json.decodeFromString<Notification.WishlistSale.Body>(rawJson).appId
 

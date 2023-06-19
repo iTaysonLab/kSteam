@@ -33,13 +33,9 @@ data class Persona internal constructor(
      */
     val onlineStatus: EPersonaState,
     /**
-     * If in game, this will be game's AppID.
+     * In-game status
      */
-    val ingameAppId: Int,
-    /**
-     * If in game, this will be game's rich presence information.
-     */
-    val ingameRichPresence: Map<String, String>
+    val ingame: IngameStatus
 ) {
     companion object {
         val Unknown = Persona(
@@ -48,8 +44,7 @@ data class Persona internal constructor(
             avatar = AvatarHash(""),
             lastSeen = LastSeen(0, 0, 0),
             onlineStatus = EPersonaState.Offline,
-            ingameAppId = 0,
-            ingameRichPresence = emptyMap()
+            ingame = IngameStatus.None
         )
     }
 
@@ -63,8 +58,7 @@ data class Persona internal constructor(
             lastSeenOnline = obj.last_seen_online ?: 0
         ),
         onlineStatus = EPersonaState.byEncoded(obj.persona_state ?: 0),
-        ingameAppId = obj.gameid?.toInt() ?: 0,
-        ingameRichPresence = obj.rich_presence.associate { it.key.orEmpty() to it.value_.orEmpty() }
+        ingame = IngameStatus.fromFriend(obj)
     )
 
     data class LastSeen internal constructor(
@@ -72,4 +66,52 @@ data class Persona internal constructor(
         val lastLogOff: Int,
         val lastSeenOnline: Int
     )
+
+    sealed class IngameStatus {
+        /**
+         * The user is not currently in any game.
+         */
+        object None: IngameStatus()
+
+        /**
+         * The user is currently in a Steam game.
+         */
+        class Steam internal constructor(
+            /**
+             * The ID of a currently running game.
+             */
+            val appId: Int,
+
+            /**
+             * If available, there will be a rich presence data.
+             */
+            val richPresence: Map<String, String>
+        ): IngameStatus()
+
+        /**
+         * The user is currently in a non-Steam game.
+         */
+        class NonSteam internal constructor(
+            /**
+             * Known game name which the user is playing right now.
+             */
+            val name: String
+        ): IngameStatus()
+
+        internal companion object {
+            fun fromFriend(friend: CMsgClientPersonaState_Friend): IngameStatus {
+                return when {
+                    friend.game_name.isNullOrEmpty().not() -> {
+                        NonSteam(name = friend.game_name.orEmpty())
+                    }
+
+                    friend.gameid != null && friend.gameid!! > 0L -> {
+                        Steam(appId = friend.gameid?.toInt() ?: 0, richPresence = friend.rich_presence.associate { it.key.orEmpty() to it.value_.orEmpty() })
+                    }
+
+                    else -> None
+                }
+            }
+        }
+    }
 }

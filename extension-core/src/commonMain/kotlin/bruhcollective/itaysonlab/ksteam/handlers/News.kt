@@ -4,7 +4,6 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EAccountType
 import bruhcollective.itaysonlab.ksteam.models.news.AppType
 import bruhcollective.itaysonlab.ksteam.models.news.ClanSummary
 import bruhcollective.itaysonlab.ksteam.models.news.NewsCalendarResponse
@@ -16,6 +15,7 @@ import bruhcollective.itaysonlab.ksteam.models.news.NewsEventType
 import bruhcollective.itaysonlab.ksteam.models.news.NewsJsonData
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
+import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
 
@@ -35,18 +35,18 @@ class News internal constructor(
     }
 
     private val currentSeconds get() = Clock.System.now().epochSeconds
+    private var clanCache = mutableMapOf<SteamId, ClanSummary>()
 
     /**
-     * Returns upcoming events. Thee are
-     *
+     * Returns upcoming events.
      */
     suspend fun getUpcomingEvents(
-        count: Int = 250,
+        maxCount: Int = 250,
         eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
-        appTypes: List<AppType> = AppType.values().toList()
+        appTypes: Array<AppType> = AppType.Default,
     ) = getEventsInCalendarRange(
         range = currentSeconds..0,
-        count = count,
+        maxCount = maxCount,
         eventTypes = eventTypes,
         appTypes = appTypes
     )
@@ -56,7 +56,7 @@ class News internal constructor(
      *
      * @param range between two unix timestamps
      * @param collectionId the collection ID for news. For example, it could be "steam" for the Global News -> Steam Official section of the official news app. For ease of use, Steam's collection IDs are provided in [Collections] object.
-     * @param count count of news to return
+     * @param maxCount maximum count of news to return
      * @param ascending sort from the earliest event
      * @param eventTypes show only chosen event types
      * @param appTypes show only chosen app types
@@ -68,10 +68,10 @@ class News internal constructor(
     suspend fun getEventsInCalendarRange(
         range: LongRange = 0..currentSeconds,
         collectionId: String? = null,
-        count: Int = 250,
+        maxCount: Int = 250,
         ascending: Boolean = false,
         eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
-        appTypes: List<AppType> = AppType.values().toList(),
+        appTypes: Array<AppType> = AppType.Default,
         filterByAppIds: List<Int> = emptyList(),
         filterByClanIds: List<SteamId> = emptyList(),
     ): List<NewsEvent> {
@@ -80,7 +80,7 @@ class News internal constructor(
             "maxTime" with range.last
 
             "ascending" with ascending
-            "maxResults" with count
+            "maxResults" with maxCount
 
             "populateEvents" with "15" // research
 
@@ -110,7 +110,14 @@ class News internal constructor(
         // Get clans summaries
 
         KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
-        val clans = calendar.clans.associate { clan -> SteamId.fromAccountId(id = clan.clanId, type = EAccountType.Clan).toString() to resolveClanInfo(SteamId.fromAccountId(id = clan.clanId, type = EAccountType.Clan)) }
+
+        val clans = entries.asSequence().filter { entry ->
+            entry.appid == 0 && entry.clanSteamid.isNotEmpty()
+        }.associate { entry ->
+            entry.clanSteamid to resolveClanInfo(entry.clanSteamid.toULongOrNull().toSteamId())
+        }
+
+        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] clans requested, total: ${clans.size}" }
 
         // Now we have all required data, we can parse them to NewsEvent's
 
@@ -123,6 +130,20 @@ class News internal constructor(
                 }
             })
 
+            val clanSteamid = SteamId(entry.clanSteamid.toULong())
+
+            val headerImage = if (entry.videoPreviewType == "youtube") {
+                "https://img.youtube.com/vi/${entry.videoPreviewId}/maxresdefault.jpg"
+            } else {
+                val engPhoto = jsonDescription.titleImages.firstOrNull().orEmpty()
+
+                if (engPhoto.isNotEmpty()) {
+                    "https://clan.akamai.steamstatic.com/images/${clanSteamid.accountId}/${engPhoto}"
+                } else {
+                    ""
+                }
+            }
+
             NewsEvent(
                 id = entry.gid,
                 type = NewsEventType.values().getOrElse(entry.eventType) { NewsEventType.Unknown },
@@ -133,7 +154,7 @@ class News internal constructor(
                 title = entry.eventName,
                 subtitle = jsonDescription.subtitles.firstOrNull().orEmpty(),
                 description = jsonDescription.summaries.firstOrNull().orEmpty(),
-                header = jsonDescription.titleImages.firstOrNull().orEmpty(),
+                header = headerImage,
                 capsule = jsonDescription.capsuleImages.firstOrNull().orEmpty(),
                 likeCount = entry.votesUp,
                 dislikeCount = entry.votesDown,
@@ -191,7 +212,9 @@ class News internal constructor(
     private suspend fun resolveClanInfo(
         id: SteamId
     ): ClanSummary {
-        return steamClient.webApi.community.method("gid/$id/ajaxgetvanityandclanid/").body<ClanSummary>()
+        return clanCache.getOrPut(id) {
+            steamClient.webApi.community.method("gid/$id/ajaxgetvanityandclanid/").body<ClanSummary>()
+        }
     }
 
     override suspend fun onEvent(packet: SteamPacket) = Unit

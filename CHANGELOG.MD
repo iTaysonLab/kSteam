@@ -1,9 +1,21 @@
+## r30
+
+---
+
+- Matches Cobalt `1.0-prototype` build
+
 ## r29
 
 ---
 
+- `extension-core/news`: implement `getUpcomingEvents` and `getUpcomingEvents`
+- `extension-core/news`: extract friend activity to `UserNews` handler
+- `extension-core/news`: rework `ActivityFeedEntry` to be more UI-compliant
+- `extension-core/news`: other fixes and improvements
+- `core/webapi`: reworked API wrappers to be more modern and Kotlin-friendly
+- rewrite logging transport, now message value computation is done lazily (and is more likely to be removed by R8/Proguard)
 - streamline build process
-- provide `android` artifacts as well, with Compose stability bindings
+- provide `android` artifacts as well, with Compose stability bindings and logcat output
 
 ## r28
 
@@ -14,14 +26,13 @@
 - `core`: introduce `extractAccountIdFromSteam` and `toSteamId` extensions for `Long` and `Int`
 - `core`: fixed rare Web API call crash
 - `core/player`: make `getAchievementsProgress` and `getTopAchievements` public (proto API only for now)
-- 
 - `extension-pics`: optimized database lists, fixing `CallbackSuspendableMap must be initialized first!` crash
 - `extension-core/news`: finalized parameters for `getUserNews`, introduced `UserNewsFilterScenario`
 - `extension-core/news`
 - updated `kotlin` from `1.8.20` to `1.8.21`
 - updated `kotlinx-coroutines` from `1.7.0-RC` to `1.7.1`
 - updated `kotlinx-serialization` from `1.5.0` to `1.5.1`
-- updated `wire` from `4.6.0` to `4.7.0`
+- updated `wire` from `4.6.0` to `4.7.2`
 - updated `ktor` from `2.3.0` to `2.3.1`
 
 ## r27

@@ -1,9 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
-import steam.webui.player.EBanContentCheckResult
-import steam.webui.player.EProfileCustomizationStyle
-import steam.webui.player.EProfileCustomizationType
+import steam.enums.EBanContentCheckResult
+import steam.enums.EProfileCustomizationStyle
+import steam.enums.EProfileCustomizationType
 
 @Immutable
 data class ProfileCustomization internal constructor(

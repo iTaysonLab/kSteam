@@ -1,0 +1,23 @@
+option optimize_for = SPEED;
+option java_package = "steam.enums";
+option java_multiple_files = true;
+
+enum EProfileCustomizationStyle {
+	k_EProfileCustomizationStyleDefault = 0;
+	k_EProfileCustomizationStyleSelected = 1;
+	k_EProfileCustomizationStyleRarest = 2;
+	k_EProfileCustomizationStyleMostRecent = 3;
+	k_EProfileCustomizationStyleRandom = 4;
+	k_EProfileCustomizationStyleHighestRated = 5;
+}
+
+enum EBanContentCheckResult {
+	k_EBanContentCheckResult_NotScanned = 0;
+	k_EBanContentCheckResult_Reset = 1;
+	k_EBanContentCheckResult_NeedsChecking = 2;
+	k_EBanContentCheckResult_VeryUnlikely = 5;
+	k_EBanContentCheckResult_Unlikely = 30;
+	k_EBanContentCheckResult_Possible = 50;
+	k_EBanContentCheckResult_Likely = 75;
+	k_EBanContentCheckResult_VeryLikely = 100;
+}

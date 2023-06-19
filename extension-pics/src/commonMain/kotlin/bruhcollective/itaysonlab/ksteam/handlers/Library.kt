@@ -35,6 +35,7 @@ import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Request
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Response
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Response_Game
+import steam.webui.player.CPlayer_LastPlayedTimes_Notification
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -44,6 +45,7 @@ class Library(
     private val steamClient: SteamClient
 ) : BaseHandler {
     companion object {
+        private const val LOG_TAG = "PicsExt:Library"
         const val FavoriteCollection = "favorite"
         const val HiddenCollection = "hidden"
     }
@@ -369,6 +371,24 @@ class Library(
             }
 
             else -> Unit
+        }
+    }
+
+    override suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) {
+        if (rpcMethod == "PlayerClient.NotifyLastPlayedTimes#1") {
+            packet.getProtoPayload(CPlayer_LastPlayedTimes_Notification.ADAPTER).dataNullable?.let { notification ->
+                KSteamLogging.logDebug(LOG_TAG) {
+                    "Received last played times notification: $notification"
+                }
+
+                _playtime.update {
+                    it.toMutableMap().apply {
+                        notification.games.forEach { lastPlayedGame ->
+                            this[lastPlayedGame.appid ?: return@forEach] = lastPlayedGame
+                        }
+                    }
+                }
+            }
         }
     }
 }
