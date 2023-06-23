@@ -7,11 +7,15 @@ import steam.enums.EProfileCustomizationType
 
 @Immutable
 data class ProfileCustomization internal constructor(
-    val profileWidgets: List<ProfileWidget>,
-    val slotsAvailable: Int,
-    val profileTheme: ProfileTheme?,
-    val profilePreferences: ProfilePreferences?
-)
+    val profileWidgets: List<ProfileWidget> = emptyList(),
+    val slotsAvailable: Int = 0,
+    val profileTheme: ProfileTheme? = null,
+    val profilePreferences: ProfilePreferences? = null
+) {
+    companion object {
+        val None = ProfileCustomization()
+    }
+}
 
 @Immutable
 data class ProfileCustomizationEntry internal constructor(

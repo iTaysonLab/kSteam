@@ -11,6 +11,10 @@ data class ProfileEquipment internal constructor(
     val animatedAvatar: ProfileItem? = null,
     val profileModifier: ProfileItem? = null,
 ) {
+    companion object {
+        val None = ProfileEquipment()
+    }
+
     internal constructor(proto: CPlayer_GetProfileItemsEquipped_Response): this(
         background = proto.profile_background.toAppModel(),
         miniBackground = proto.mini_profile_background.toAppModel(),
