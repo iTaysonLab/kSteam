@@ -6,11 +6,8 @@ This module is actually what makes kSteam possible - a CM client, Web API and so
 
 ```kotlin
 kSteam {
-    // Install extensions
+    // Core in this context is extension-core, it is possible to use kSteam without it for a very bare-bones experience.
     install(Core)
-    
-    // Specify a proxy
-    
 }
 ```
 

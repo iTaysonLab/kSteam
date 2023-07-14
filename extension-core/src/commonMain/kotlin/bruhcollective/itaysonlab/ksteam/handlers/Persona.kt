@@ -4,12 +4,32 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.*
+import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
+import bruhcollective.itaysonlab.ksteam.models.enums.EFriendRelationship
+import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
+import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.models.enums.relationship
+import bruhcollective.itaysonlab.ksteam.models.enums.steamId
 import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
 import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
-import kotlinx.coroutines.flow.*
-import steam.webui.common.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import steam.webui.common.CMsgClientAccountInfo
+import steam.webui.common.CMsgClientChangeStatus
+import steam.webui.common.CMsgClientClanState
+import steam.webui.common.CMsgClientLogonResponse
+import steam.webui.common.CMsgClientPersonaState
+import steam.webui.common.CMsgClientPersonaState_Friend
+import steam.webui.common.CMsgClientRequestFriendData
 import steam.webui.friendslist.CMsgClientFriendsList
 
 /**
@@ -31,7 +51,10 @@ class Persona internal constructor(
     private val _currentFriendList = MutableStateFlow<FriendsList>(emptyMap())
     val currentFriendList = _currentFriendList.asStateFlow()
 
-    private fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
+    private val personaUpdateMutex = Mutex()
+    private val personaFriendListUpdateMutex = Mutex()
+
+    private suspend fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) = personaUpdateMutex.withLock {
         KSteamLogging.logVerbose("Persona:NewState") { "Incoming: ${incoming.joinToString()}" }
 
         personas.update { map ->
@@ -109,7 +132,7 @@ class Persona internal constructor(
         it[steamId] ?: EFriendRelationship.None
     }
 
-    private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) {
+    private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) = personaFriendListUpdateMutex.withLock {
         _currentFriendList.update {
             // 1. Request persona states
             requestPersonas(if (newList.bincremental == true) {
@@ -134,7 +157,10 @@ class Persona internal constructor(
         }
     }
 
-    private suspend fun requestPersonas(ids: List<SteamId>) {
+    /**
+     * Preload specified [ids] into the cache.
+     */
+    suspend fun requestPersonas(ids: List<SteamId>) {
         if (ids.isEmpty()) return
 
         KSteamLogging.logDebug("Handlers:Persona") {
@@ -155,6 +181,12 @@ class Persona internal constructor(
         when (packet.messageId) {
             EMsg.k_EMsgClientPersonaState -> {
                 updatePersonaState(packet.getProtoPayload(CMsgClientPersonaState.ADAPTER).data.friends)
+            }
+
+            EMsg.k_EMsgClientClanState-> {
+                KSteamLogging.logVerbose("Persona") {
+                    packet.getProtoPayload(CMsgClientClanState.ADAPTER).dataNullable.toString()
+                }
             }
 
             EMsg.k_EMsgClientAccountInfo -> {

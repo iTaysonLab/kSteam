@@ -4,16 +4,16 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import steam.webui.authentication.CAuthentication_BeginAuthSessionViaCredentials_Response
 import steam.webui.authentication.EAuthSessionGuardType
 
-sealed class AuthorizationState {
-    object Unauthorized : AuthorizationState()
+sealed interface AuthorizationState {
+    object Unauthorized : AuthorizationState
 
-    object Success : AuthorizationState()
+    object Success : AuthorizationState
 
     class AwaitingTwoFactor internal constructor(
         val steamId: SteamId,
         val supportedConfirmationMethods: List<ConfirmationMethod>,
         internal val sumProtos: List<EAuthSessionGuardType>
-    ) : AuthorizationState() {
+    ) : AuthorizationState {
         internal constructor(networkResponse: CAuthentication_BeginAuthSessionViaCredentials_Response) : this(
             supportedConfirmationMethods = networkResponse.allowed_confirmations.mapNotNull {
                 when (it.confirmation_type) {

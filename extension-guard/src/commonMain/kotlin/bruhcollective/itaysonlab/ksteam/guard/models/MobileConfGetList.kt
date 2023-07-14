@@ -7,7 +7,7 @@ import kotlinx.serialization.json.Json
 
 @Serializable(with = MobileConfirmSerializer::class)
 @Immutable
-sealed class ConfirmationListState {
+sealed interface ConfirmationListState {
     companion object {
         val Decoder = Json {
             classDiscriminator = "success"
@@ -16,23 +16,23 @@ sealed class ConfirmationListState {
     }
 
     @Immutable
-    object Loading : ConfirmationListState()
+    object Loading : ConfirmationListState
 
     @Immutable
     class NetworkError(
         val e: Exception
-    ) : ConfirmationListState()
+    ) : ConfirmationListState
 
     @Serializable
     @Immutable
     class Success(
         val conf: List<MobileConfirmationItem>
-    ) : ConfirmationListState()
+    ) : ConfirmationListState
 
     @Serializable
     @Immutable
     class Error(
         val message: String = "",
         val detail: String = ""
-    ) : ConfirmationListState()
+    ) : ConfirmationListState
 }

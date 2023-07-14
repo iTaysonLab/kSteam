@@ -10,21 +10,21 @@ import kotlinx.serialization.Serializable
 /**
  * Represents a notification on the Steam network.
  */
-sealed class Notification {
+sealed interface Notification {
     /**
      * Timestamp, in seconds, when the notification was posted.
      */
-    abstract val timestamp: Int
+    val timestamp: Int
 
     /**
      * Is notification unread.
      */
-    abstract val unread: Boolean
+    val unread: Boolean
 
     /**
      * Is notification dismissed (swiped).
      */
-    abstract val hidden: Boolean
+    val hidden: Boolean
 
     /**
      * A user has received a gift from another user.
@@ -34,7 +34,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val gifter: Flow<Persona>
-    ) : Notification() {
+    ) : Notification {
         @Serializable
         class Body(
             @SerialName("gifter_account") val accountId: Long = 0,
@@ -48,8 +48,8 @@ sealed class Notification {
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,
-        val item: bruhcollective.itaysonlab.ksteam.models.econ.EconItemReference
-    ) : Notification() {
+        val item: EconItemReference
+    ) : Notification {
         @Serializable
         class Body(
             @SerialName("app_id") val appId: Int = 0,
@@ -66,7 +66,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val requestor: Flow<Persona>
-    ) : Notification() {
+    ) : Notification {
         @Serializable
         class Body(
             @SerialName("requestor_id") val accountId: Long = 0,
@@ -81,7 +81,7 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val appSummary: AppSummary?
-    ) : Notification() {
+    ) : Notification {
         val isMultipleItemsOnSale get() = appSummary == null
 
         @Serializable
@@ -101,7 +101,7 @@ sealed class Notification {
         val description: String,
         val iconUrl: String,
         val link: String
-    ) : Notification() {
+    ) : Notification {
         @Serializable
         class Body(
             @SerialName("title") val title: String = "",
@@ -121,5 +121,5 @@ sealed class Notification {
         override val unread: Boolean,
         override val hidden: Boolean,
         val rawJsonData: String
-    ) : Notification()
+    ) : Notification
 }

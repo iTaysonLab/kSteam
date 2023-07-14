@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.news.usernews
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
+import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.usernews.CUserNews_Event
 import kotlin.contracts.ExperimentalContracts
@@ -42,6 +43,40 @@ sealed class ActivityFeedEntry (
 
         override fun toString(): String {
             return "ReceivedNewGame(date=$date, persona=$persona, apps=${apps.joinToString()}, packages=${packages.joinToString()})"
+        }
+    }
+
+    /**
+     * A user posted a screenshot from a specific game.
+     */
+    @Immutable
+    class ScreenshotPosted(
+        date: Int,
+        val persona: SummaryPersona,
+        val app: AppSummary,
+        val screenshot: PublishedFile.Screenshot
+    ): ActivityFeedEntry(id = buildId(date, persona, "sp_${screenshot.id}"), date) {
+        companion object {
+            fun canMergeWith(event: CUserNews_Event, eventNext: CUserNews_Event?) = defaultMatch(event, eventNext, EUserNewsType.ReceivedNewGame) && event.gameid == eventNext.gameid
+        }
+
+        override fun toString(): String {
+            return "ScreenshotPosted(date=$date, persona=$persona, app=${app}, screenshot=${screenshot})"
+        }
+    }
+
+    /**
+     * A user posted several screenshots from a specific game.
+     */
+    @Immutable
+    class ScreenshotsPosted(
+        date: Int,
+        val persona: SummaryPersona,
+        val app: AppSummary,
+        val screenshots: List<PublishedFile.Screenshot>
+    ): ActivityFeedEntry(id = buildId(date, persona, "sp_${screenshots.joinToString(separator = "+") { it.id.toString() }}"), date) {
+        override fun toString(): String {
+            return "ScreenshotPosted(date=$date, persona=$persona, app=${app}, screenshots=[${screenshots.joinToString()}])"
         }
     }
 

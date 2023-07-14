@@ -5,13 +5,13 @@ import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.enums.EProfileCustomizationType
 
 @Immutable
-sealed class ProfileWidget {
+sealed interface ProfileWidget {
     @Immutable
     data class FavoriteGame internal constructor(
         val app: AppSummary,
         val achievementProgress: AchievementProgress,
         val playedSeconds: Int
-    ): ProfileWidget() {
+    ): ProfileWidget {
         @Immutable
         data class AchievementProgress internal constructor(
             val totalAchievements: Int,
@@ -24,7 +24,7 @@ sealed class ProfileWidget {
     data class GameCollector internal constructor(
         val featuredApps: List<AppSummary>,
         val ownedGamesCount: Int
-    ): ProfileWidget()
+    ): ProfileWidget
 
     /**
      * Unknown to kSteam widget
@@ -32,5 +32,5 @@ sealed class ProfileWidget {
     @Immutable
     data class Unknown internal constructor(
         val type: EProfileCustomizationType
-    ): ProfileWidget()
+    ): ProfileWidget
 }

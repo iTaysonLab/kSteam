@@ -67,11 +67,11 @@ data class Persona internal constructor(
         val lastSeenOnline: Int
     )
 
-    sealed class IngameStatus {
+    sealed interface IngameStatus {
         /**
          * The user is not currently in any game.
          */
-        object None: IngameStatus()
+        object None: IngameStatus
 
         /**
          * The user is currently in a Steam game.
@@ -86,7 +86,7 @@ data class Persona internal constructor(
              * If available, there will be a rich presence data.
              */
             val richPresence: Map<String, String>
-        ): IngameStatus()
+        ): IngameStatus
 
         /**
          * The user is currently in a non-Steam game.
@@ -96,10 +96,10 @@ data class Persona internal constructor(
              * Known game name which the user is playing right now.
              */
             val name: String
-        ): IngameStatus()
+        ): IngameStatus
 
-        internal companion object {
-            fun fromFriend(friend: CMsgClientPersonaState_Friend): IngameStatus {
+        companion object {
+            internal fun fromFriend(friend: CMsgClientPersonaState_Friend): IngameStatus {
                 return when {
                     friend.game_name.isNullOrEmpty().not() -> {
                         NonSteam(name = friend.game_name.orEmpty())

@@ -48,7 +48,8 @@ class News internal constructor(
         range = currentSeconds..0,
         maxCount = maxCount,
         eventTypes = eventTypes,
-        appTypes = appTypes
+        appTypes = appTypes,
+        ascending = true
     )
 
     /**
@@ -73,7 +74,7 @@ class News internal constructor(
         eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
         appTypes: Array<AppType> = AppType.Default,
         filterByAppIds: List<Int> = emptyList(),
-        filterByClanIds: List<SteamId> = emptyList(),
+        filterByClanIds: List<SteamId> = emptyList()
     ): List<NewsEvent> {
         val calendar = steamClient.webApi.store.method("events/ajaxgetusereventcalendarrange/") {
             "minTime" with range.first
@@ -105,19 +106,19 @@ class News internal constructor(
         // Get app summaries
 
         KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting apps, total: ${calendar.apps.size}" }
-        val apps = steamClient.store.getAppSummaries(calendar.apps.map(NewsCalendarResponseApp::appId))
+
+        val appsMap = calendar.apps.associateBy { it.appId }
+        val apps = steamClient.store.getAppSummaries(appsMap.keys.toList())
 
         // Get clans summaries
 
         KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
 
-        val clans = entries.asSequence().filter { entry ->
+        entries.asSequence().filter { entry ->
             entry.appid == 0 && entry.clanSteamid.isNotEmpty()
-        }.associate { entry ->
-            entry.clanSteamid to resolveClanInfo(entry.clanSteamid.toULongOrNull().toSteamId())
+        }.map { it.clanSteamid.toULongOrNull().toSteamId() }.toList().let {
+            steamClient.persona.requestPersonas(it)
         }
-
-        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] clans requested, total: ${clans.size}" }
 
         // Now we have all required data, we can parse them to NewsEvent's
 
@@ -150,7 +151,7 @@ class News internal constructor(
                 clanSteamId = SteamId(entry.clanSteamid.toULong()),
                 creatorSteamId = SteamId(entry.creatorSteamid.toULong()),
                 updaterSteamId = SteamId(entry.lastUpdateSteamid.toULong()),
-                clanSummary = clans[entry.clanSteamid],
+                clanSummary = steamClient.persona.persona(entry.clanSteamid.toULongOrNull().toSteamId()),
                 title = entry.eventName,
                 subtitle = jsonDescription.subtitles.firstOrNull().orEmpty(),
                 description = jsonDescription.summaries.firstOrNull().orEmpty(),
@@ -166,6 +167,7 @@ class News internal constructor(
                 content = entry.announcementBody.body,
                 eventStartDate = entry.rtime32StartTime,
                 eventEndDate = entry.rtime32EndTime,
+                recommended = ((appsMap[entry.appid]?.source ?: 0) and NewsCalendarResponseApp.SourceFlags.Recommended.bitmask) != 0
             )
         }
     }

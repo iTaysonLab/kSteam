@@ -5,16 +5,16 @@ import okio.BufferedSink
 import okio.BufferedSource
 import steam.webui.common.CMsgProtoBufHeader
 
-sealed class SteamPacketHeader private constructor() {
-    abstract fun read(buffer: BufferedSource)
-    abstract fun write(buffer: BufferedSink)
+sealed interface SteamPacketHeader {
+    fun read(buffer: BufferedSource)
+    fun write(buffer: BufferedSink)
 
-    abstract var targetJobId: Long
-    abstract var sourceJobId: Long
-    abstract var steamId: ULong
-    abstract var sessionId: Int
+    var targetJobId: Long
+    var sourceJobId: Long
+    var steamId: ULong
+    var sessionId: Int
 
-    class Binary : SteamPacketHeader() {
+    class Binary : SteamPacketHeader {
         private var headerSize: Byte = 36
         private var headerVersion: Int = 2
 
@@ -51,7 +51,7 @@ sealed class SteamPacketHeader private constructor() {
         }
     }
 
-    class Protobuf : SteamPacketHeader() {
+    class Protobuf : SteamPacketHeader {
         private var protoHeader = CMsgProtoBufHeader()
 
         override var targetJobId: Long

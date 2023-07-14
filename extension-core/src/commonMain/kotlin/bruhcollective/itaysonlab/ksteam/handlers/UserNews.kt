@@ -9,6 +9,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.enums.plus
 import bruhcollective.itaysonlab.ksteam.models.news.usernews.ActivityFeedEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
+import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import steam.webui.usernews.CUserNews_GetUserNews_Request
 import steam.webui.usernews.CUserNews_GetUserNews_Response
@@ -76,12 +77,15 @@ class UserNews internal constructor(
         val totalClanSteamIds = mutableListOf<SteamId>()
         val totalClanAnnouncementIds = mutableListOf<Long>()
 
+        val publishedFiles = mutableMapOf<Int, MutableList<Long>>()
+
         newsProto.news.asSequence().filter { event ->
             (event.gameid != null && event.gameid != 0L)
                     || (event.steamid_actor != null && event.steamid_actor != 0L)
                     || (event.appids.isNotEmpty())
                     || (event.packageid != null && event.packageid != 0)
                     || (event.clan_announcementid != null && event.clan_announcementid != 0L)
+                    || (event.publishedfileid != null && event.publishedfileid != 0L)
         }.forEach { event ->
             if (event.clan_announcementid != null && event.steamid_actor != 0L) {
                 totalClanSteamIds.add(event.steamid_actor.toSteamId())
@@ -97,6 +101,12 @@ class UserNews internal constructor(
             if (event.appids.isNotEmpty()) {
                 totalAppIds.addAll(event.appids)
             }
+
+            if (event.publishedfileid != null && event.publishedfileid != 0L) {
+                publishedFiles.getOrPut(event.gameid.toInt()) {
+                    mutableListOf()
+                }.add(event.publishedfileid)
+            }
         }
 
         // endregion
@@ -104,6 +114,10 @@ class UserNews internal constructor(
         val totalSteamIds = (totalUserIds + totalClanSteamIds).distinctBy(SteamId::id)
         val summariesMap = steamClient.store.getAppSummaries(totalAppIds)
         val userMap = steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
+
+        val publishedFileMap = publishedFiles.entries.flatMap { entry ->
+            steamClient.publishedFiles.getDetails(entry.key, entry.value)
+        }.associateBy(PublishedFile::id)
 
         // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
 
@@ -114,6 +128,7 @@ class UserNews internal constructor(
 
         val stringDuplicateStack = DuplicateStack<String>()
         val intDuplicateStack = DuplicateStack<Int>()
+        val longDuplicateStack = DuplicateStack<Long>()
 
         for (i in 0 until totalEventSize) {
             val event = newsProto.news[i]
@@ -131,26 +146,24 @@ class UserNews internal constructor(
                         continue
                     }
 
-                    val gameId = event.gameid?.toInt() ?: continue
-                    val achievements =
-                        stringDuplicateStack.use { saved -> event.achievement_names + saved }
-                            .mapNotNull(achievementMap::get)
+                    val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
+                    val achievements = stringDuplicateStack.use { saved -> event.achievement_names + saved }.mapNotNull(achievementMap::get)
 
                     ActivityFeedEntry.NewAchievements(
                         date = eventDate,
-                        app = summariesMap[gameId] ?: continue,
+                        app = appSummary,
                         persona = actorPersona,
                         achievements = achievements
                     )
                 }
 
                 EUserNewsType.PlayedGameFirstTime -> {
-                    val gameId = event.gameid?.toInt() ?: continue
+                    val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
 
                     ActivityFeedEntry.PlayedForFirstTime(
                         date = eventDate,
                         persona = actorPersona,
-                        app = summariesMap[gameId] ?: continue
+                        app = appSummary
                     )
                 }
 
@@ -188,6 +201,32 @@ class UserNews internal constructor(
                         persona = actorPersona,
                         apps = apps
                     )
+                }
+
+                EUserNewsType.FilePublished_Screenshot -> {
+                    if (ActivityFeedEntry.ScreenshotPosted.canMergeWith(event, eventNext)) {
+                        longDuplicateStack += event.publishedfileid ?: continue
+                        continue
+                    }
+
+                    val screenshots = longDuplicateStack.use { saved -> listOf(event.publishedfileid) + saved }.mapNotNull { publishedFileMap[it] }.filterIsInstance<PublishedFile.Screenshot>()
+                    val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
+
+                    if (screenshots.size == 1) {
+                        ActivityFeedEntry.ScreenshotPosted(
+                            date = eventDate,
+                            persona = actorPersona,
+                            app = appSummary,
+                            screenshot = screenshots.first()
+                        )
+                    } else {
+                        ActivityFeedEntry.ScreenshotsPosted(
+                            date = eventDate,
+                            persona = actorPersona,
+                            app = appSummary,
+                            screenshots = screenshots
+                        )
+                    }
                 }
 
                 else -> {

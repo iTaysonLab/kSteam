@@ -3,33 +3,27 @@ package bruhcollective.itaysonlab.ksteam.guard.models
 /**
  * A series of classes describing the logic of adding/moving a Steam Guard.
  */
-sealed class SgCreationFlowState {
+sealed interface SgCreationFlowState {
     /**
-     * Display a full-screen progress.
+     * Steam Guard creation process was not started yet.
      */
-    object TryingToAdd : SgCreationFlowState()
+    object Idle : SgCreationFlowState
 
     /**
      * This means that the user has set up Steam Guard on another device.
+     *
+     * Confirm this request or reset Steam Guard setup.
      */
-    class AlreadyHasGuard(
-        val isProcessingRequest: Boolean = false
-    ) : SgCreationFlowState()
+    object AlreadyHasGuard : SgCreationFlowState
 
     /**
      * This means an SMS was sent and a code must be provided to finish move/addition.
      */
     data class SmsSent(
         val hint: String,
-        val returnedBecauseOfError: Boolean,
         val moving: Boolean,
-        val guardConfiguration: GuardStructure?
-    ) : SgCreationFlowState()
-
-    /**
-     * SMS is confirmed, processing the request
-     */
-    object Processing : SgCreationFlowState()
+        internal val guardConfiguration: GuardStructure?
+    ) : SgCreationFlowState
 
     /**
      * Steam Guard is configured on this kSteam instance.
@@ -38,9 +32,9 @@ sealed class SgCreationFlowState {
      */
     class Success(
         val recoveryCode: String
-    ) : SgCreationFlowState()
+    ) : SgCreationFlowState
 
     class Error(
         val message: String
-    ) : SgCreationFlowState()
+    ) : SgCreationFlowState
 }

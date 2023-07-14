@@ -6,7 +6,7 @@ import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.common.StoreItem
 
 @Immutable
-class AppSummary(
+data class AppSummary(
     val id: Int,
     val name: String,
     val iconId: String
