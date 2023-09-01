@@ -18,21 +18,13 @@ import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.web.WebApi
-import io.ktor.client.plugins.HttpSend
-import io.ktor.client.plugins.plugin
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.header
-import io.ktor.client.request.host
-import io.ktor.client.request.parameter
-import io.ktor.http.HttpStatusCode
+import io.ktor.client.plugins.*
+import io.ktor.client.request.*
+import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.*
 import kotlin.reflect.KClass
 
 /**
@@ -80,6 +72,17 @@ class SteamClient internal constructor(
      */
     suspend fun start() {
         cmClient.tryConnect()
+    }
+
+    /**
+     * Stops this client. Also releases resources used by networking layer.
+     *
+     * You should not use this instance of [SteamClient] after calling [stop].
+     */
+    fun stop() {
+        cmClient.stop()
+        eventsScope.cancel()
+        handlers.values.forEach(BaseHandler::onClose)
     }
 
     init {

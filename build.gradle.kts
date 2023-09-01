@@ -14,9 +14,9 @@ subprojects {
 }
 
 plugins {
-    kotlin("jvm") version "1.8.21" apply false
-    kotlin("plugin.serialization") version "1.8.21" apply false
-    id("com.squareup.wire") version "4.7.2" apply false
+    kotlin("jvm") version "1.9.0" apply false
+    kotlin("plugin.serialization") version "1.9.0" apply false
+    id("com.squareup.wire") version "4.8.1" apply false
     id("org.jetbrains.dokka") version "1.8.10" apply false
     id("com.android.library") version "8.0.2" apply false
 }

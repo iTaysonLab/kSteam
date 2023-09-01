@@ -37,8 +37,8 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.5.1")
 
-    implementation("com.squareup.okio:okio:3.2.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    implementation("com.squareup.okio:okio:3.3.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
     implementation("org.slf4j:slf4j-simple:2.0.6")
 
     implementation("org.bouncycastle:bcprov-jdk15to18:1.72")

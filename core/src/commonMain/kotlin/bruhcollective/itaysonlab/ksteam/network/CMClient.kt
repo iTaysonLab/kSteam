@@ -11,27 +11,11 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.readGzippedContentAsBuffer
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
-import io.ktor.client.plugins.websocket.wss
-import io.ktor.websocket.Frame
-import io.ktor.websocket.send
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.Job
+import io.ktor.client.plugins.websocket.*
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.onSubscription
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.*
 import okio.Buffer
 import okio.buffer
 import steam.messages.clientserver_login.CMsgClientHello
@@ -92,6 +76,15 @@ internal class CMClient(
     suspend fun tryConnect() = coroutineScope {
         launchConnectionCoroutine()
         awaitConnection(authRequired = false)
+    }
+
+    /**
+     * Stops everything that is connected to a CM connection.
+     *
+     * You should not use this instance of [CMClient] after calling [stop].
+     */
+    fun stop() {
+        internalScope.cancel()
     }
 
     private suspend fun awaitConnection(authRequired: Boolean = true) {

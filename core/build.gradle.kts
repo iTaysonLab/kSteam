@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r29"
+version = "r30"
 
 kotlin {
     multiplatformSetup(additionalNativeTargetConfig = {
@@ -51,7 +51,7 @@ dependencies {
     commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 
     commonMainImplementation("com.squareup.okio:okio:3.3.0")
-    commonMainApi("com.squareup.wire:wire-runtime:4.7.0")
+    commonMainApi("com.squareup.wire:wire-runtime:4.7.2")
 }
 
 wire {

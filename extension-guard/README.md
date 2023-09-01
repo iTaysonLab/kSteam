@@ -19,6 +19,5 @@ kSteam {
 - GuardManagement
 
 ### TODO
-- We need to migrate from protobuf to generic JSON mafile (no migration tools will be provided due to lack of a public release)
 - Cancelling session does not work because of signature generation - need to reverse engineer the official Steam Mobile app once again
 - Other features should work great (we still need to implement some sort of automated tests through)

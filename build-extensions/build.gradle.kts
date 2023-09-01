@@ -23,6 +23,6 @@ gradlePlugin {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.21")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
     implementation("com.android.library:com.android.library.gradle.plugin:8.0.2")
 }

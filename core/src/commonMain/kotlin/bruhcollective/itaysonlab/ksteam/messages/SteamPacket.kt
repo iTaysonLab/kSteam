@@ -112,9 +112,7 @@ class SteamPacket private constructor(
      *
      * @return [ByteArray] with the content
      */
-    fun encode(): ByteArray = Buffer().apply {
-        writeTo(this)
-    }.readByteArray()
+    fun encode(): ByteArray = Buffer().apply(::writeTo).readByteArray()
 
     /**
      * Writes the content of this packet into a [Sink]
