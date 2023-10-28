@@ -13,22 +13,8 @@ import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.models.library.RemoteCollectionModel
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.Json
 import steam.webui.cloudconfigstore.CCloudConfigStore_Entry
 import steam.webui.common.CMsgClientLogonResponse
@@ -136,7 +122,7 @@ class Library(
     suspend fun getAppsInCollection(collection: LibraryCollection): Sequence<AppSummary> {
         return when (collection) {
             is LibraryCollection.Simple -> {
-                steamClient.pics.getAppSummariesByAppId(collection.added).values.asSequence().sortedBy { it.name }
+                steamClient.pics.getAppSummariesByAppId(collection.added.filter { it > 0 && it < Int.MAX_VALUE }.map(Long::toInt)).values.asSequence().sortedBy { it.name }
             }
 
             is LibraryCollection.Dynamic -> {

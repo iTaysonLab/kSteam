@@ -1,11 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EAppFeature
-import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
-import bruhcollective.itaysonlab.ksteam.models.enums.EGenre
-import bruhcollective.itaysonlab.ksteam.models.enums.EPartner
-import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
+import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -57,8 +53,8 @@ sealed class LibraryCollection (
         name: String,
         timestamp: Int,
         version: Long = 0,
-        val added: List<Int> = emptyList(),
-        val removed: List<Int> = emptyList(),
+        val added: List<Long> = emptyList(),
+        val removed: List<Long> = emptyList(),
     ): LibraryCollection(id, name, timestamp, version)
 
     /**
@@ -79,8 +75,8 @@ sealed class LibraryCollection (
 internal data class RemoteCollectionModel(
     val id: String = "",
     val name: String = "",
-    val added: List<Int> = emptyList(),
-    val removed: List<Int> = emptyList(),
+    val added: List<Long> = emptyList(),
+    val removed: List<Long> = emptyList(),
     val filterSpec: DynamicFilterSpec? = null,
 )
 
