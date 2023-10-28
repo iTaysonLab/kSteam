@@ -71,12 +71,12 @@ data class Persona internal constructor(
         /**
          * The user is not currently in any game.
          */
-        object None: IngameStatus
+        data object None: IngameStatus
 
         /**
          * The user is currently in a Steam game.
          */
-        class Steam internal constructor(
+        data class Steam internal constructor(
             /**
              * The ID of a currently running game.
              */
@@ -91,7 +91,7 @@ data class Persona internal constructor(
         /**
          * The user is currently in a non-Steam game.
          */
-        class NonSteam internal constructor(
+        data class NonSteam internal constructor(
             /**
              * Known game name which the user is playing right now.
              */
