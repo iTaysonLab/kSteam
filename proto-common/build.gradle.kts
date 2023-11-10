@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r30"
+version = "r31"
 
 kotlin {
     multiplatformSetup()
@@ -22,15 +22,3 @@ wire {
 }
 
 androidLibrary("bruhcollective.itaysonlab.ksteam.proto")
-
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            pom {
-                name.set("kSteam - Protobufs (Common)")
-                description.set("Common Protocol Buffers for kSteam")
-                url.set("https://github.com/itaysonlab/ksteam")
-            }
-        }
-    }
-}

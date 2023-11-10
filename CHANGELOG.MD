@@ -1,3 +1,14 @@
+## r31
+
+- **[breaking change]** Disable support for macOS/iOS compilation, effectively making kSteam a JVM/Android-only library
+- **[breaking change]** RPC calls now use Wire's gRPC custom client implementation instead of manually passing request/response adapters. This also enables usage of Steam-defined services directly.
+- `extension-pics`: support for 64-bit app IDs, making the client not crashing if providing folders with non-Steam applications 
+- update dependencies
+- streamline the version updating procedure by introducing version catalogs
+- synchronized protobufs with the latest provided by Steam
+
+---
+
 ## r30
 
 ---

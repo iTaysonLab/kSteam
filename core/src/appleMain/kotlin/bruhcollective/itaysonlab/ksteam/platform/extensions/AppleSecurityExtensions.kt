@@ -5,6 +5,7 @@ import platform.CoreFoundation.*
 import platform.Security.*
 
 // publicKey is ASN.1
+@OptIn(ExperimentalForeignApi::class)
 internal fun appleCreateSecKey(keySize: Int, publicKey: ByteArray): SecKeyRef = memScoped {
     val keySizeAllocation = alloc<IntVar>().apply {
         value = keySize
@@ -25,6 +26,7 @@ internal fun appleCreateSecKey(keySize: Int, publicKey: ByteArray): SecKeyRef = 
     ) ?: error("The key returned from SecKeyCreateWithData is null, that is not supposed to be here")
 }
 
+@OptIn(ExperimentalForeignApi::class)
 internal fun appleEncryptSecData(key: SecKeyRef, utf8PlainText: String): ByteArray = memScoped {
     SecKeyCreateEncryptedData(
         key = key,
@@ -34,13 +36,13 @@ internal fun appleEncryptSecData(key: SecKeyRef, utf8PlainText: String): ByteArr
     )?.toByteArray() ?: error("SecKeyCreateEncryptedData returned null, that is not supposed to be here")
 }
 
-@OptIn(ExperimentalUnsignedTypes::class)
+@OptIn(ExperimentalUnsignedTypes::class, ExperimentalForeignApi::class)
 internal fun ByteArray.toCFData(): CFDataRef =
     CFDataCreate(null,
         asUByteArray().refTo(0),
         size.toLong())!!
 
-@OptIn(ExperimentalUnsignedTypes::class)
+@OptIn(ExperimentalUnsignedTypes::class, ExperimentalForeignApi::class)
 internal fun CFDataRef.toByteArray(): ByteArray {
     val length = CFDataGetLength(this)
 
@@ -50,10 +52,12 @@ internal fun CFDataRef.toByteArray(): ByteArray {
     }.asByteArray()
 }
 
+@OptIn(ExperimentalForeignApi::class)
 private fun MemScope.cfDictionaryOf(vararg pairs: Pair<CFStringRef?, CFTypeRef?>): CFDictionaryRef? {
     return cfDictionaryOf(mapOf(*pairs))
 }
 
+@OptIn(ExperimentalForeignApi::class)
 private fun MemScope.cfDictionaryOf(map: Map<CFStringRef?, CFTypeRef?>): CFDictionaryRef? {
     val size = map.size.toLong()
 

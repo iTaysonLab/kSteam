@@ -86,6 +86,7 @@ val animatedAvatarUrl = kSteamDevEquipment.animatedAvatar?.movieMp4?.url // - mo
 - Stable and async-first architecture with proper documentation
 - Extension support which can greatly decrease final application size, while still readable and comfortable to use
 - Providing Flows and suspending API for reactive UIs without any callback hell
+- Jetpack Compose UI optimizations by providing stability annotations
 
 ### Goals
 - Provide a easy-to-use library for accessing the Steam network on JVM/Android
@@ -94,7 +95,6 @@ val animatedAvatarUrl = kSteamDevEquipment.animatedAvatar?.movieMp4?.url // - mo
 - Provide full Steam Guard and new auth flow support
 - Removing the gap between WebAPI and Steam3 messages
 - Actively cache data for minimizing network usage and portability
-- Aim for a Kotlin Multiplatform release somewhat in the future
 
 ### Credits
 - [SteamKit](https://github.com/SteamRE/SteamKit/) and [JavaSteam](https://github.com/Longi94/JavaSteam/) - base for understanding how Steam3 network works

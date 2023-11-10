@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r30"
+version = "r31"
 
 kotlin {
     multiplatformSetup(additionalNativeTargetConfig = {
@@ -37,27 +37,29 @@ dependencies {
     commonMainApi(project(":kotlinx-vdf"))
     commonMainApi(project(":proto-common"))
 
-    commonMainImplementation("io.ktor:ktor-serialization:2.3.1")
-    commonMainImplementation("io.ktor:ktor-client-core:2.3.1")
-    commonMainImplementation("io.ktor:ktor-client-websockets:2.3.1")
-    commonMainImplementation("io.ktor:ktor-client-content-negotiation:2.3.1")
-    commonMainImplementation("io.ktor:ktor-client-cio:2.3.1")
-    commonMainImplementation("io.ktor:ktor-serialization-kotlinx-json:2.3.1")
+    commonMainImplementation(libs.ktor.serialization)
+    commonMainImplementation(libs.ktor.client)
+    commonMainImplementation(libs.ktor.client.websockets)
+    commonMainImplementation(libs.ktor.client.contentNegotiation)
+    commonMainImplementation(libs.ktor.client.engine.cio)
+    commonMainImplementation(libs.ktor.client.jsonSerialization)
 
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.5")
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+    commonMainImplementation(libs.kotlinx.immutables)
+    commonMainImplementation(libs.kotlinx.serialization.json.okio)
+    commonMainImplementation(libs.kotlinx.datetime)
 
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    commonMainImplementation(libs.kotlinx.coroutines.core)
 
-    commonMainImplementation("com.squareup.okio:okio:3.3.0")
-    commonMainApi("com.squareup.wire:wire-runtime:4.7.2")
+    commonMainImplementation(libs.okio)
+
+    commonMainApi(libs.wire)
+    commonMainApi(libs.wire.grpc)
 }
 
 wire {
     kotlin {
         rpcCallStyle = "suspending"
-        rpcRole = "server"
+        rpcRole = "client"
         nameSuffix = ""
     }
 
@@ -66,7 +68,7 @@ wire {
     }
 }
 
-publishing {
+/*publishing {
     publications {
         create<MavenPublication>("maven") {
             pom {
@@ -90,4 +92,4 @@ publishing {
             }
         }
     }
-}
+}*/

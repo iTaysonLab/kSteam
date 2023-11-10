@@ -1,3 +1,4 @@
+
 import org.gradle.kotlin.dsl.get
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -18,7 +19,7 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
     jvm()
 
     // Enable Android support and use JVM 11 target
-    android {
+    androidTarget {
         jvmToolchain(11)
 
         publishLibraryVariants("release")
@@ -32,7 +33,15 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
     }
 
     // Enable iOS support
-    iosX64(additionalNativeTargetConfig)
+    //linuxArm64(additionalNativeTargetConfig)
+    //linuxX64(additionalNativeTargetConfig)
+
+    macosArm64(additionalNativeTargetConfig)
+    macosX64(additionalNativeTargetConfig)
+
+    //mingwX64(additionalNativeTargetConfig)
+
+    /*iosX64()
     iosArm64(additionalNativeTargetConfig)
     iosSimulatorArm64(additionalNativeTargetConfig)
 
@@ -43,7 +52,7 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
 
     // Enable native support for macOS
     macosX64(additionalNativeTargetConfig)
-    macosArm64(additionalNativeTargetConfig)
+    macosArm64(additionalNativeTargetConfig)*/
 
     // Allow @ExperimentalObjCName annotation
     sourceSets.all {

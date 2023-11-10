@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r30"
+version = "r31"
 
 kotlin {
     multiplatformSetup()
@@ -26,18 +26,18 @@ dependencies {
     commonMainApi(project(":extension-core"))
     commonMainApi(project(":kotlinx-vdf"))
 
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json-okio:1.5.1")
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-    commonMainImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    commonMainImplementation(libs.kotlinx.serialization.json)
+    commonMainImplementation(libs.kotlinx.serialization.json.okio)
+    commonMainImplementation(libs.kotlinx.datetime)
+    commonMainImplementation(libs.kotlinx.coroutines.core)
 
-    commonMainApi("com.squareup.wire:wire-runtime:4.7.2")
+    commonMainApi(libs.wire)
 }
 
 wire {
     kotlin {
         rpcCallStyle = "suspending"
-        rpcRole = "server"
+        rpcRole = "client"
         nameSuffix = ""
     }
 

@@ -9,6 +9,7 @@ import okio.Source
 import okio.buffer
 import okio.use
 
+@OptIn(ExperimentalForeignApi::class)
 actual fun Source.readGzippedContentAsBuffer(knownUnzippedSize: Int?): Source = use {
     val buffer = Buffer()
 
