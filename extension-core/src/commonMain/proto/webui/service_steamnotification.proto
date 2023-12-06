@@ -5,21 +5,6 @@ option java_package = "steam.webui.steamnotification";
 option java_generic_services = true;
 option java_multiple_files = true;
 
-// kSteam-edits BEGIN
-
-enum SteamNotificationType {
-	Gift = 2;
-	Comment = 3;
-	Item = 4;
-	FriendInvite = 5;
-	MajorSale = 6;
-	PreloadAvailable = 7;
-	Wishlist = 8;
-	Promotion = 10; // not sure if that's true (Steam Replay notification falls under that category)
-}
-
-// kSteam-edits END
-
 message CSteamNotification_GetPreferences_Request {
 }
 
@@ -42,23 +27,14 @@ message CSteamNotification_GetSteamNotifications_Response {
 	optional uint32 pending_gift_count = 3;
 	optional uint32 pending_friend_count = 5;
 	optional uint32 unread_count = 6;
-}
-
-message CSteamNotification_HideNotification_Notification {
-	repeated uint64 notification_ids = 1;
-}
-
-message CSteamNotification_MarkNotificationsRead_Notification {
-	optional uint32 timestamp = 1;
-	optional int32 notification_type = 2 [(.description) = "enum"];
-	repeated uint64 notification_ids = 3;
-	optional bool mark_all_read = 4;
-}
-
-message CSteamNotification_MarkNotificationsViewed_Notification {
+	optional uint32 pending_family_invite_count = 7;
 }
 
 message CSteamNotification_NotificationsReceived_Notification {
+	repeated .SteamNotificationData notifications = 1;
+	optional uint32 pending_gift_count = 2;
+	optional uint32 pending_friend_count = 3;
+	optional uint32 pending_family_invite_count = 4;
 }
 
 message CSteamNotification_PreferencesUpdated_Notification {
@@ -92,9 +68,6 @@ message SteamNotificationPreference {
 service SteamNotification {
 	rpc GetPreferences (.CSteamNotification_GetPreferences_Request) returns (.CSteamNotification_GetPreferences_Response);
 	rpc GetSteamNotifications (.CSteamNotification_GetSteamNotifications_Request) returns (.CSteamNotification_GetSteamNotifications_Response);
-	rpc HideNotification (.CSteamNotification_HideNotification_Notification) returns (.NoResponse);
-	rpc MarkNotificationsRead (.CSteamNotification_MarkNotificationsRead_Notification) returns (.NoResponse);
-	rpc MarkNotificationsViewed (.CSteamNotification_MarkNotificationsViewed_Notification) returns (.NoResponse);
 	rpc SetPreferences (.CSteamNotification_SetPreferences_Request) returns (.CSteamNotification_SetPreferences_Response);
 }
 

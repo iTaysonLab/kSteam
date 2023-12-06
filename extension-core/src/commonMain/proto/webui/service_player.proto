@@ -93,6 +93,20 @@ message CPlayer_GetAvatarFrame_Response {
 	optional .ProfileItem avatar_frame = 1;
 }
 
+message CPlayer_GetCommunityBadgeProgress_Request {
+	optional uint64 steamid = 1;
+	optional int32 badgeid = 2;
+}
+
+message CPlayer_GetCommunityBadgeProgress_Response {
+	repeated .CPlayer_GetCommunityBadgeProgress_Response_Quest quests = 1;
+}
+
+message CPlayer_GetCommunityBadgeProgress_Response_Quest {
+	optional uint32 questid = 1;
+	optional bool completed = 2;
+}
+
 message CPlayer_GetCommunityPreferences_Request {
 }
 
@@ -285,7 +299,7 @@ message CPlayer_GetNewSteamAnnouncementState_Request {
 }
 
 message CPlayer_GetNewSteamAnnouncementState_Response {
-	optional int32 state = 1 [(.description) = "enum"];
+	optional int32 state = 1;
 	optional string announcement_headline = 2;
 	optional string announcement_url = 3;
 	optional uint32 time_posted = 4;
@@ -347,6 +361,56 @@ message CPlayer_GetPerFriendPreferences_Request {
 
 message CPlayer_GetPerFriendPreferences_Response {
 	repeated .PerFriendPreferences preferences = 1;
+}
+
+message CPlayer_GetPlayerLinkDetails_Request {
+	repeated uint64 steamids = 1;
+}
+
+message CPlayer_GetPlayerLinkDetails_Response {
+	repeated .CPlayer_GetPlayerLinkDetails_Response_PlayerLinkDetails accounts = 1;
+}
+
+message CPlayer_GetPlayerLinkDetails_Response_PlayerLinkDetails {
+	optional .CPlayer_GetPlayerLinkDetails_Response_PlayerLinkDetails_AccountPublicData public_data = 1;
+	optional .CPlayer_GetPlayerLinkDetails_Response_PlayerLinkDetails_AccountPrivateData private_data = 2;
+}
+
+message CPlayer_GetPlayerLinkDetails_Response_PlayerLinkDetails_AccountPrivateData {
+	optional int32 persona_state = 1;
+	optional uint32 persona_state_flags = 2;
+	optional uint32 time_created = 3;
+	optional fixed64 game_id = 4;
+	optional fixed64 game_server_steam_id = 5;
+	optional uint32 game_server_ip_address = 6;
+	optional uint32 game_server_port = 7;
+	optional string game_extra_info = 8;
+	optional string account_name = 9;
+	optional fixed64 lobby_steam_id = 10;
+	optional string rich_presence_kv = 11;
+	optional fixed64 broadcast_session_id = 12;
+	optional uint32 watching_broadcast_accountid = 13;
+	optional uint32 watching_broadcast_appid = 14;
+	optional uint32 watching_broadcast_viewers = 15;
+	optional string watching_broadcast_title = 16;
+	optional uint32 last_logoff_time = 17;
+	optional uint32 last_seen_online = 18;
+	optional int32 game_os_type = 19;
+	optional int32 game_device_type = 20;
+	optional string game_device_name = 21;
+}
+
+message CPlayer_GetPlayerLinkDetails_Response_PlayerLinkDetails_AccountPublicData {
+	optional fixed64 steamid = 1;
+	optional int32 visibility_state = 2;
+	optional int32 privacy_state = 3;
+	optional int32 profile_state = 4;
+	optional uint32 ban_expires_time = 7;
+	optional uint32 account_flags = 8;
+	optional bytes sha_digest_avatar = 9;
+	optional string persona_name = 10;
+	optional string profile_url = 11;
+	optional bool content_country_restricted = 12;
 }
 
 message CPlayer_GetPlayNext_Request {
@@ -548,7 +612,7 @@ message CPlayer_LastPlayedTimes_Notification {
 }
 
 message CPlayer_NewSteamAnnouncementState_Notification {
-	optional int32 state = 1 [(.description) = "enum"];
+	optional int32 state = 1;
 	optional string announcement_headline = 2;
 	optional string announcement_url = 3;
 	optional uint32 time_posted = 4;
@@ -581,6 +645,7 @@ message CPlayer_RecordDisconnectedPlaytime_Request_PlayHistory {
 	optional uint32 session_time_start = 2;
 	optional uint32 seconds = 3;
 	optional bool offline = 4;
+	optional uint32 owner = 5;
 }
 
 message CPlayer_RecordDisconnectedPlaytime_Response {
@@ -779,6 +844,7 @@ service Player {
 	rpc GetAchievementsProgress (.CPlayer_GetAchievementsProgress_Request) returns (.CPlayer_GetAchievementsProgress_Response);
 	rpc GetAnimatedAvatar (.CPlayer_GetAnimatedAvatar_Request) returns (.CPlayer_GetAnimatedAvatar_Response);
 	rpc GetAvatarFrame (.CPlayer_GetAvatarFrame_Request) returns (.CPlayer_GetAvatarFrame_Response);
+	rpc GetCommunityBadgeProgress (.CPlayer_GetCommunityBadgeProgress_Request) returns (.CPlayer_GetCommunityBadgeProgress_Response);
 	rpc GetCommunityPreferences (.CPlayer_GetCommunityPreferences_Request) returns (.CPlayer_GetCommunityPreferences_Response);
 	rpc GetDurationControl (.CPlayer_GetDurationControl_Request) returns (.CPlayer_GetDurationControl_Response);
 	rpc GetEmoticonList (.CPlayer_GetEmoticonList_Request) returns (.CPlayer_GetEmoticonList_Response);
@@ -793,6 +859,7 @@ service Player {
 	rpc GetNicknameList (.CPlayer_GetNicknameList_Request) returns (.CPlayer_GetNicknameList_Response);
 	rpc GetOwnedGames (.CPlayer_GetOwnedGames_Request) returns (.CPlayer_GetOwnedGames_Response);
 	rpc GetPerFriendPreferences (.CPlayer_GetPerFriendPreferences_Request) returns (.CPlayer_GetPerFriendPreferences_Response);
+	rpc GetPlayerLinkDetails (.CPlayer_GetPlayerLinkDetails_Request) returns (.CPlayer_GetPlayerLinkDetails_Response);
 	rpc GetPlayNext (.CPlayer_GetPlayNext_Request) returns (.CPlayer_GetPlayNext_Response);
 	rpc GetPostedStatus (.CPlayer_GetPostedStatus_Request) returns (.CPlayer_GetPostedStatus_Response);
 	rpc GetPrivacySettings (.CPlayer_GetPrivacySettings_Request) returns (.CPlayer_GetPrivacySettings_Response);

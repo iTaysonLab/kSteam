@@ -1,3 +1,6 @@
+// kSteam custom enums
+// TODO: move them into Kotlin enums
+
 option optimize_for = SPEED;
 option java_package = "steam.enums";
 option java_multiple_files = true;
@@ -20,4 +23,57 @@ enum EBanContentCheckResult {
 	k_EBanContentCheckResult_Possible = 50;
 	k_EBanContentCheckResult_Likely = 75;
 	k_EBanContentCheckResult_VeryLikely = 100;
+}
+
+enum SteamNotificationType {
+	Gift = 2;
+	Comment = 3;
+	Item = 4;
+	FriendInvite = 5;
+	MajorSale = 6;
+	PreloadAvailable = 7;
+	Wishlist = 8;
+	Promotion = 10; // not sure if that's true (Steam Replay notification falls under that category)
+}
+
+enum EAuthTokenPlatformType {
+	k_EAuthTokenPlatformType_Unknown = 0;
+	k_EAuthTokenPlatformType_SteamClient = 1;
+	k_EAuthTokenPlatformType_WebBrowser = 2;
+	k_EAuthTokenPlatformType_MobileApp = 3;
+}
+
+enum EAuthSessionGuardType {
+	k_EAuthSessionGuardType_Unknown = 0;
+	k_EAuthSessionGuardType_None = 1;
+	k_EAuthSessionGuardType_EmailCode = 2;
+	k_EAuthSessionGuardType_DeviceCode = 3;
+	k_EAuthSessionGuardType_DeviceConfirmation = 4;
+	k_EAuthSessionGuardType_EmailConfirmation = 5;
+	k_EAuthSessionGuardType_MachineToken = 6;
+}
+
+enum EAuthSessionSecurityHistory {
+	k_EAuthSessionSecurityHistory_Invalid = 0;
+	k_EAuthSessionSecurityHistory_UsedPreviously = 1;
+	k_EAuthSessionSecurityHistory_NoPriorHistory = 2;
+}
+
+enum EAuthTokenRevokeAction {
+	k_EAuthTokenRevokeLogout = 0;
+	k_EAuthTokenRevokePermanent = 1;
+	k_EAuthTokenRevokeReplaced = 2;
+	k_EAuthTokenRevokeSupport = 3;
+	k_EAuthTokenRevokeConsume = 4;
+}
+
+enum EAuthTokenState {
+	k_EAuthTokenState_Invalid = 0;
+	k_EAuthTokenState_New = 1;
+	k_EAuthTokenState_Confirmed = 2;
+	k_EAuthTokenState_Issued = 3;
+	k_EAuthTokenState_Denied = 4;
+	k_EAuthTokenState_LoggedOut = 5;
+	k_EAuthTokenState_Consumed = 6;
+	k_EAuthTokenState_Revoked = 99;
 }
