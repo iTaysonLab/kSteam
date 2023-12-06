@@ -14,6 +14,6 @@ enum class EAccountType {
     AnonUser;
 
     companion object {
-        fun byEncoded(num: Int) = values().getOrElse(num) { Invalid }
+        fun byEncoded(num: Int) = entries.getOrElse(num) { Invalid }
     }
 }

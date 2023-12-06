@@ -1486,6 +1486,6 @@ enum class EMsg (val encoded: Int) {
     k_EMsgServerSecretChanged(12100);
 
     companion object {
-        fun byEncoded(num: Int) = values().firstOrNull { it.encoded == num } ?: k_EMsgInvalid
+        fun byEncoded(num: Int) = entries.firstOrNull { it.encoded == num } ?: k_EMsgInvalid
     }
 }

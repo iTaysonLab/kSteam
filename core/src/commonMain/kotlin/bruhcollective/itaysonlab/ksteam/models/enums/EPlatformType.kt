@@ -18,6 +18,6 @@ enum class EPlatformType {
     k_EPlatformTypeMax;
 
     companion object {
-        fun byEncoded(num: Int) = values().getOrElse(num) { k_EPlatformTypeUnknown }
+        fun byEncoded(num: Int) = entries.getOrElse(num) { k_EPlatformTypeUnknown }
     }
 }

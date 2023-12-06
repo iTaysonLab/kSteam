@@ -130,6 +130,6 @@ enum class EResult (val encoded: Int) {
     PhoneNumberIsVOIP(127);
 
     companion object {
-        fun byEncoded(num: Int) = values().firstOrNull { it.encoded == num } ?: Fail
+        fun byEncoded(num: Int) = entries.firstOrNull { it.encoded == num } ?: Fail
     }
 }

@@ -11,6 +11,6 @@ enum class EGamingDeviceType (val encoded: Int) {
     k_EGamingDeviceType_SteamDeck(544);
 
     companion object {
-        fun byEncoded(num: Int?) = num?.let { n -> values().firstOrNull { it.encoded == n } } ?: k_EGamingDeviceType_Unknown
+        fun byEncoded(num: Int?) = num?.let { n -> entries.firstOrNull { it.encoded == n } } ?: k_EGamingDeviceType_Unknown
     }
 }
