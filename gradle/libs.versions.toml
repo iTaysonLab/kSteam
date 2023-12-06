@@ -1,13 +1,13 @@
 [versions]
-kotlin = "1.9.10"
+kotlin = "1.9.20"
 kotlinx-coroutines = "1.7.3"
 kotlinx-json = "1.6.0"
-ksp = "1.9.10-1.0.13"
+ksp = "1.9.20-1.0.13"
 agp = "8.1.1"
 ktorClientVersion = "2.3.5"
-okio = "3.5.0"
+okio = "3.6.0"
 realm = "1.11.1"
-wire = "4.9.1"
+wire = "4.9.3"
 dokka = "1.8.10"
 
 [plugins]

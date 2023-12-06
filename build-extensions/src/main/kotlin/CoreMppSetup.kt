@@ -10,7 +10,7 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
     additionalNativeTargetConfig: KotlinNativeTarget.() -> Unit = {}
 ) {
     // Enable Kotlin 1.8.20's new default hierarchy
-    targetHierarchy.default()
+    // targetHierarchy.default()
 
     // Setup JVM toolchain to 11
     jvmToolchain(11)
@@ -36,23 +36,20 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
     //linuxArm64(additionalNativeTargetConfig)
     //linuxX64(additionalNativeTargetConfig)
 
+    // Enable native support for macOS
     macosArm64(additionalNativeTargetConfig)
     macosX64(additionalNativeTargetConfig)
 
     //mingwX64(additionalNativeTargetConfig)
 
-    /*iosX64()
+    iosX64(additionalNativeTargetConfig)
     iosArm64(additionalNativeTargetConfig)
     iosSimulatorArm64(additionalNativeTargetConfig)
 
-    // Enable native support for tvOS
+    /*// Enable native support for tvOS
     tvosX64(additionalNativeTargetConfig)
     tvosArm64(additionalNativeTargetConfig)
-    tvosSimulatorArm64(additionalNativeTargetConfig)
-
-    // Enable native support for macOS
-    macosX64(additionalNativeTargetConfig)
-    macosArm64(additionalNativeTargetConfig)*/
+    tvosSimulatorArm64(additionalNativeTargetConfig)*/
 
     // Allow @ExperimentalObjCName annotation
     sourceSets.all {

@@ -60,7 +60,6 @@ wire {
     kotlin {
         rpcCallStyle = "suspending"
         rpcRole = "client"
-        nameSuffix = ""
     }
 
     protoPath {
