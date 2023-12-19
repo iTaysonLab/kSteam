@@ -1,13 +1,13 @@
 package bruhcollective.itaysonlab.ksteam.models.account
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import steam.enums.EAuthSessionGuardType
 import steam.webui.authentication.CAuthentication_BeginAuthSessionViaCredentials_Response
-import steam.webui.authentication.EAuthSessionGuardType
 
 sealed interface AuthorizationState {
-    object Unauthorized : AuthorizationState
+    data object Unauthorized : AuthorizationState
 
-    object Success : AuthorizationState
+    data object Success : AuthorizationState
 
     class AwaitingTwoFactor internal constructor(
         val steamId: SteamId,
@@ -16,7 +16,7 @@ sealed interface AuthorizationState {
     ) : AuthorizationState {
         internal constructor(networkResponse: CAuthentication_BeginAuthSessionViaCredentials_Response) : this(
             supportedConfirmationMethods = networkResponse.allowed_confirmations.mapNotNull {
-                when (it.confirmation_type) {
+                when (EAuthSessionGuardType.fromValue(it.confirmation_type ?: 0)) {
                     EAuthSessionGuardType.k_EAuthSessionGuardType_EmailCode -> ConfirmationMethod.EmailCode
                     EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode -> ConfirmationMethod.DeviceCode
                     EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation -> ConfirmationMethod.DeviceConfirmation
@@ -25,7 +25,7 @@ sealed interface AuthorizationState {
                     else -> null
                 }
             },
-            sumProtos = networkResponse.allowed_confirmations.mapNotNull { it.confirmation_type },
+            sumProtos = networkResponse.allowed_confirmations.mapNotNull { EAuthSessionGuardType.fromValue(it.confirmation_type ?: Int.MAX_VALUE) },
             steamId = SteamId((networkResponse.steamid ?: 0L).toULong())
         )
 
@@ -42,7 +42,7 @@ sealed interface AuthorizationState {
             // Automatic: you need to click a link in a email
             EmailConfirmation,
 
-            // Fully-Automatic: use a existing SG auth data?
+            // Fully-Automatic: use an existing SG auth data?
             MachineToken
         }
     }

@@ -1,3 +1,12 @@
+## r32
+
+- re-enable support for macOS/iOS compilation
+- massive rework of extension architecture, simplifying everything to "core"-"implementation" model
+- introduce `core-persistence` for managing saved user data
+- `core/unifiedmessages`: provide a custom Wire client implementation for simplifying API requests
+- `extension-pics`: massive database rework
+- `extension-pics`: deprecate key-value DB, introduce `Realm` backend for mobile platforms and `Memory` for temporary solutions
+
 ## r31
 
 - **[breaking change]** Disable support for macOS/iOS compilation, effectively making kSteam a JVM/Android-only library

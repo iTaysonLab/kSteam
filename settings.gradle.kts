@@ -4,6 +4,14 @@ pluginManagement {
         mavenCentral()
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
     }
+
+    resolutionStrategy {
+        eachPlugin {
+            if (requested.id.id == "io.realm.kotlin") {
+                useModule("io.realm.kotlin:gradle-plugin:${requested.version}")
+            }
+        }
+    }
 }
 
 @Suppress("UnstableApiUsage")
@@ -27,7 +35,5 @@ include(":kotlinx-vdf")
 
 include(":proto-common")
 
-include(":extension-core")
-include(":extension-pics")
-include(":extension-guard")
-include(":extension-guard-proto-migration")
+include(":extension-client")
+include(":core-persistence")

@@ -7,9 +7,10 @@ import bruhcollective.itaysonlab.ksteam.debug.NoopLoggingTransport
 import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.ExtensionFactory
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
+import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
+import bruhcollective.itaysonlab.ksteam.persistence.MemoryPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import io.ktor.client.*
-import io.ktor.client.engine.*
 import io.ktor.client.engine.cio.*
 import okio.Path
 
@@ -38,8 +39,8 @@ class KSteamConfiguration {
      * Specifies a logging verbosity (how much data will be logged)
      * 
      * Recommended:
-     * - [KSteamLoggingVerbosity.Disable] if you are using kSteam in a end-user application
-     * - [KSteamLoggingVerbosity.Warning] if you are using kSteam in a end-user application and want logs
+     * - [KSteamLoggingVerbosity.Disable] if you are using kSteam in an end-user application
+     * - [KSteamLoggingVerbosity.Warning] if you are using kSteam in an end-user application and want logs
      * - [KSteamLoggingVerbosity.Debug] if you are developing an end-user application
      * - [KSteamLoggingVerbosity.Verbose] if you are developing kSteam
      * 
@@ -55,14 +56,6 @@ class KSteamConfiguration {
     var rootFolder: Path? = null
         set(value) {
             field = value ?: error("rootFolder must not be null")
-        }
-
-    /**
-     * Proxy config used for Ktor's network clients.
-     */
-    var ktorProxyConfig: ProxyConfig? = null
-        set(value) {
-            field = value ?: error("ktorProxyConfig must not be null")
         }
 
     /**
@@ -83,6 +76,13 @@ class KSteamConfiguration {
      */
     var authPrivateIpLogic: SteamClientConfiguration.AuthPrivateIpLogic =
         SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp
+
+    /**
+     * Supplies persistence implementation for kSteam handlers to use.
+     *
+     * You might use `core-persistence` module for ready-to-use platform implementations.
+     */
+    var persistenceDriver: KsteamPersistenceDriver = MemoryPersistenceDriver
 
     /**
      * Installs an [bruhcollective.itaysonlab.ksteam.extension.Extension] into the client.
@@ -124,7 +124,8 @@ class KSteamConfiguration {
                 ktorEngineResolver = ktorEngineResolver,
                 deviceInfo = deviceInfo,
                 language = language,
-                authPrivateIpLogic = authPrivateIpLogic
+                authPrivateIpLogic = authPrivateIpLogic,
+                persistenceDriver = persistenceDriver
             ), injectedExtensions = extensions
         )
     }

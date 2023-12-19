@@ -1,5 +1,5 @@
 // kSteam custom enums
-// TODO: move them into Kotlin enums
+// TODO: move them into Kotlin enums?
 
 option optimize_for = SPEED;
 option java_package = "steam.enums";

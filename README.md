@@ -1,9 +1,9 @@
 kSteam
 ---
 
-kSteam is a **JVM/Android Kotlin library** which allows you to connect to the Steam network.
+kSteam is a **JVM/Android Kotlin library** which allows you to connect to the Valve's [Steam](https://store.steampowered.com/) network.
 
-It's usage is mostly based on **Kotlin Coroutines** and **states** to better suit for modern application development.
+Its usage is mostly based on **Kotlin Coroutines** and **states** to better suit for modern application development.
 
 > This library is in very early state, so expect bugs and incomplete features.
 > 
@@ -12,89 +12,44 @@ It's usage is mostly based on **Kotlin Coroutines** and **states** to better sui
 
 ### Usage
 
-```kotlin
-// define a kSteam instance, this should be done once
-// for some reasons you might launch several kSteam instances - this behavior is not tested
-val steamClient = kSteam {
-    // location where kSteam will store it's data like user accounts
-    rootFolder = [File]
-    
-    // device info shown when other users will manage sessions or approve this one
-    deviceInfo = DeviceInformation(
-        osType = EOSType.k_eAndroidUnknown, // current OS
-        gamingDeviceType = EGamingDeviceType.k_EGamingDeviceType_Phone, // device type
-        platformType = EAuthTokenPlatformType.k_EAuthTokenPlatformType_SteamClient, // don't change this
-        deviceName = "kSteam device" // session name
-    )
-    
-    // install the extension-core extension to access basic Steam functions (profiles, news, etc)
-    install(Core)
-    
-    // if you want, install extension-guard for Steam Guard support
-    install(Guard) {
-        uuid = "" // - specify your device UUID
-    }
-    
-    // if you want, install extension-pics for more reliable owned games metadata and library management
-    install(Pics) {
-        database = YourKvDatabase() // - specify your key-value database implementation
-    }
-    
-    // include any other extensions
-}
+Refer to the [examples document](README_Examples.md) for more information how to use kSteam for various needs.
 
-// if needed, you can use a built-in dumper to analyze Steam Network packets
-// they will be saved in rootFolder/dumps/%timestamp%/
-steamClient.dumperMode = PacketDumper.DumpMode.Full
+You can also check out [Cobalt](https://github.com/iTaysonLab/Jetisteam/) - an Android replacement for the official Steam client that uses 
 
-// connect to the Steam network
-steamClient.start()
+### Platform Support
+- JVM/Android: highest priority
+- iOS/macOS: experimental
+- WASM: nearly impossible due to possible CORS issues
 
-// kSteam saves user accounts in rootFolder and tries to sign in automatically after start()
-if (steamClient.account.hasSavedDataForAtLeastOneAccount()) {
-    steamClient.account.awaitSignIn()
-} else {
-    val signResult = steamClient.account.signIn(
-        username = "username",
-        password = "password",
-        rememberSession = false // - "true" will save the account so on the next launch, you could use hasSavedDataForAtLeastOneAccount()
-    )
-    
-    if (signResult is AuthorizationResult.Success) {
-        // 2FA, use steamClient.account.clientAuthState Flow to manage it
-        // TODO: write a sample
-    } else if (signResult is AuthorizationResult.InvalidPassword) {
-        // your code
-    }
-}
+Android has several special features: Jetpack Compose stability annotations for optimized rendering and support for secure preferences.
 
-// now you are connected to the Steam network, do what you want...
-// ...like subscribing to player's state...
-steamClient.persona.currentPersona.onEach { persona ->
-    // update the UI
-}.launchIn(scope)
-
-// ...or requesting someone's profile equipment
-val kSteamDevEquipment = steamClient.profile.getEquipment(SteamId(76561198176883618_u))
-val animatedAvatarUrl = kSteamDevEquipment.animatedAvatar?.movieMp4?.url // - mostly all of kSteam handlers provide "parsed" and Kotlin-friendly data structures 
-
-// ...or even more...
-```
-
-### Features so far
-- Access to the Steam network by using WebSocket approach
+### Features
+- Access to the Steam network by using the modern WebSocket approach
 - Stable and async-first architecture with proper documentation
-- Extension support which can greatly decrease final application size, while still readable and comfortable to use
 - Providing Flows and suspending API for reactive UIs without any callback hell
-- Jetpack Compose UI optimizations by providing stability annotations
 
 ### Goals
-- Provide a easy-to-use library for accessing the Steam network on JVM/Android
+- Provide an easy-to-use library for accessing the Steam network on JVM/Android
 - Make UI development easier by providing state-based approach without taking care of Protocol Buffers
 - Manage high performance and low memory/storage footprint by using well-tested modern technology such as Wire (for protobufs) and Ktor (for networking)
 - Provide full Steam Guard and new auth flow support
 - Removing the gap between WebAPI and Steam3 messages
 - Actively cache data for minimizing network usage and portability
+
+### Modules
+- `core`: main kSteam core, especially a small client that can connect to the Steam network and handle API/Authorization requests.
+- `core-persistence`: implementation for kSteam persistence subsystem, allowing for saving user credentials and machine tokens.
+- `client`: full-blown client based on kSteam core that provides user-friendly access to Steam API with active caching. **Relies heavily on Realm Database.**
+- `kotlinx-vdf`: KotlinX Serialization adapter for Valve Data Format, useful for PICS/Library parsing.
+- `proto-common`: common Steam protobufs used in several kSteam modules.
+
+### Which module set should I use?
+
+If you are planning to use kSteam only for basic Steam communication, consider using `core` and `core-persistance` (optional) modules. They provide authorization, credential management (optional) and raw Steam API connection (by using protobufs or binary messages).
+
+However, if you are going to create a GUI client, consider including the `client` module as well (if your target platform is supported by the Realm Database). It provides a lot of useful Steam API mappings paired with automatic Kotlin Flow support for dynamic UI.
+
+The `kotlinx-vdf` module is already provided with the modules above, but you can import it separately in case of not requiring to use any of kSteam features.
 
 ### Credits
 - [SteamKit](https://github.com/SteamRE/SteamKit/) and [JavaSteam](https://github.com/Longi94/JavaSteam/) - base for understanding how Steam3 network works

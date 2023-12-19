@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.wire) apply false
     alias(libs.plugins.dokka) apply false
     alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.realm) apply false
 }
 
 subprojects.onEach {

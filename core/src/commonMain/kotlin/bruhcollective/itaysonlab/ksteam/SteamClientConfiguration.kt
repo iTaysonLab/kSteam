@@ -2,6 +2,8 @@ package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
+import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
+import bruhcollective.itaysonlab.ksteam.persistence.MemoryPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
 import io.ktor.client.*
@@ -36,7 +38,11 @@ class SteamClientConfiguration(
     /**
      * Specifies logic used in Login ID usage when signing in.
      */
-    internal val authPrivateIpLogic: AuthPrivateIpLogic = UsePrivateIp
+    internal val authPrivateIpLogic: AuthPrivateIpLogic = UsePrivateIp,
+    /**
+     * Persistence driver is used for saving key/value pairs of important information
+     */
+    internal val persistenceDriver: KsteamPersistenceDriver = MemoryPersistenceDriver
 ) {
     init {
         provideOkioFilesystem().createDirectories(rootFolder, mustCreate = false)
@@ -70,9 +76,9 @@ class SteamClientConfiguration(
          * Uses current machine's private IP.
          *
          * This is the recommended approach which is used in the official client and other Steam Network libraries.
-         * Note that this method can cause collisions.
+         * Note that this method can cause collisions - mostly in the situations when an official Steam client is launched on a PC with a running kSteam instance (or vice versa).
          *
-         * On Apple platforms, it will fall back to [Generate] because current API usage can lead to App Store rules violation.
+         * On Apple platforms, it will fall back to [Generate] because current API usage can lead to the App Store rules violation.
          */
         UsePrivateIp,
 

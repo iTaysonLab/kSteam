@@ -50,8 +50,8 @@ value class SteamId(val id: ULong) {
     override fun toString() = id.toString()
 }
 
-private fun Long.setMask(bitoffset: Int, valuemask: Long, value: Long): Long {
-    return this and (valuemask shl bitoffset).inv() or (value and valuemask shl bitoffset)
+private fun Long.setMask(bitOffset: Int, valueMask: Long, value: Long): Long {
+    return this and (valueMask shl bitOffset).inv() or (value and valueMask shl bitOffset)
 }
 
 /**

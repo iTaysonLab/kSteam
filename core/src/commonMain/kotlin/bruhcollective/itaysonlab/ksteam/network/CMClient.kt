@@ -253,7 +253,7 @@ internal class CMClient(
     }
 
     /**
-     * Add a packet to a outgoing queue and then awaits for a response with the attached job ID.
+     * Add a packet to an outgoing queue and then awaits for a response with the attached job ID.
      *
      * @param packet the packet which needs to be queued for sending
      */
@@ -262,7 +262,7 @@ internal class CMClient(
     }
 
     /**
-     * Add a packet to a outgoing queue and then awaits for a (multiple) responses with the attached job ID.
+     * Add a packet to an outgoing queue and then awaits for a (multiple) responses with the attached job ID.
      *
      * @param packet the packet which needs to be queued for sending
      * @return a [Flow] of [SteamPacket]s related to this packet
@@ -282,7 +282,7 @@ internal class CMClient(
     }
 
     /**
-     * Add a packet to a outgoing queue and forget about it (no job IDs and awaits)
+     * Add a packet to an outgoing queue and forget about it (no job IDs and awaits)
      *
      * @param packet the packet which needs to be queued for sending
      */

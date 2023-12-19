@@ -9,7 +9,7 @@ import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
  *
  * For example:
  * Official PICS implementation (extension-pics) uses this plugin to expose it's "cached" metadata to Store handler (extension-core).
- * While the Store handler already has a inbuilt memory cache, using this metadata (for owned apps):
+ * While the Store handler already has an inbuilt memory cache, using this metadata (for owned apps):
  * - reduces extra API calls
  * - reduces extra memory usage (non-duplicating metadata)
  */

@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.HandlerMap
 import bruhcollective.itaysonlab.ksteam.handlers.Account
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.Configuration
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages
 import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
@@ -44,6 +45,7 @@ class SteamClient internal constructor(
     private val cmClient = CMClient(configuration = config, serverList = serverList)
 
     val handlers: HandlerMap = mutableMapOf<KClass<*>, BaseHandler>(
+        Configuration(this).createAssociation(),
         Account(this).createAssociation(),
         UnifiedMessages(this).createAssociation(),
         Sentry(this).createAssociation(),

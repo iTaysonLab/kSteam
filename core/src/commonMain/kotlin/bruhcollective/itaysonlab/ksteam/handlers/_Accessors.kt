@@ -8,4 +8,6 @@ inline val SteamClient.account get() = getHandler<Account>()
 inline val SteamClient.unifiedMessages get() = getHandler<UnifiedMessages>()
 
 inline val SteamClient.storage get() = getHandler<Storage>()
+inline val SteamClient.configuration get() = getHandler<Configuration>()
+
 internal inline val SteamClient.sentry get() = getHandler<Sentry>()

@@ -1,12 +1,12 @@
 [versions]
 kotlin = "1.9.20"
 kotlinx-coroutines = "1.7.3"
-kotlinx-json = "1.6.0"
+kotlinx-json = "1.6.1"
 ksp = "1.9.20-1.0.13"
 agp = "8.1.1"
 ktorClientVersion = "2.3.5"
 okio = "3.6.0"
-realm = "1.11.1"
+realm = "1.13.0"
 wire = "4.9.3"
 dokka = "1.8.10"
 
@@ -23,12 +23,15 @@ wire = { id = "com.squareup.wire", version.ref = "wire" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 
 [libraries]
+androidx-security-crypto = { module = "androidx.security:security-crypto", version = "1.1.0-alpha06" }
+androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version = "1.1.0-alpha06" }
+
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinx-json" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-json" }
 kotlinx-serialization-json-okio = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-okio", version.ref = "kotlinx-json" }
 kotlinx-immutables = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version = "0.3.5" }
-kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version = "0.4.0" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version = "0.4.1" }
 
 ktor-serialization = { module = "io.ktor:ktor-serialization", version.ref = "ktorClientVersion" }
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktorClientVersion" }

@@ -8,6 +8,7 @@ import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
+import bruhcollective.itaysonlab.ksteam.models.account.SteamAccountAuthorization
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.platform.*
@@ -42,7 +43,6 @@ class Account internal constructor(
 
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
     private val deviceInfo get() = steamClient.config.deviceInfo
-    private val globalConfiguration get() = steamClient.storage.globalConfiguration
 
     private var pollInfo: PollInfo? = null
     private var authStateWatcher: Job? = null
@@ -78,6 +78,12 @@ class Account internal constructor(
 
     /**
      * Signs in using a username and a password.
+     *
+     * @param username username
+     * @param password password
+     * @param rememberSession if core-persistence should be invoked (if installed)
+     *
+     * @return [AuthorizationResult] with further steps
      */
     suspend fun signIn(
         username: String,
@@ -150,6 +156,7 @@ class Account internal constructor(
     /**
      * Update a current session with a Steam Guard or email code.
      *
+     * @param code 2FA code
      * @return if 2FA code is valid
      */
     suspend fun updateCurrentSessionWithCode(code: String): Boolean {
@@ -163,7 +170,7 @@ class Account internal constructor(
                     code = code,
                     code_type = authState.sumProtos.filterNot {
                         it == EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation || it == EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation
-                    }.first()
+                    }.first().value
                 ), authorized = false
             )
         }
@@ -171,61 +178,45 @@ class Account internal constructor(
         return pollAuthStatusInternal()
     }
 
-    suspend fun signInWithAccessToken(
-        accessToken: String,
-        refreshToken: String,
+    /**
+     * Sign in with already acquired Steam account **refresh** token.
+     *
+     * Note that depending on the device type used when obtaining the token you may encounter different issues, such as "Access denied" errors on some API endpoints.
+     *
+     * @param steamId SteamID of the requested account, must not be 0
+     * @param refreshToken refresh token of the Steam account
+     */
+    suspend fun signInWithRefreshToken(
         steamId: SteamId,
-        accountName: String = "",
-        rememberSession: Boolean = false
+        refreshToken: String,
     ) {
+        require(steamId.id != SteamId.Empty.id) { "SteamID should not be 0 in order to sign in with an access token." }
         sendClientLogon(steamId = steamId, token = refreshToken)
-
-        if (rememberSession) {
-            awaitSignIn()
-            steamClient.storage.modifyAccount(steamId) {
-                copy(
-                    accessToken = accessToken,
-                    refreshToken = refreshToken,
-                    accountName = accountName
-                )
-            }
-        }
     }
 
     /**
-     * Tries to sign in using saved session data from [Storage].
-     * You can specify your own SteamID to sign in a particular account. If this parameter is null, the "default" SteamID will be selected.
+     * Tries to sign in using saved session data from [Configuration]. Requires `core-persistence` module connected.
+     * You can specify your own SteamID to sign in a particular account. If this parameter is omitted, the "default" SteamID will be selected.
      *
      * @return if there is an account available
      */
     suspend fun trySignInSaved(
-        steamId: SteamId? = null
+        steamId: SteamId = steamClient.configuration.autologinSteamId
     ): Boolean {
-        val accountToSignIn = if (steamId != null) {
-            globalConfiguration.availableAccounts[steamId.id]
-        } else {
-            globalConfiguration.availableAccounts[globalConfiguration.defaultAccount]
-        } ?: globalConfiguration.availableAccounts.values.firstOrNull()
+        val accountToSignIn = steamClient.configuration.getSecureAccount(steamId)
 
         return if (accountToSignIn != null) {
-            sendClientLogon(steamId = SteamId(accountToSignIn.steamId), token = accountToSignIn.refreshToken)
+            sendClientLogon(steamId = steamId, token = accountToSignIn.refreshToken)
             true
         } else {
-            if (steamId != null) {
-                KSteamLogging.logWarning("Account:AutoSignIn") {
-                    "No accounts found on the kSteam database. Please log in manually to use this feature."
-                }
-            }
-
+            KSteamLogging.logWarning("Account:AutoSignIn") { "No accounts found on the kSteam database. Please log in manually to use this feature." }
             false
         }
     }
 
     private suspend fun sendClientLogon(token: String, steamId: SteamId) {
-        if (globalConfiguration.machineId.isEmpty()) {
-            steamClient.storage.globalConfiguration = globalConfiguration.copy(
-                machineId = Random.nextBytes(64).toByteString().hex()
-            )
+        if (steamClient.configuration.machineId.isEmpty()) {
+            steamClient.configuration.machineId = Random.nextBytes(64).toByteString().hex()
         }
 
         val sentryFileHash = steamClient.sentry.sentryHash(steamId)
@@ -250,7 +241,7 @@ class Account internal constructor(
                 client_os_type = steamClient.config.deviceInfo.osType.encoded,
                 should_remember_password = true,
                 qos_level = 2,
-                machine_id = globalConfiguration.machineId.decodeHex(),
+                machine_id = steamClient.configuration.machineId.decodeHex(),
                 machine_name = steamClient.config.deviceInfo.deviceName,
                 obfuscated_private_ip = currentIp,
                 deprecated_obfustucated_private_ip = currentIp?.v4,
@@ -281,7 +272,7 @@ class Account internal constructor(
     suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
 
     fun hasSavedDataForAtLeastOneAccount(): Boolean {
-        return globalConfiguration.availableAccounts.isEmpty().not()
+        return steamClient.configuration.containsSecureAccount(steamClient.configuration.autologinSteamId)
     }
 
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
@@ -331,13 +322,11 @@ class Account internal constructor(
                 return true
             }
 
-            steamClient.storage.modifyAccount(steamId) {
-                copy(
-                    accessToken = pollAnswer.access_token,
-                    refreshToken = pollAnswer.refresh_token,
-                    accountName = pollAnswer.account_name.orEmpty()
-                )
-            }
+            steamClient.configuration.updateSecureAccount(steamId, SteamAccountAuthorization(
+                accessToken = pollAnswer.access_token,
+                refreshToken = pollAnswer.refresh_token,
+                accountName = pollAnswer.account_name.orEmpty()
+            ))
 
             sendClientLogon(
                 token = pollAnswer.refresh_token,
@@ -377,23 +366,22 @@ class Account internal constructor(
         }
     }
 
-    fun getSavedAccounts() = globalConfiguration.availableAccounts
-    fun getDefaultAccount() = getSavedAccounts()[globalConfiguration.defaultAccount]
-    fun getCurrentAccount() = getSavedAccounts()[steamClient.currentSessionSteamId.id]
-    fun buildSteamLoginSecureCookie() = getCurrentAccount()?.let { "${it.steamId}||${it.accessToken}" }.orEmpty()
+    fun getDefaultAccount() = steamClient.configuration.getSecureAccount(steamClient.configuration.autologinSteamId)
+    fun getCurrentAccount() = steamClient.configuration.getSecureAccount(steamClient.currentSessionSteamId)
+    fun buildSteamLoginSecureCookie() = getCurrentAccount()?.let { "${steamClient.currentSessionSteamId}||${it.accessToken}" }.orEmpty()
 
     suspend fun updateAccessToken() {
         try {
-            authenticationClient.GenerateAccessTokenForApp().executeSteam(
-                getCurrentAccount()!!.let { acc ->
+            getCurrentAccount()?.let { account ->
+                authenticationClient.GenerateAccessTokenForApp().executeSteam(
                     CAuthentication_AccessToken_GenerateForApp_Request(
-                        refresh_token = acc.refreshToken,
-                        steamid = acc.steamId.toLong()
+                        refresh_token = account.refreshToken,
+                        steamid = steamClient.currentSessionSteamId.longId
                     )
-                }
-            ).access_token?.let {
-                steamClient.storage.modifyAccount(steamClient.currentSessionSteamId) {
-                    copy(accessToken = it)
+                ).access_token?.let { newAccessToken ->
+                    steamClient.configuration.updateSecureAccount(steamClient.currentSessionSteamId, account.copy(
+                        accessToken = newAccessToken
+                    ))
                 }
             }
         } catch (e: SteamRpcException) {
