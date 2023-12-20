@@ -11,7 +11,8 @@ import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.account.SteamAccountAuthorization
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.platform.*
+import bruhcollective.itaysonlab.ksteam.platform.encryptWithRsa
+import bruhcollective.itaysonlab.ksteam.platform.getIpv4Address
 import bruhcollective.itaysonlab.ksteam.util.*
 import io.ktor.util.*
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +36,11 @@ import kotlin.random.Random
 class Account internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
-    private val authenticationClient = GrpcAuthenticationClient(steamClient.unifiedMessages)
+    private companion object {
+        const val TAG = "Account"
+    }
+
+    private val authenticationClient by lazy { GrpcAuthenticationClient(steamClient.unifiedMessages) }
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -62,8 +67,12 @@ class Account internal constructor(
                 CAuthentication_BeginAuthSessionViaQR_Request(
                     device_friendly_name = deviceInfo.deviceName,
                     device_details = deviceInfo.toAuthDetails(),
-                    platform_type = deviceInfo.platformType,
-                    website_id = "Unknown"
+                    platform_type = deviceInfo.platformType.ordinal,
+                    website_id = if (deviceInfo.platformType == EAuthTokenPlatformType.k_EAuthTokenPlatformType_MobileApp) {
+                        "Mobile"
+                    } else {
+                        "Unknown"
+                    }
                 ), authorized = false
             )
         } catch (e: SteamRpcException) {
@@ -104,7 +113,7 @@ class Account internal constructor(
                 CAuthentication_BeginAuthSessionViaCredentials_Request(
                     device_friendly_name = deviceInfo.deviceName,
                     device_details = deviceInfo.toAuthDetails(),
-                    platform_type = deviceInfo.platformType,
+                    platform_type = deviceInfo.platformType.ordinal,
                     website_id = if (deviceInfo.platformType == EAuthTokenPlatformType.k_EAuthTokenPlatformType_MobileApp) {
                         "Mobile"
                     } else {
@@ -125,9 +134,7 @@ class Account internal constructor(
             }
         }
 
-        KSteamLogging.logVerbose("Account:SignIn") {
-            "Success, waiting for 2FA. Available confirmations: ${signInResult.allowed_confirmations.joinToString()}"
-        }
+        KSteamLogging.logVerbose(TAG) { "[login] success, waiting for 2FA with available types: [${signInResult.allowed_confirmations.joinToString()}]" }
 
         pollInfo = PollInfo(signInResult.client_id!! to signInResult.request_id!!)
         authState.emit(AuthorizationState.AwaitingTwoFactor(signInResult))
@@ -145,7 +152,7 @@ class Account internal constructor(
                 ?.getCodeFor(SteamId(signInResult.steamid?.toULong() ?: 0u))
 
             if (guardCode != null) {
-                KSteamLogging.logVerbose("Account:SignIn") { "This SteamID has a registered Guard instance, we can skip 2FA" }
+                KSteamLogging.logVerbose(TAG) { "[login] kSteam persistence has Steam Guard for this SteamID, skipping 2FA..." }
                 updateCurrentSessionWithCode(guardCode)
             }
         }
@@ -209,7 +216,7 @@ class Account internal constructor(
             sendClientLogon(steamId = steamId, token = accountToSignIn.refreshToken)
             true
         } else {
-            KSteamLogging.logWarning("Account:AutoSignIn") { "No accounts found on the kSteam database. Please log in manually to use this feature." }
+            KSteamLogging.logWarning(TAG) { "[autologin] no saved accounts in kSteam persistence, skipping..." }
             false
         }
     }
@@ -306,7 +313,7 @@ class Account internal constructor(
 
         return if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
             // Success, now we can cancel the session
-            KSteamLogging.logVerbose("Account:Watcher") { "Succesfully logged in: $pollAnswer" }
+            KSteamLogging.logVerbose(TAG) { "[poller] successfully logged in -> $pollAnswer" }
 
             val steamId = try {
                 SteamId(json.decodeFromString<JwtToken>(pollAnswer.refresh_token.split(".")[1].decodeBase64String()).sub.toULong())
@@ -316,9 +323,7 @@ class Account internal constructor(
             }
 
             if (steamId == null) {
-                KSteamLogging.logError("Account:Watcher") {
-                    "Received JWT, but no Steam ID exposed - couldn't continue signing in"
-                }
+                KSteamLogging.logError(TAG) { "[poller] received JWT, but no Steam ID exposed: couldn't continue signing in" }
                 return true
             }
 
