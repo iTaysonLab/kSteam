@@ -8,6 +8,8 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import steam.enums.EAuthTokenRevokeAction
+import steam.enums.ESessionPersistence
 import steam.webui.authentication.*
 
 /**
@@ -64,7 +66,7 @@ class GuardManagement(
             requestData = CAuthentication_RefreshToken_Revoke_Request(
                 token_id = id,
                 steamid = steamClient.currentSessionSteamId.longId,
-                revoke_action = EAuthTokenRevokeAction.k_EAuthTokenRevokePermanent,
+                revoke_action = EAuthTokenRevokeAction.k_EAuthTokenRevokePermanent.ordinal,
                 signature = steamClient.guard.instanceForCurrentUser()!!.sgCreateRevokeSignature(id)
             )
         )
@@ -84,7 +86,7 @@ class GuardManagement(
                     ESessionPersistence.k_ESessionPersistence_Persistent
                 } else {
                     ESessionPersistence.k_ESessionPersistence_Ephemeral
-                },
+                }.ordinal,
                 signature = steamClient.guard.instanceForCurrentUser()!!.sgCreateSignature(session.version, session.id)
             )
         )

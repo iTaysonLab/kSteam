@@ -8,9 +8,9 @@ import bruhcollective.itaysonlab.ksteam.models.notifications.NotificationFeed
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
+import steam.enums.SteamNotificationType
 import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Request
 import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Response
-import steam.webui.steamnotification.SteamNotificationType
 
 /**
  * Access persona data using this interface.

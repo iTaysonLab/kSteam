@@ -1,8 +1,7 @@
-package bruhcollective.itaysonlab.ksteam.handlers
+package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.handlers.internal.CloudConfiguration
-import bruhcollective.itaysonlab.ksteam.handlers.library.Pics
+import bruhcollective.itaysonlab.ksteam.handlers.library.internal.CloudConfiguration
 
 inline val SteamClient.library get() = getHandler<Library>()
 inline val SteamClient.pics get() = getHandler<Pics>()

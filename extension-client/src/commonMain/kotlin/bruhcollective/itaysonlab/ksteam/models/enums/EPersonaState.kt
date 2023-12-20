@@ -10,6 +10,6 @@ enum class EPersonaState {
     LookingToPlay;
 
     companion object {
-        fun byEncoded(num: Int) = values().getOrElse(num) { Offline }
+        fun byEncoded(num: Int) = entries.getOrElse(num) { Offline }
     }
 }

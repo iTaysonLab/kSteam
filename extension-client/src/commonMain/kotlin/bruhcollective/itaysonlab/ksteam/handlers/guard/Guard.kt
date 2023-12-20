@@ -9,10 +9,7 @@ import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
 import bruhcollective.itaysonlab.ksteam.guardMoveConfirm
 import bruhcollective.itaysonlab.ksteam.guardMoveStart
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.account
-import bruhcollective.itaysonlab.ksteam.handlers.storage
-import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
+import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
@@ -23,13 +20,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.okio.decodeFromBufferedSource
 import kotlinx.serialization.json.okio.encodeToBufferedSink
-import steam.webui.twofactor.CTwoFactor_AddAuthenticator_Request
-import steam.webui.twofactor.CTwoFactor_AddAuthenticator_Response
-import steam.webui.twofactor.CTwoFactor_FinalizeAddAuthenticator_Request
-import steam.webui.twofactor.CTwoFactor_FinalizeAddAuthenticator_Response
-import steam.webui.twofactor.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request
-import steam.webui.twofactor.CTwoFactor_RemoveAuthenticator_Request
-import steam.webui.twofactor.CTwoFactor_RemoveAuthenticator_Response
+import steam.webui.twofactor.*
 
 /**
  * Steam Guard provider.
@@ -85,7 +76,7 @@ class Guard(
                 authenticator_type = 1,
                 sms_phone_id = "1",
                 version = 2,
-                device_identifier = configuration.uuid
+                device_identifier = steamClient.configuration.getUuid()
             )
         ).data.let { response ->
             if (response.status == EResult.DuplicateRequest.encoded) {

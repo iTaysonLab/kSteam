@@ -62,9 +62,9 @@ data class Persona internal constructor(
     )
 
     data class LastSeen internal constructor(
-        val lastLogOn: Int,
-        val lastLogOff: Int,
-        val lastSeenOnline: Int
+        val lastLogOn: Int = 0,
+        val lastLogOff: Int = 0,
+        val lastSeenOnline: Int = 0
     )
 
     sealed interface IngameStatus {

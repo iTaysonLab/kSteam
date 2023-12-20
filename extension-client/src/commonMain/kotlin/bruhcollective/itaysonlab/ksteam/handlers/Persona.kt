@@ -1,35 +1,26 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
+import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EClientPersonaStateFlag
-import bruhcollective.itaysonlab.ksteam.models.enums.EFriendRelationship
-import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.models.enums.relationship
-import bruhcollective.itaysonlab.ksteam.models.enums.steamId
+import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
 import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
-import kotlinx.coroutines.flow.update
+import bruhcollective.itaysonlab.ksteam.models.toSteamId
+import io.realm.kotlin.UpdatePolicy
+import io.realm.kotlin.ext.query
+import io.realm.kotlin.ext.realmDictionaryOf
+import io.realm.kotlin.notifications.InitialResults
+import io.realm.kotlin.notifications.PendingObject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import steam.webui.common.CMsgClientAccountInfo
-import steam.webui.common.CMsgClientChangeStatus
-import steam.webui.common.CMsgClientClanState
-import steam.webui.common.CMsgClientLogonResponse
-import steam.webui.common.CMsgClientPersonaState
-import steam.webui.common.CMsgClientPersonaState_Friend
-import steam.webui.common.CMsgClientRequestFriendData
+import steam.webui.common.*
 import steam.webui.friendslist.CMsgClientFriendsList
 
 /**
@@ -38,64 +29,66 @@ import steam.webui.friendslist.CMsgClientFriendsList
  * All data will be kept inside the in-memory cache.
  */
 class Persona internal constructor(
-    private val steamClient: SteamClient
+    private val steamClient: SteamClient,
+    private val database: KSteamRealmDatabase
 ) : BaseHandler {
-    private val personas = MutableStateFlow<PersonaList>(emptyMap())
-
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
     val currentPersona = _currentPersonaData.asStateFlow()
 
     private val _currentPersonaOnlineStatus = MutableStateFlow(EPersonaState.Offline)
     val currentPersonaOnlineStatus = _currentPersonaOnlineStatus.asStateFlow()
 
-    private val _currentFriendList = MutableStateFlow<FriendsList>(emptyMap())
-    val currentFriendList = _currentFriendList.asStateFlow()
-
-    private val personaUpdateMutex = Mutex()
     private val personaFriendListUpdateMutex = Mutex()
 
-    private suspend fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) = personaUpdateMutex.withLock {
-        KSteamLogging.logVerbose("Persona:NewState") { "Incoming: ${incoming.joinToString()}" }
+    private suspend fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
+        KSteamLogging.logVerbose("Persona") { "realm/persona@new ${incoming.joinToString()}" }
 
-        personas.update { map ->
-            map.toMutableMap().apply {
-                incoming.forEach { friend ->
-                    put(SteamId(friend.friendid?.toULong() ?: 0u), Persona(friend))
-                }
+        database.realm.write {
+            incoming.forEach { friend ->
+                // TODO: research how we can save friendRelationshipsWith with a better codestyle
+                val currentFriend = query<RealmPersona>("id == $0", friend.friendid).first().find()
+
+                copyToRealm(RealmPersona(Persona(friend)).apply {
+                    friendRelationshipsWith.putAll(currentFriend?.friendRelationshipsWith ?: realmDictionaryOf())
+                }, updatePolicy = UpdatePolicy.ALL)
             }
         }
     }
 
     /**
      * Provides live [Persona] data for several [SteamId]'s.
+     * If the data for some [SteamId]'s are not present in the database yet, the [Flow] will not return them in the list.
      *
      * This method also can return data for non-friends, but it is not known if updates can be received for them.
      */
     suspend fun personas(ids: List<SteamId>): Flow<List<Persona>> {
-        ids.filterNot { personas.value.containsKey(it) }.let { nonPresentPersonas ->
-            if (nonPresentPersonas.isNotEmpty()) {
-                requestPersonas(nonPresentPersonas)
+        return database.realm.query<RealmPersona>(
+            "id IN $0", ids.map(SteamId::longId)
+        ).asFlow().onEach { realmChanges ->
+            // Hook our InitialResults change result to quickly request for more personas
+            if (realmChanges is InitialResults<RealmPersona>) {
+                val missingSteamIds = ids - realmChanges.list.map { it.id.toSteamId() }.toSet()
+                KSteamLogging.logVerbose("Persona") { "realm/mutiple@initial missing: [${missingSteamIds.joinToString()}]" }
+                requestPersonas(missingSteamIds) // this will give us missing SteamID's
             }
-        }
-
-        return personas.map { map ->
-            ids.mapNotNull { id -> map[id] }
-        }
+        }.map { it.list.map(RealmPersona::convert) } // and this will give us kSteam Personas
     }
 
     /**
      * Provides live [Persona] data for the specific [SteamId].
      *
+     * If the data is not present in the database yet, the [Flow] will return a placeholder.
      * This method also can return data for non-friends, but it is not known if updates can be received for them.
      */
     suspend fun persona(id: SteamId): Flow<Persona> {
-        if (personas.value.containsKey(id).not()) {
-            requestPersonas(listOf(id))
-        }
-
-        return personas.mapNotNull {
-            it[id]
-        }
+        return database.realm.query<RealmPersona>(
+            "id == $0", id.longId
+        ).first().asFlow().onEach { realmChanges ->
+            if (realmChanges is PendingObject<RealmPersona>) {
+                KSteamLogging.logVerbose("Persona") { "realm/single@pending $id" }
+                requestPersonas(listOf(id))
+            }
+        }.map { it.obj?.convert() ?: Persona.Unknown } // and this will give us kSteam Persona
     }
 
     /**
@@ -105,6 +98,7 @@ class Persona internal constructor(
      */
     suspend fun setOnlineStatus(mode: EPersonaState = EPersonaState.Online, stateFlags: Int = 0) {
         if (_currentPersonaOnlineStatus.value == mode) return
+
         _currentPersonaOnlineStatus.value = mode
         steamClient.executeAndForget(
             SteamPacket.newProto(
@@ -120,20 +114,30 @@ class Persona internal constructor(
 
     /**
      * Returns a Flow with a current user [Persona] data.
+     *
+     * If the data is not present in the database yet, the [Flow] will return a placeholder.
      */
-    fun currentLivePersona() = personas.combine(currentPersona) { personaMap, signedInPersona ->
-        personaMap[signedInPersona.id] ?: Persona.Unknown
-    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun currentLivePersona(): Flow<Persona> = _currentPersonaData.distinctUntilChangedBy {
+        it.id
+    }.flatMapLatest { currentPersona ->
+        database.realm.query<RealmPersona>(
+            "id == $0", currentPersona.id.longId
+        ).first().asFlow()
+    }.map { it.obj?.convert() ?: Persona.Unknown }
 
     /**
      * Returns [SteamId]'s relationship with the current user.
      */
-    fun personaRelationship(steamId: SteamId): Flow<EFriendRelationship> = currentFriendList.map {
-        it[steamId] ?: EFriendRelationship.None
+    fun personaRelationship(steamId: SteamId): Flow<EFriendRelationship> {
+        return database.realm.query<RealmPersona>("id == $0", steamId.longId)
+            .first()
+            .asFlow()
+            .map { EFriendRelationship.byEncoded(it.obj?.friendRelationshipsWith?.get(steamId.toString())) }
     }
 
-    private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) = personaFriendListUpdateMutex.withLock {
-        _currentFriendList.update {
+    private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) {
+        personaFriendListUpdateMutex.withLock {
             // 1. Request persona states
             requestPersonas(if (newList.bincremental == true) {
                 newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }
@@ -143,16 +147,14 @@ class Persona internal constructor(
             })
 
             // 2. Update friend-list flow
-            if (newList.bincremental == true) {
-                val parted = newList.friends.partition { friend ->
-                    friend.relationship == EFriendRelationship.None
+            database.realm.write {
+                val steamLongId = currentPersona.value.id.longId
+
+                newList.friends.forEach { changedFriend ->
+                    KSteamLogging.logVerbose("Persona") { "realm/friends@change ${changedFriend.ulfriendid} -> ${changedFriend.efriendrelationship}" }
+                    val persona = query<RealmPersona>("id == $0", changedFriend.ulfriendid).first().find() ?: copyToRealm(RealmPersona().apply { id = changedFriend.ulfriendid ?: 0 })
+                    persona.friendRelationshipsWith[steamLongId.toString()] = changedFriend.efriendrelationship ?: 0
                 }
-
-                val removedIds = parted.first.map { f -> f.steamId }
-
-                it.filterNot { f -> f.key in removedIds } + parted.second.associate { f -> f.steamId to f.relationship }
-            } else {
-                newList.friends.associate { f -> f.steamId to f.relationship }
             }
         }
     }
@@ -183,8 +185,8 @@ class Persona internal constructor(
                 updatePersonaState(packet.getProtoPayload(CMsgClientPersonaState.ADAPTER).data.friends)
             }
 
-            EMsg.k_EMsgClientClanState-> {
-                KSteamLogging.logVerbose("Persona") {
+            EMsg.k_EMsgClientClanState -> {
+                KSteamLogging.logVerbose("Persona-ClanState") {
                     packet.getProtoPayload(CMsgClientClanState.ADAPTER).dataNullable.toString()
                 }
             }
@@ -223,6 +225,3 @@ class Persona internal constructor(
         }
     }
 }
-
-typealias PersonaList = Map<SteamId, Persona>
-typealias FriendsList = Map<SteamId, EFriendRelationship>

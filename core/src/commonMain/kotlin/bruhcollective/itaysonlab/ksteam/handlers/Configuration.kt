@@ -4,6 +4,7 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.account.SteamAccountAuthorization
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
+import bruhcollective.itaysonlab.ksteam.platform.getRandomUuid
 
 /**
  * Provides customized storage implementation for handlers
@@ -13,6 +14,7 @@ class Configuration internal constructor(
 ) : BaseHandler {
     companion object Keys {
         const val KEY_MACHINE_ID = "machine_id"
+        const val KEY_MACHINE_UUID = "machine_uuid"
         const val KEY_AUTOLOGIN_ID = "autologin_steamid"
 
         const val KEY_SECURE_NAME = "account_name"
@@ -26,11 +28,21 @@ class Configuration internal constructor(
         get() = persist.getString(KEY_MACHINE_ID).orEmpty()
         set(value) { persist.set(KEY_MACHINE_ID, value) }
 
+    var machineUuid: String
+        get() = persist.getString(KEY_MACHINE_UUID).orEmpty()
+        set(value) { persist.set(KEY_MACHINE_UUID, value) }
+
     var autologinSteamId: SteamId
-        get() = persist.getLong(KEY_AUTOLOGIN_ID).toSteamId() ?: SteamId.Empty
+        get() = persist.getLong(KEY_AUTOLOGIN_ID).toSteamId()
         set(value) { persist.set(KEY_AUTOLOGIN_ID, value.id.toLong()) }
 
     //
+
+    fun getUuid(): String {
+        return machineUuid.ifEmpty {
+            getRandomUuid().also { machineUuid = it }
+        }
+    }
 
     fun containsSecureAccount(id: SteamId): Boolean {
         return id != SteamId.Empty && persist.secureContainsIdentity(id)

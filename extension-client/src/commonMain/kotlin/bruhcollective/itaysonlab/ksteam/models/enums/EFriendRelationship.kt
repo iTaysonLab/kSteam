@@ -13,7 +13,7 @@ enum class EFriendRelationship {
     IgnoredFriend;
 
     companion object {
-        fun byEncoded(num: Int?) = values().getOrElse(num ?: 0) { None }
+        fun byEncoded(num: Int?) = entries.getOrElse(num ?: 0) { None }
     }
 }
 

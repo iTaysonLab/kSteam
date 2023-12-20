@@ -6,9 +6,10 @@ import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfResult
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfirmationItem
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.configuration
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.encodeURLParameter
+import io.ktor.client.statement.*
+import io.ktor.http.*
 
 /**
  * Mobile confirmations using Steam Guard instances. (trade/market)
@@ -23,7 +24,7 @@ class GuardConfirmation(
         return try {
             instance.confirmationTicket("list").let { sigStamp ->
                 steamClient.webApi.community.method("mobileconf/getlist") {
-                    "p" with configuration.uuid
+                    "p" with steamClient.configuration.getUuid()
                     "a" with instance.steamId.longId
                     "t" with sigStamp.generationTime
                     "k" with sigStamp.b64EncodedSignature
@@ -58,7 +59,7 @@ class GuardConfirmation(
 
         return instance.confirmationTicket(tag).let { sigStamp ->
             steamClient.webApi.community.method("mobileconf/ajaxop") {
-                "p" with configuration.uuid
+                "p" with steamClient.configuration.getUuid()
                 "a" with instance.steamId.longId.toString()
                 "t" with sigStamp.generationTime.toString()
                 "k" with sigStamp.b64EncodedSignature
@@ -80,7 +81,7 @@ class GuardConfirmation(
     ): String {
         val sigStamp = instance.confirmationTicket("detail")
         val b64 = sigStamp.b64EncodedSignature.encodeURLParameter()
-        return "https://steamcommunity.com/mobileconf/detailspage/${item.id}?p=${configuration.uuid}&a=${instance.steamId.longId}&k=$b64&t=${sigStamp.generationTime}&m=react&tag=detail"
+        return "https://steamcommunity.com/mobileconf/detailspage/${item.id}?p=${steamClient.configuration.getUuid()}&a=${instance.steamId.longId}&k=$b64&t=${sigStamp.generationTime}&m=react&tag=detail"
     }
 
     override suspend fun onEvent(packet: SteamPacket) = Unit

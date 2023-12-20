@@ -4,7 +4,7 @@ import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class AvatarHash internal constructor(private val hash: String) {
+value class AvatarHash internal constructor(internal val hash: String) {
     companion object {
         val Empty = AvatarHash("")
     }

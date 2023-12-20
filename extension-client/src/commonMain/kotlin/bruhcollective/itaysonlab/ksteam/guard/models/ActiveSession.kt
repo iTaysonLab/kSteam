@@ -4,10 +4,10 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import bruhcollective.itaysonlab.ksteam.util.ipString
+import steam.enums.EAuthSessionGuardType
+import steam.enums.EAuthTokenPlatformType
 import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
 import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent
-import steam.webui.authentication.EAuthSessionGuardType
-import steam.webui.authentication.EAuthTokenPlatformType
 import steam.webui.common.CMsgIPAddress
 
 /**
@@ -62,7 +62,7 @@ data class ActiveSession internal constructor(
         id = proto.token_id ?: 0L,
         deviceName = proto.token_description.orEmpty(),
         timeUpdated = proto.time_updated ?: 0,
-        platformType = proto.platform_type ?: EAuthTokenPlatformType.k_EAuthTokenPlatformType_Unknown,
+        platformType = EAuthTokenPlatformType.fromValue(proto.platform_type ?: 0) ?: EAuthTokenPlatformType.k_EAuthTokenPlatformType_Unknown,
         loggedIn = proto.logged_in ?: false,
         osPlatform = proto.os_platform ?: 0,
         confirmedWith = proto.auth_type?.let { EAuthSessionGuardType.fromValue(it) }
