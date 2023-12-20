@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
 /**
@@ -53,6 +54,7 @@ class SteamClient internal constructor(
     ) bindExtensions injectedExtensions
 
     val language get() = config.language
+    val workingDirectory get() = config.rootFolder
 
     val connectionStatus get() = cmClient.clientState
 
@@ -113,11 +115,11 @@ class SteamClient internal constructor(
                 KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a client state: ${throwable.message}" }
             }.launchIn(eventsScope)
 
-        cmClient.incomingPacketsQueue
-            .filter { packet ->
+        eventsScope.launch {
+            cmClient.incomingPacketsQueue.filter { packet ->
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
-            }.onEach { packet ->
+            }.collect { packet ->
                 // KSteamLogging.logVerbose("SteamClient:EventFlow", "Dispatching packet to [${handlers.values.joinToString { it::class.simpleName.orEmpty() }}]")
                 handlers.values.forEach { handler ->
                     try {
@@ -135,7 +137,8 @@ class SteamClient internal constructor(
                         e.printStackTrace()
                     }
                 }
-            }.launchIn(eventsScope)
+            }
+        }
     }
 
     /**
@@ -153,7 +156,7 @@ class SteamClient internal constructor(
     /**
      * A [getHandler] alternative to find a plugin.
      *
-     * A plugin in kSteam is a "abstract" plug-in [BaseHandler] that can be used in the core module/extensions without the need to depend on a specific implementation.
+     * A plugin in kSteam is an "abstract" plug-in [BaseHandler] that can be used in the core module/extensions without the need to depend on a specific implementation.
      * For example, a "core" module might use a metadata plugin to prefer cached for saving some bandwidth.
      */
     inline fun <reified T> getImplementingHandlerOrNull(): T? {
