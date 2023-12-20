@@ -10,9 +10,11 @@ import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.persistence.MemoryPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
+import bruhcollective.itaysonlab.ksteam.platform.getDefaultWorkingDirectory
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import okio.Path
+import okio.Path.Companion.toPath
 
 @DslMarker
 @Target(AnnotationTarget.CLASS, AnnotationTarget.TYPEALIAS, AnnotationTarget.TYPE, AnnotationTarget.FUNCTION)
@@ -120,7 +122,7 @@ class KSteamConfiguration {
         
         return SteamClient(
             config = SteamClientConfiguration(
-                rootFolder = rootFolder ?: error("rootFolder must be set"),
+                rootFolder = rootFolder ?: getDefaultWorkingDirectory()?.toPath(normalize = true) ?: error("Current platform does not support auto-resolving of the working directory. Please, set it manually in the kSteam DSL."),
                 ktorEngineResolver = ktorEngineResolver,
                 deviceInfo = deviceInfo,
                 language = language,
