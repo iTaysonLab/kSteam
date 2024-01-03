@@ -12,7 +12,7 @@ import bruhcollective.itaysonlab.ksteam.platform.getRandomUuid
 class Configuration internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
-    companion object Keys {
+    private companion object Keys {
         const val KEY_MACHINE_ID = "machine_id"
         const val KEY_MACHINE_UUID = "machine_uuid"
         const val KEY_AUTOLOGIN_ID = "autologin_steamid"

@@ -33,6 +33,7 @@ class ApplePersistenceDriver (
     override fun set(key: String, value: Int) { nsDefaults.setInteger(forKey = key, value = value.toLong()) }
 
     override fun containsKey(key: String): Boolean = nsDefaults.objectForKey(key) != null
+    override fun delete(vararg key: String) { key.forEach(nsDefaults::removeObjectForKey) }
 
     // Security: we "compact" secure user information into one "application password" that are differentiable by the SteamId
 
@@ -49,6 +50,11 @@ class ApplePersistenceDriver (
 
     override fun secureSet(id: SteamId, vararg pairs: Pair<String, String>) {
         getIdentity(id).putAll(pairs)
+        uploadIdentity(id)
+    }
+
+    override fun secureDelete(id: SteamId, vararg key: String) {
+        getIdentity(id).apply { key.forEach { remove(it) } }
         uploadIdentity(id)
     }
 

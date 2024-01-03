@@ -55,6 +55,7 @@ class SteamClient internal constructor(
 
     val language get() = config.language
     val workingDirectory get() = config.rootFolder
+    val persistence get() = config.persistenceDriver
 
     val connectionStatus get() = cmClient.clientState
 

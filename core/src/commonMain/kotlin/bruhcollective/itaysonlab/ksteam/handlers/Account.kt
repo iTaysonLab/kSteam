@@ -327,6 +327,7 @@ class Account internal constructor(
                 return true
             }
 
+            steamClient.configuration.autologinSteamId = steamId
             steamClient.configuration.updateSecureAccount(steamId, SteamAccountAuthorization(
                 accessToken = pollAnswer.access_token,
                 refreshToken = pollAnswer.refresh_token,

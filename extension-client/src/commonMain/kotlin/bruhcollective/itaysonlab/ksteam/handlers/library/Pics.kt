@@ -1,49 +1,96 @@
 package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.database.keyvalue.PicsVdfKvDatabase
+import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
-import bruhcollective.itaysonlab.ksteam.platform.dispatchListProcessing
-import kotlinx.coroutines.FlowPreview
+import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
+import bruhcollective.itaysonlab.ksteam.models.pics.PicsPackageChangeNumber
+import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
+import bruhcollective.itaysonlab.kxvdf.Vdf
+import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
+import io.realm.kotlin.UpdatePolicy
+import io.realm.kotlin.ext.query
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import okio.Buffer
+import okio.ByteString.Companion.toByteString
 import steam.webui.common.*
 
 /**
  * A handler to access the PICS infrastructure
  */
+@OptIn(ExperimentalSerializationApi::class)
 class Pics internal constructor(
     private val steamClient: SteamClient,
-    private val database: PicsVdfKvDatabase
+    internal val database: KSteamRealmDatabase
 ) : BaseHandler, MetadataPlugin {
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
-    suspend fun getAppIdsAsInfos(appIds: List<Int>): List<AppInfo> = appIds.mapNotNull { appId ->
-        database.apps.get(appId)
+    /**
+     * Suspends execution until PICS subsystem is ready to be used (all packages/apps verified and inserted into DB).
+     */
+    suspend fun awaitPicsInitialization() {
+        _isPicsAvailable.first { it == PicsState.Ready }
     }
 
-    private suspend fun getAppIdsFiltered(filters: DynamicFilters): Sequence<AppInfo> =
-        database.sortAppsByDynamicFilters(filters)
+    /**
+     * Queries an application in PICS subsystem, returning [SteamApplication] if an app is found.
+     *
+     * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
+     */
+    fun getSteamApplication(id: Int): SteamApplication? {
+        return SteamApplication.fromPics(
+            database.realm.query<AppInfo>("appId == $0", id).first().find() ?: return null
+        )
+    }
 
-    internal suspend fun getAppSummariesFiltered(filters: DynamicFilters): Sequence<AppSummary> =
-        getAppIdsFiltered(filters).map { app ->
-            AppSummary(app.appId, app.common.name, app.common.iconId)
+    /**
+     * Queries multiple applications in PICS subsystem, returning [SteamApplication]s if any apps are found.
+     *
+     * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
+     */
+    fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
+        return database.realm.query<AppInfo>("appId IN $0", ids).find().map(SteamApplication::fromPics)
+    }
+
+    /**
+     * Queries multiple applications in PICS subsystem, returning [SteamApplication]s if any apps are found.
+     *
+     * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
+     */
+    fun getSteamApplications(vararg ids: Int): List<SteamApplication> = getSteamApplications(ids.toList())
+
+    /**
+     * Queries an application list in PICS subsystem, returning [SteamApplication]s filtered by filters.
+     *
+     * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
+     */
+    fun querySteamApplicationsByFilter(filters: DynamicFilters): List<SteamApplication> {
+        return composeRealmQueryByFilters(filters).find().map(SteamApplication::fromPics)
+    }
+
+    /**
+     * Queries an application list in PICS subsystem, returning [SteamApplication]s filtered by filters. Returns a [Flow] that dynamically updates based on library changes.
+     *
+     * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
+     */
+    fun flowSteamApplicationsByFilter(filters: DynamicFilters): Flow<List<SteamApplication>> {
+        return composeRealmQueryByFilters(filters).asFlow().map {
+            it.list.map(SteamApplication::fromPics)
         }
-
-    suspend fun getAppSummariesByAppId(appIds: List<Int>) =
-        getAppIdsAsInfos(appIds).associate { app ->
-            app.appId to AppSummary(app.appId, app.common.name, app.common.iconId)
-        }
-
-    suspend fun getAppInfo(id: Int): AppInfo? = database.apps.get(id)
+    }
 
     // region Internal stuff
 
@@ -68,21 +115,18 @@ class Pics internal constructor(
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
         KSteamLogging.logVerbose("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
 
-        database.packages.preheatInitialization()
-        database.apps.preheatInitialization()
+        val requiresUpdate = withContext(Dispatchers.Default) {
+            licenses.filter { sLicense ->
+                if (sLicense.package_id != null && sLicense.change_number != null) {
+                    val packageId = sLicense.package_id ?: return@filter false
+                    val changeNumber = sLicense.change_number ?: return@filter false
+                    val databaseChangeNumber = database.realm.query<PicsPackageChangeNumber>("packageId == $0", packageId).first().find()?.changeNumber
 
-        val requiresUpdate = licenses.filter { sLicense ->
-            if (sLicense.package_id != null && sLicense.change_number != null) {
-                val packageId = sLicense.package_id ?: return@filter false
-                val changeNumber = sLicense.change_number ?: return@filter false
-
-                database.packages.containsKey(packageId)
-                    .not() || changeNumber > database.getChangeNumberFor(
-                    PicsVdfKvDatabase.Keys.Packages,
-                    packageId
-                )
-            } else {
-                false
+                    // if null, package was NOT cached
+                    databaseChangeNumber == null || changeNumber > databaseChangeNumber
+                } else {
+                    false
+                }
             }
         }
 
@@ -106,31 +150,34 @@ class Pics internal constructor(
             }
         }
 
-        dispatchListProcessing(loadPackageInfo(requiresUpdate).distinctBy { it.packageid }) { packageInfoProto ->
-            val packageId = packageInfoProto.packageid ?: return@dispatchListProcessing null
-            val changeNumber = packageInfoProto.change_number?.toUInt()?.toLong()
-                ?: return@dispatchListProcessing null
-            val buffer =
-                packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
+        loadPackageInfo(requiresUpdate)
+            .distinctBy { it.packageid }
+            .forEach { packageInfoProto ->
+                val packageId = packageInfoProto.packageid ?: return@forEach
+                val changeNumber = packageInfoProto.change_number ?: return@forEach
+                val buffer = packageInfoProto.buffer?.toByteArray() ?: return@forEach
 
-            database.parseBinaryVdf<PackageInfo>(buffer)?.also { packageInfo ->
-                database.putPicsMetadata(
-                    PicsVdfKvDatabase.Keys.Packages,
-                    packageId,
-                    changeNumber,
-                    buffer
-                )
-                database.packages.put(packageId, packageInfo)
-            }?.appIds
-        }
+                parseBinaryVdf<PackageInfo>(buffer)?.also { packageInfo ->
+                    database.realm.write {
+                        copyToRealm(PicsPackageChangeNumber().apply {
+                            this.packageId = packageId
+                            this.changeNumber = changeNumber
+                        }, updatePolicy = UpdatePolicy.ALL)
+
+                        copyToRealm(packageInfo, updatePolicy = UpdatePolicy.ALL)
+                    }
+                }
+            }
     }
 
     // This is trying to mimic Steam client behavior
+    @OptIn(ExperimentalStdlibApi::class)
     private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>): List<Int> {
         // Get ids of app that we actually own
         val appIds = licenses
-            .mapNotNull { database.packages.get(it.package_id ?: return@mapNotNull null)?.appIds }
-            .flatten()
+            .mapNotNull { it.package_id }
+            .let { owningPackages -> database.realm.query<PackageInfo>("packageId IN $0", owningPackages).find() }
+            .flatMap { it.appIds }
             .distinct()
 
         // Firstly, we request app tokens to access metadata
@@ -140,8 +187,7 @@ class Pics internal constructor(
                 adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
                 payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
             )
-        )
-            .getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.associateBy {
+        ).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.associateBy {
             it.appid ?: 0
         }
 
@@ -149,19 +195,14 @@ class Pics internal constructor(
         val metadata = loadAppsInfo(tokens.values, withoutContent = true)
 
         // Secondly, we diff the change numbers
-        val requiresUpdate = metadata
-            .filter { sAppInfo ->
-                val appId = sAppInfo.appid ?: return@filter false
-                val changeNumber = sAppInfo.change_number ?: return@filter false
+        val requiresUpdate = metadata.filter { sAppInfo ->
+            val appId = sAppInfo.appid ?: return@filter false
+            val changeNumber = sAppInfo.change_number ?: return@filter false
+            val databaseChangeNumber = database.realm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
 
-                database.apps.containsKey(appId)
-                    .not() || changeNumber > database.getChangeNumberFor(
-                    PicsVdfKvDatabase.Keys.Apps,
-                    appId
-                )
-            }.mapNotNull {
-                tokens[it.appid]
-            }
+            // if null, package was NOT cached
+            databaseChangeNumber == null || changeNumber > databaseChangeNumber
+        }.mapNotNull { tokens[it.appid] }
 
         if (requiresUpdate.isEmpty()) {
             KSteamLogging.logDebug("Pics:HandleLicenses") {
@@ -176,21 +217,24 @@ class Pics internal constructor(
 
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        dispatchListProcessing(
-            loadAppsInfo(
-                requiresUpdate,
-                withoutContent = false
-            ).distinctBy { it.appid }) { appInfoProto ->
-            val appId = appInfoProto.appid ?: return@dispatchListProcessing null
-            val changeNumber =
-                appInfoProto.change_number?.toUInt()?.toLong() ?: return@dispatchListProcessing null
-            val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
+        loadAppsInfo(requiresUpdate)
+            .distinctBy { it.appid }
+            .forEach { packageInfoProto ->
+                val appId = packageInfoProto.appid ?: return@forEach
+                val changeNumber = packageInfoProto.change_number ?: return@forEach
+                val buffer = packageInfoProto.buffer?.toByteArray() ?: return@forEach
 
-            database.parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
-                database.putPicsMetadata(PicsVdfKvDatabase.Keys.Apps, appId, changeNumber, buffer)
-                database.apps.put(appId, appInfo)
+                parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
+                    database.realm.write {
+                        copyToRealm(PicsAppChangeNumber().apply {
+                            this.appId = appId
+                            this.changeNumber = changeNumber
+                        }, updatePolicy = UpdatePolicy.ALL)
+
+                        copyToRealm(appInfo, updatePolicy = UpdatePolicy.ALL)
+                    }
+                }
             }
-        }
 
         return appIds
     }
@@ -238,23 +282,61 @@ class Pics internal constructor(
         )
     }
 
-    @OptIn(FlowPreview::class)
+    @Suppress("RemoveExplicitTypeArguments") // this breaks IDE completion
     private suspend fun <T> requestDataFromPics(
         request: CMsgClientPICSProductInfoRequest,
         emitter: (CMsgClientPICSProductInfoResponse) -> List<T>
     ): List<T> {
-        return steamClient.subscribe(
+        val destination = mutableListOf<T>()
+
+        steamClient.subscribe(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
                 adapter = CMsgClientPICSProductInfoRequest.ADAPTER,
                 payload = request
             )
-        ).transformWhile { packet ->
+        ).transformWhile<SteamPacket, List<T>> { packet ->
             packet.getProtoPayload(CMsgClientPICSProductInfoResponse.ADAPTER).data.let { response ->
                 emit(response.let(emitter))
                 response.response_pending ?: false
             }
-        }.flatMapConcat { it.asFlow() }.toList()
+        }.collect { newBatch ->
+            destination.addAll(newBatch)
+        }
+
+        return destination
+    }
+
+    // endregion
+
+    // region VDF parsing
+
+    private val vdfBinary = Vdf {
+        ignoreUnknownKeys = true
+        binaryFormat = true
+        readFirstInt = true
+    }
+
+    private val vdfText = Vdf {
+        ignoreUnknownKeys = true
+        binaryFormat = false
+    }
+
+    internal inline fun <reified T> parseBinaryVdf(source: ByteArray) = parseVdf<T>(vdfBinary, source)
+    internal inline fun <reified T> parseTextVdf(source: ByteArray) = parseVdf<T>(vdfText, source)
+
+    internal inline fun <reified T> parseVdf(vdf: Vdf, source: ByteArray): T? {
+        return try {
+            vdf.decodeFromBufferedSource<T>(
+                RootNodeSkipperDeserializationStrategy(),
+                Buffer().also { buffer ->
+                    buffer.write(source)
+                })
+        } catch (mfe: Exception) {
+            // We try to cover almost all types, but sometimes stuff... happens
+            KSteamLogging.logVerbose("Pics:Unknown") { source.toByteString().hex() }
+            null
+        }
     }
 
     // endregion
@@ -273,5 +355,5 @@ class Pics internal constructor(
         Ready
     }
 
-    override suspend fun getMetadataFor(appIds: List<Int>) = getAppSummariesByAppId(appIds)
+    override suspend fun getMetadataFor(appIds: List<Int>): Map<Int, AppSummary> = emptyMap() // getAppSummariesByAppId(appIds)
 }

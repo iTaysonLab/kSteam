@@ -49,6 +49,11 @@ interface KsteamPersistenceDriver {
     fun containsKey(key: String): Boolean
 
     /**
+     * Deletes keys from shared storage.
+     */
+    fun delete(vararg key: String)
+
+    /**
      * Securely accesses account information K/V for a specific SteamID.
      *
      * Example: `secureGet(SteamId(0u), "access_token")`
@@ -74,6 +79,15 @@ interface KsteamPersistenceDriver {
      * Not always secure - this is defined by implementation.
      */
     fun secureSet(id: SteamId, vararg pairs: Pair<String, String>)
+
+    /**
+     * Securely deletes account information K/V for a specific SteamID.
+     *
+     * Example: `secureDelete(SteamId(0u), "access_token", "refresh_token")`
+     *
+     * Not always secure - this is defined by implementation.
+     */
+    fun secureDelete(id: SteamId, vararg key: String)
 
     /**
      * Checks if identity exists in secure storage.
@@ -105,10 +119,13 @@ object MemoryPersistenceDriver: KsteamPersistenceDriver {
     override fun set(key: String, value: Int) { map[key] = value.toString() }
 
     override fun containsKey(key: String): Boolean = map.containsKey(key)
+    override fun delete(vararg key: String) { key.forEach(map::remove) }
 
     override fun secureGet(id: SteamId, key: String): String? = getString("${id}.$key")
     override fun secureSet(id: SteamId, key: String, value: String) { set("${id}.$key", value) }
     override fun secureSet(id: SteamId, vararg pairs: Pair<String, String>) { map.putAll(pairs.map { "${id}.${it.first}" to it.second }) }
+    override fun secureDelete(id: SteamId, vararg key: String) { key.map { "${id}.$key" }.forEach(map::remove) }
+
     override fun secureContainsKey(id: SteamId, key: String): Boolean = containsKey("${id}.$key")
     override fun secureContainsIdentity(id: SteamId): Boolean = containsKey("${id}.account_name")
 }

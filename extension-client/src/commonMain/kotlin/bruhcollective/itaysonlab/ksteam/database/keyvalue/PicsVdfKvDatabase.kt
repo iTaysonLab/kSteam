@@ -1,27 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.database.keyvalue
 
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.models.enums.*
-import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
-import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
-import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
-import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
-import bruhcollective.itaysonlab.ksteam.models.pics.type
-import bruhcollective.itaysonlab.ksteam.platform.dispatchListProcessing
-import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
-import bruhcollective.itaysonlab.kxvdf.Vdf
-import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.ExperimentalSerializationApi
-import okio.Buffer
-import okio.ByteString.Companion.toByteString
-
-@OptIn(ExperimentalSerializationApi::class)
+/*@OptIn(ExperimentalSerializationApi::class)
 internal class PicsVdfKvDatabase (
     private val db: KeyValueDatabase
 ) {
@@ -38,6 +17,7 @@ internal class PicsVdfKvDatabase (
 
     private val vdfText = Vdf {
         ignoreUnknownKeys = true
+        binaryFormat = false
     }
 
     internal val packages = SuspendableReadOnlyMap(
@@ -275,4 +255,4 @@ internal class SuspendableReadOnlyMap <Key, Value> (
     fun containsKey(key: Key): Boolean {
         return internalList.containsKey(key)
     }
-}
+}*/

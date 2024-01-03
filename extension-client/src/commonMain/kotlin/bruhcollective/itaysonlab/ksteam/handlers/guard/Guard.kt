@@ -9,17 +9,15 @@ import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
 import bruhcollective.itaysonlab.ksteam.guardMoveConfirm
 import bruhcollective.itaysonlab.ksteam.guardMoveStart
-import bruhcollective.itaysonlab.ksteam.handlers.*
+import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.account
+import bruhcollective.itaysonlab.ksteam.handlers.configuration
+import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.okio.decodeFromBufferedSource
-import kotlinx.serialization.json.okio.encodeToBufferedSink
 import steam.webui.twofactor.*
 
 /**
@@ -28,10 +26,7 @@ import steam.webui.twofactor.*
 class Guard(
     private val steamClient: SteamClient,
 ) : BaseHandler, SteamGuardPlugin {
-    private val json = Json {
-        ignoreUnknownKeys = true
-    }
-
+    private val storage = GuardStorage(steamClient)
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
 
     private val sgAddFlow = MutableStateFlow<SgCreationFlowState>(SgCreationFlowState.Idle)
@@ -44,27 +39,20 @@ class Guard(
      *
      * Returns null if kSteam has no auth information for this [steamId].
      */
-    @OptIn(ExperimentalSerializationApi::class)
     fun instanceFor(steamId: SteamId): GuardInstance? {
-        lazyInstances[steamId]?.let {
-            return it
-        }
-
-        val file = getGuardFile(steamId)
-
-        return provideOkioFilesystem().takeIf { fs ->
-            fs.exists(file)
-        }?.read(file) {
+        return lazyInstances.getOrPut(steamId) {
             GuardInstance(
                 steamId = steamId,
-                configuration = json.decodeFromBufferedSource(this),
+                configuration = storage.queryStructure(steamId) ?: return null,
                 clockContext = GuardClockContextImpl(steamClient)
-            ).also { lazyInstances[steamId] = it }
+            )
         }
     }
 
     /**
      * Creates a [SgCreationFlowState] flow.
+     *
+     * To obtain it, use [guardConfigurationFlow].
      */
     suspend fun initializeSgCreation() {
         sgAddFlow.value = steamClient.unifiedMessages.execute(
@@ -85,7 +73,7 @@ class Guard(
                 SgCreationFlowState.SmsSent(
                     hint = response.phone_number_hint.orEmpty(),
                     moving = false,
-                    guardConfiguration = response.toConfig(steamClient.currentSessionSteamId)
+                    guardConfiguration = response.toConfig()
                 )
             }
         }
@@ -175,7 +163,7 @@ class Guard(
         }
 
         return if (guardConfiguration != null) {
-            writeGuard(steamClient.currentSessionSteamId, guardConfiguration)
+            storage.writeStructure(steamClient.currentSessionSteamId, guardConfiguration)
 
             GuardInstance(
                 steamClient.currentSessionSteamId,
@@ -199,7 +187,7 @@ class Guard(
      */
     fun tryAddConfig(steamId: SteamId, configuration: GuardStructure) {
         lazyInstances[steamId] = GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient))
-        writeGuard(steamId, configuration)
+        storage.writeStructure(steamId, configuration)
     }
 
     /**
@@ -235,24 +223,13 @@ class Guard(
             val deleteData = it?.success == true || unsafe
 
             if (deleteData) {
-                try {
-                    provideOkioFilesystem().delete(getGuardFile(steamId), mustExist = false)
-                    lazyInstances.remove(steamId)
-                } catch (_: Exception) {}
+                storage.deleteStructure(steamId)
+                lazyInstances.remove(steamId)
             }
 
             return it?.revocation_attempts_remaining ?: 0
         }
     }
-
-    @OptIn(ExperimentalSerializationApi::class)
-    private fun writeGuard(steamId: SteamId, configuration: GuardStructure) {
-        provideOkioFilesystem().write(getGuardFile(steamId)) {
-            json.encodeToBufferedSink(configuration, this)
-        }
-    }
-
-    private fun getGuardFile(steamId: SteamId) = steamClient.storage.storageFor(steamId) / "guard.json"
 
     override suspend fun onEvent(packet: SteamPacket) = Unit
     override suspend fun getCodeFor(account: SteamId) = instanceFor(account)?.generateCodeWithTime()?.codeString

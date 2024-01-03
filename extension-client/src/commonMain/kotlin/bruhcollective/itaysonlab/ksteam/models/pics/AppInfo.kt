@@ -1,82 +1,313 @@
+@file:UseSerializers(
+    MutableRealmIntKSerializer::class,
+    RealmAnyKSerializer::class,
+    RealmDictionaryKSerializer::class,
+    RealmInstantKSerializer::class,
+    RealmListKSerializer::class,
+    RealmSetKSerializer::class,
+    RealmUUIDKSerializer::class
+)
+
 package bruhcollective.itaysonlab.ksteam.models.pics
 
 import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatCommunityImageUrl
 import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatStaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
+import io.realm.kotlin.ext.realmDictionaryOf
+import io.realm.kotlin.ext.realmListOf
+import io.realm.kotlin.serializers.*
+import io.realm.kotlin.types.EmbeddedRealmObject
+import io.realm.kotlin.types.RealmDictionary
+import io.realm.kotlin.types.RealmList
+import io.realm.kotlin.types.RealmObject
+import io.realm.kotlin.types.annotations.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
 
 @Serializable
-@Immutable
-data class AppInfo internal constructor(
-    @SerialName("appid") val appId: Int,
-    val common: AppInfoCommon = AppInfoCommon()
-) {
+internal class AppInfo: RealmObject {
+    @PrimaryKey
+    @SerialName("appid")
+    var appId: Int = 0
+
+    @SerialName("common")
+    var common: AppInfoCommon? = null
+
+    @SerialName("extended")
+    var extended: AppInfoExtended? = null
+
+    @SerialName("albummetadata")
+    var albumMetadata: AppInfoAlbumMetadata? = null
+
+    // Sub-classes
+
     @Serializable
-    @Immutable
-    data class AppInfoCommon internal constructor(
-        val name: String = "",
-        val type: String = "",
-        @SerialName("oslist") val osList: String = "",
-        @SerialName("content_descriptors") val contentDescriptors: List<String> = emptyList(),
-        @SerialName("name_localized") val nameLocalized: Map<String, String> = emptyMap(),
-        @SerialName("releasestate") val releaseState: String = "",
-        @SerialName("has_adult_content") val adultContent: Boolean = false,
-        @SerialName("has_adult_content_violence") val adultContentViolence: Boolean = false,
-        @SerialName("steam_deck_compatibility") val steamDeckCompat: SteamDeckCompatibility = SteamDeckCompatibility(),
-        @SerialName("controller_support") val controllerSupport: String = "",
-        @SerialName("small_capsule") val smallCapsule: Map<String, String> = emptyMap(),
-        @SerialName("header_image") val headerImages: Map<String, String> = emptyMap(),
-        val genres: List<Int> = emptyList(),
-        val associations: List<AppInfoAssociation> = emptyList(),
-        val category: Map<String, Boolean> = emptyMap(),
-        @SerialName("community_visible_stats") val hasStats: Boolean = false,
-        @SerialName("community_hub_visible") val hasContentHub: Boolean = false,
-        @SerialName("store_tags") val tags: List<Int> = emptyList(),
-        @SerialName("review_score") val reviewScore: Int = 0,
-        @SerialName("review_percentage") val reviewPercentage: Int = 0,
-        @SerialName("mastersubs_granting_app") val masterSubPackageId: Int = 0,
-        @SerialName("original_release_date") val releaseDate: Long = 0,
-        @SerialName("steam_release_date") val steamReleaseDate: Long = 0,
-        @SerialName("metacritic_score") val metacriticScore: Int = 0,
-        @SerialName("metacritic_fullurl") val metacriticUrl: String = "",
-        @SerialName("icon") val iconId: String = "",
-        @SerialName("logo") val logoId: String = "",
-    ) {
+    internal class AppInfoCommon: EmbeddedRealmObject {
+        @SerialName("name")
+        var name: String = ""
+
+        // Strings
+
+        @SerialName("type")
+        var type: String = ""
+
+        @SerialName("oslist")
+        var osList: String = ""
+
+        @SerialName("releasestate")
+        var releaseState: String = ""
+
+        @SerialName("controller_support")
+        var controllerSupport: String = ""
+
+        @SerialName("metacritic_fullurl")
+        var metacriticUrl: String = ""
+
+        @SerialName("icon")
+        var iconId: String = ""
+
+        @SerialName("logo")
+        var logoId: String = ""
+
+        // Integers
+
+        @SerialName("review_score")
+        var reviewScore: Int = 0
+
+        @SerialName("review_percentage")
+        var reviewPercentage: Int = 0
+
+        @SerialName("review_score_bombs")
+        var reviewScoreBombs: Int = 0
+
+        @SerialName("review_percentage_bombs")
+        var reviewPercentageBombs: Int = 0
+
+        @SerialName("mastersubs_granting_app")
+        var masterSubPackageId: Int = 0
+
+        @SerialName("original_release_date")
+        var releaseDate: Long = 0
+
+        @SerialName("steam_release_date")
+        var steamReleaseDate: Long = 0
+
+        @SerialName("metacritic_score")
+        var metacriticScore: Int = 0
+
+        @SerialName("primary_genre")
+        var primaryGenre: Int = 0
+
+        // Lists
+
+        @SerialName("content_descriptors")
+        var contentDescriptors: RealmList<String> = realmListOf()
+
+        @SerialName("genres")
+        var genres: RealmList<Int> = realmListOf()
+
+        @SerialName("associations")
+        var associations: RealmList<AppAssociation> = realmListOf()
+
+        @SerialName("store_tags")
+        var tags: RealmList<Int> = realmListOf()
+
+        @SerialName("eulas")
+        var eulas: RealmList<AppEula> = realmListOf()
+
+        // Dictionaries
+
+        @SerialName("name_localized")
+        var nameLocalized: RealmDictionary<String> = realmDictionaryOf()
+
+        @SerialName("small_capsule")
+        var smallCapsule: RealmDictionary<String> = realmDictionaryOf()
+
+        @SerialName("header_image")
+        var headerImages: RealmDictionary<String> = realmDictionaryOf()
+
+        @SerialName("category")
+        var category: RealmDictionary<Boolean> = realmDictionaryOf()
+
+        @SerialName("languages")
+        var languages: RealmDictionary<Boolean> = realmDictionaryOf()
+
+        @SerialName("supported_languages")
+        var supportedLanguages: RealmDictionary<AppSupportedLanguageMatrix?> = realmDictionaryOf()
+
+        // Booleans
+
+        @SerialName("has_adult_content")
+        var adultContent: Boolean = false
+
+        @SerialName("has_adult_content_violence")
+        var adultContentViolence: Boolean = false
+
+        @SerialName("has_adult_content_sex")
+        var adultContentSex: Boolean = false
+
+        @SerialName("community_visible_stats")
+        var hasStats: Boolean = false
+
+        @SerialName("community_hub_visible")
+        var hasContentHub: Boolean = false
+
+        @SerialName("exfgls")
+        var excludeFromGameLibrarySharing: Boolean = false
+
+        // Sub-Objects
+
+        @SerialName("steam_deck_compatibility")
+        var steamDeckCompat: AppSteamDeckCompatibility? = null
+
+        // Sub-classes
+
         @Serializable
-        @Immutable
-        data class SteamDeckCompatibility internal constructor(
-            val category: Int = 0,
-            val tests: List<SteamDeckCompatTestEntry> = emptyList()
-        ) {
+        class AppSteamDeckCompatibility: EmbeddedRealmObject {
+            @SerialName("category")
+            var category: Int = 0
+
+            @SerialName("tests")
+            var tests: RealmList<AppSteamDeckCompatTestEntry> = realmListOf()
+
+            @SerialName("test_timestamp")
+            var testedOn: Long = 0
+
+            // Sub-classes
+
             @Serializable
-            @Immutable
-            data class SteamDeckCompatTestEntry internal constructor(
-                val display: Int = 0,
-                val token: String = ""
-            )
+            class AppSteamDeckCompatTestEntry: EmbeddedRealmObject {
+                @SerialName("display")
+                var display: Int = 0
+
+                @SerialName("token")
+                var token: String = ""
+            }
         }
 
         @Serializable
-        @Immutable
-        data class AppInfoAssociation internal constructor(
-            val type: String = "",
-            val name: String = ""
-        )
+        class AppAssociation: EmbeddedRealmObject {
+            @SerialName("type")
+            var type: String = ""
+
+            @SerialName("name")
+            var name: String = ""
+        }
+
+        @Serializable
+        class AppSupportedLanguageMatrix: EmbeddedRealmObject {
+            @SerialName("supported")
+            var supported: Boolean = false
+
+            @SerialName("full_audio")
+            var fullAudio: Boolean = false
+
+            @SerialName("subtitles")
+            var subtitles: Boolean = false
+        }
+
+        @Serializable
+        class AppEula: EmbeddedRealmObject {
+            @SerialName("id")
+            var id: String = ""
+
+            @SerialName("name")
+            var name: String = ""
+
+            @SerialName("url")
+            var url: String = ""
+
+            @SerialName("version")
+            var version: String = ""
+        }
+    }
+
+    @Serializable
+    class AppInfoExtended: EmbeddedRealmObject {
+        @SerialName("developer")
+        var developer: String = ""
+
+        @SerialName("publisher")
+        var publisher: String = ""
+
+        @SerialName("homepage")
+        var homepage: String = ""
+
+        @SerialName("gamemanualurl")
+        var manualUrl: String = ""
+
+        @SerialName("musicalbumforappid")
+        var musicAlbumForApp: Int = 0
+
+        @SerialName("dlcavailableonstore")
+        var dlcAvailableOnStore: Boolean = false
+
+        @SerialName("musicalbumavailableonstore")
+        var musicAlbumAvailableOnStore: Boolean = false
+    }
+
+    @Serializable
+    class AppInfoAlbumMetadata: EmbeddedRealmObject {
+        @SerialName("tracks")
+        var trackList: RealmList<AppInfoMusicTrack> = realmListOf()
+
+        @SerialName("metadata")
+        var metadata: AppInfoMusicMetadata? = null
+
+        @SerialName("cdn_assets")
+        var cdnAssets: AppInfoMusicCdnAssets? = null
+
+        @Serializable
+        class AppInfoMusicTrack: EmbeddedRealmObject {
+            @SerialName("discnumber")
+            var discNumber: Int = 0
+
+            @SerialName("tracknumber")
+            var trackNumber: Int = 0
+
+            @SerialName("originalname")
+            var originalName: Int = 0
+
+            @SerialName("m")
+            var minutes: Int = 0
+
+            @SerialName("s")
+            var seconds: Int = 0
+        }
+
+        @Serializable
+        class AppInfoMusicMetadata: EmbeddedRealmObject {
+            @SerialName("artist")
+            var artist: RealmDictionary<String> = realmDictionaryOf()
+
+            @SerialName("composer")
+            var composer: RealmDictionary<String> = realmDictionaryOf()
+
+            @SerialName("label")
+            var label: RealmDictionary<String> = realmDictionaryOf()
+
+            @SerialName("othercredits")
+            var otherCredits: RealmDictionary<String> = realmDictionaryOf()
+        }
+
+        @Serializable
+        class AppInfoMusicCdnAssets: EmbeddedRealmObject {
+            @SerialName("album_cover")
+            var albumCoverId: String = ""
+        }
     }
 }
 
 //
 
-val AppInfo.type get() = EAppType.values().firstOrNull { it.name.equals(common.type, ignoreCase = true) } ?: EAppType.Invalid
-
-val AppInfo.icon get() = formatCommunityImageUrl(appId, "${common.iconId}.jpg")
-val AppInfo.logo get() = formatCommunityImageUrl(appId, "${common.logoId}.jpg")
-val AppInfo.header get() = formatStaticAppImageUrl(appId, "header.jpg")
-val AppInfo.capsuleSmall get() = formatStaticAppImageUrl(appId, "capsule_231x87.jpg")
-val AppInfo.capsuleLarge get() = formatStaticAppImageUrl(appId, "capsule_616x353.jpg")
-val AppInfo.pageBackground get() = formatStaticAppImageUrl(appId, "page_bg_raw.jpg")
-val AppInfo.logoLarge get() = formatStaticAppImageUrl(appId, "logo.png")
-val AppInfo.libraryEntry get() = formatStaticAppImageUrl(appId, "library_600x900.jpg")
-val AppInfo.libraryHeader get() = formatStaticAppImageUrl(appId, "library_hero.jpg")
+internal val AppInfo.type get() = EAppType.entries.firstOrNull { it.name.equals(common?.type, ignoreCase = true) } ?: EAppType.Invalid
+internal val AppInfo.icon get() = formatCommunityImageUrl(appId, "${common?.iconId}.jpg")
+internal val AppInfo.logo get() = formatCommunityImageUrl(appId, "${common?.logoId}.jpg")
+internal val AppInfo.header get() = formatStaticAppImageUrl(appId, "header.jpg")
+internal val AppInfo.capsuleSmall get() = formatStaticAppImageUrl(appId, "capsule_231x87.jpg")
+internal val AppInfo.capsuleLarge get() = formatStaticAppImageUrl(appId, "capsule_616x353.jpg")
+internal val AppInfo.pageBackground get() = formatStaticAppImageUrl(appId, "page_bg_raw.jpg")
+internal val AppInfo.logoLarge get() = formatStaticAppImageUrl(appId, "logo.png")
+internal val AppInfo.libraryEntry get() = formatStaticAppImageUrl(appId, "library_600x900.jpg")
+internal val AppInfo.libraryHeader get() = formatStaticAppImageUrl(appId, "library_hero.jpg")

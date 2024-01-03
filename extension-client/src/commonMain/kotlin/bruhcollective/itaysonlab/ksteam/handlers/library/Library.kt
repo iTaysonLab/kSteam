@@ -6,7 +6,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.player
 import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
@@ -78,12 +78,12 @@ class Library(
      *
      * @return a [Flow] of [AppInfo] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<AppSummary>> = userCollections.mapNotNull { collections ->
-        getAppsInCollection(collections[id] ?: return@mapNotNull null).takeIfNotZero(limit).toList()
+    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<SteamApplication>> = userCollections.mapNotNull { collections ->
+        getAppsInCollection(collections[id] ?: return@mapNotNull null, limit).toList()
     }
 
-    fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<AppSummary>> = collectionFlow.map { collection ->
-        getAppsInCollection(collection).takeIfNotZero(limit).toList()
+    fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<SteamApplication>> = collectionFlow.map { collection ->
+        getAppsInCollection(collection, limit).toList()
     }
 
     /**
@@ -99,9 +99,9 @@ class Library(
         val collectionFlow = getCollection(id)
 
         return collectionFlow.combine(ownedGames) { collection, ownedMap ->
-            getAppsInCollection(collection).mapNotNull { summary ->
+            getAppsInCollection(collection, limit).mapNotNull { summary ->
                 ownedMap[summary.id]
-            }.takeIfNotZero(limit).toList()
+            }.toList()
         }
     }
 
@@ -122,10 +122,12 @@ class Library(
      *
      * @return a list of [AppInfo]
      */
-    suspend fun getAppsInCollection(collection: LibraryCollection): Sequence<AppSummary> {
+    // TODO Pass limit to Realm queries
+    suspend fun getAppsInCollection(collection: LibraryCollection, limit: Int = 0): List<SteamApplication> {
         return when (collection) {
             is LibraryCollection.Simple -> {
-                steamClient.pics.getAppSummariesByAppId(collection.added.filter { it > 0 && it < Int.MAX_VALUE }.map(Long::toInt)).values.asSequence().sortedBy { it.name }
+                // Filter out non-Steam games that can be accidentally added to cloud Steam collections
+                steamClient.pics.getSteamApplications(collection.added.filter { it > 0 && it < Int.MAX_VALUE }.map(Long::toInt))
             }
 
             is LibraryCollection.Dynamic -> {
@@ -138,7 +140,7 @@ class Library(
                     null
                 }
 
-                steamClient.pics.getAppSummariesFiltered(collection.filters).let { appInfoList ->
+                steamClient.pics.querySteamApplicationsByFilter(collection.filters).let { appInfoList ->
                     when {
                         hasPlayStateNeverPlayed -> {
                             appInfoList.filter {
@@ -171,19 +173,19 @@ class Library(
     /**
      * Fetch a live-updated (every 30 minutes) list of at max 5 games, sorted by last launch date.
      */
-    fun getRecentApps(): Flow<List<AppSummary>> {
+    fun getRecentApps(): Flow<List<SteamApplication>> {
         return _playtime.map {
-            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> a.appid }.take(5)
+            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> a.appid }.take(5).toList()
         }.map {
-            steamClient.pics.getAppSummariesByAppId(it.toList()).values.sortedBy { a -> a.name }
+            steamClient.pics.getSteamApplications(it)
         }
     }
 
-    fun getFavoriteApps(limit: Int = 0): Flow<List<AppSummary>> {
+    fun getFavoriteApps(limit: Int = 0): Flow<List<SteamApplication>> {
         return getAppsInCollection(favoriteCollection, limit)
     }
 
-    fun getHiddenApps(limit: Int = 0): Flow<List<AppSummary>> {
+    fun getHiddenApps(limit: Int = 0): Flow<List<SteamApplication>> {
         return getAppsInCollection(hiddenCollection, limit)
     }
 
@@ -278,7 +280,13 @@ class Library(
 
         // -- User Collections --
         entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull { entry ->
-            val entryObject = json.decodeFromString<RemoteCollectionModel>(entry.value_ ?: return@mapNotNull null)
+            val entryObject = try {
+                json.decodeFromString<RemoteCollectionModel>(entry.value_ ?: return@mapNotNull null)
+            } catch (e: Exception) {
+                KSteamLogging.logError("Library:Collection") { entry.value_.toString() }
+                e.printStackTrace()
+                return@mapNotNull null
+            }
 
             LibraryCollection.fromJsonCollection(entryObject, entry.timestamp ?: return@mapNotNull null, entry.version ?: return@mapNotNull null).also { c ->
                 KSteamLogging.logVerbose("Library:Collection") { c.toString() }

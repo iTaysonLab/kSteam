@@ -1,11 +1,18 @@
-## r32
+## r32 [WIP]
 
+*Literally everything here is changed, more like a rewrite from scratch, leaving ~25% of original codebase*
+
+- **[breaking change]** massive persistence rework, saved storage from earlier kSteam versions IS NOT COMPATIBLE (including Steam Guard)
 - re-enable support for macOS/iOS compilation
-- massive rework of extension architecture, simplifying everything to "core"-"implementation" model
-- introduce `core-persistence` for managing saved user data
+- **[breaking change]** massive rework of extension architecture, simplifying everything to "core"-"implementation" model
+- **[breaking change]** introduce `core-persistence` for managing saved user data
 - `core/unifiedmessages`: provide a custom Wire client implementation for simplifying API requests
-- `extension-pics`: massive database rework
-- `extension-pics`: deprecate key-value DB, introduce `Realm` backend for mobile platforms and `Memory` for temporary solutions
+- **[breaking change]** `core/account`: now uses secure persistence
+- `extension-client`: introduce Realm Mobile Database for persisting personas, collections, game metadata  
+- `extension-client/persona`: optimize flows by using Realm queries
+- **[breaking change]** `extension-client/pics`: key-value DB is not required anymore
+- **[breaking change]** `extension-client/pics`: massive rework of querying, caching and storing to minimize extra requests
+- `extension-client/guard`: now uses secure persistence
 
 ## r31
 

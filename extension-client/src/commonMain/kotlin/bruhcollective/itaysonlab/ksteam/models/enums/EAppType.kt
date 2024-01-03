@@ -23,6 +23,6 @@ enum class EAppType (internal val bitMask: Int) {
     DepotOnly(Int.MIN_VALUE);
 
     companion object {
-        fun byBitMask(mask: Int) = values().firstOrNull { it.bitMask == mask }
+        fun byBitMask(mask: Int) = entries.firstOrNull { it.bitMask == mask }
     }
 }

@@ -13,6 +13,6 @@ enum class EGenre (val tagNumber: Int) {
     Strategy(9);
 
     companion object {
-        fun byNumber(i: Int) = values().firstOrNull { it.tagNumber == i }
+        fun byNumber(i: Int) = entries.firstOrNull { it.tagNumber == i }
     }
 }

@@ -1,8 +1,6 @@
 package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
-import bruhcollective.itaysonlab.ksteam.database.keyvalue.NoopKeyValueDatabase
-import bruhcollective.itaysonlab.ksteam.database.keyvalue.PicsVdfKvDatabase
 import bruhcollective.itaysonlab.ksteam.extension.Extension
 import bruhcollective.itaysonlab.ksteam.extension.ExtensionFactory
 import bruhcollective.itaysonlab.ksteam.extension.HandlerMap
@@ -10,8 +8,10 @@ import bruhcollective.itaysonlab.ksteam.extension.associate
 import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
+import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
 import bruhcollective.itaysonlab.ksteam.handlers.library.Library
 import bruhcollective.itaysonlab.ksteam.handlers.library.Pics
+import bruhcollective.itaysonlab.ksteam.handlers.library.internal.CloudConfiguration
 
 class KsteamClient (
     private val configuration: KsteamClientExtensionConfiguration
@@ -29,13 +29,14 @@ class KsteamClient (
             Player(steamClient).associate(),
             UserNews(steamClient).associate(),
             PublishedFiles(steamClient).associate(),
+            CloudConfiguration(steamClient).associate(),
             // Guard
             Guard(steamClient).associate(),
             GuardConfirmation(steamClient).associate(),
             GuardManagement(steamClient).associate()
         ) + if (configuration.enablePics) {
             mapOf(
-                Pics(steamClient, PicsVdfKvDatabase(NoopKeyValueDatabase)).associate(),
+                Pics(steamClient, database).associate(),
                 Library(steamClient).associate()
             )
         } else emptyMap()

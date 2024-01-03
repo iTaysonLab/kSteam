@@ -16,7 +16,7 @@ sealed interface ConfirmationListState {
     }
 
     @Immutable
-    object Loading : ConfirmationListState
+    data object Loading : ConfirmationListState
 
     @Immutable
     class NetworkError(
