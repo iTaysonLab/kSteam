@@ -311,6 +311,7 @@ class Library(
             _userCollections.value = collections
         }
 
+        // -- User Shelves --
         entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("showcase") }.mapNotNull {
             val entry = json.decodeFromString<LibraryShelf.LibraryShelfRemote>(it.value_ ?: return@mapNotNull null)
 

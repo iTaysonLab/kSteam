@@ -85,7 +85,7 @@ internal class DynamicFilterSpec(
     @SerialName("nFormatVersion") val formatVersion: Int = 2,
     @SerialName("strSearchText") val searchText: String = "",
     @SerialName("filterGroups") val filterGroups: List<FilterGroup> = emptyList(),
-    @SerialName("setSuggestions") val suggestions: Map<String, String> = emptyMap(), // TODO
+    // @SerialName("setSuggestions") val suggestions: Map<String, String> = emptyMap(), why Valve puts setSuggestions: {} and setSuggestions: [] in different files....
 ) {
     @Serializable
     internal class FilterGroup(
