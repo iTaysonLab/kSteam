@@ -6,7 +6,7 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
 @OptIn(ExperimentalForeignApi::class)
-actual fun getDefaultWorkingDirectory(): String? {
+internal actual fun getDefaultWorkingDirectory(): String? {
     return NSFileManager.defaultManager.URLForDirectory(
         directory = NSDocumentDirectory,
         inDomain = NSUserDomainMask,
