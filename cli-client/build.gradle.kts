@@ -29,9 +29,10 @@ application {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":core-persistence"))
     implementation(project(":kotlinx-vdf"))
+    implementation(project(":extension-client"))
 
-    implementation(project(":extension-core"))
     // implementation(project(":extension-guard"))
     // implementation(project(":extension-pics"))
 
