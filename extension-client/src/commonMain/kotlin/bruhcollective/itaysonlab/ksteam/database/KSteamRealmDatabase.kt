@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.database
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaIngameStatus
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaLastSeen
+import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaRelationship
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
@@ -39,7 +40,7 @@ internal class KSteamRealmDatabase (
         RealmPersona::class,
         RealmPersonaIngameStatus::class,
         RealmPersonaLastSeen::class,
-
+        RealmPersonaRelationship::class,
         // Store
 
         // PICS

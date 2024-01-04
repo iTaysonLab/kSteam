@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
+import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaRelationship
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
@@ -13,13 +14,10 @@ import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import io.realm.kotlin.UpdatePolicy
 import io.realm.kotlin.ext.query
-import io.realm.kotlin.ext.realmDictionaryOf
 import io.realm.kotlin.notifications.InitialResults
 import io.realm.kotlin.notifications.PendingObject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import steam.webui.common.*
 import steam.webui.friendslist.CMsgClientFriendsList
 
@@ -38,19 +36,12 @@ class Persona internal constructor(
     private val _currentPersonaOnlineStatus = MutableStateFlow(EPersonaState.Offline)
     val currentPersonaOnlineStatus = _currentPersonaOnlineStatus.asStateFlow()
 
-    private val personaFriendListUpdateMutex = Mutex()
-
     private suspend fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
         KSteamLogging.logVerbose("Persona") { "realm/persona@new ${incoming.joinToString()}" }
 
         database.realm.write {
             incoming.forEach { friend ->
-                // TODO: research how we can save friendRelationshipsWith with a better codestyle
-                val currentFriend = query<RealmPersona>("id == $0", friend.friendid).first().find()
-
-                copyToRealm(RealmPersona(Persona(friend)).apply {
-                    friendRelationshipsWith.putAll(currentFriend?.friendRelationshipsWith ?: realmDictionaryOf())
-                }, updatePolicy = UpdatePolicy.ALL)
+                copyToRealm(RealmPersona(Persona(friend)), updatePolicy = UpdatePolicy.ALL)
             }
         }
     }
@@ -130,31 +121,26 @@ class Persona internal constructor(
      * Returns [SteamId]'s relationship with the current user.
      */
     fun personaRelationship(steamId: SteamId): Flow<EFriendRelationship> {
-        return database.realm.query<RealmPersona>("id == $0", steamId.longId)
+        return database.realm.query<RealmPersonaRelationship>("id == $0", "${currentPersona.value.id}_${steamId}")
             .first()
             .asFlow()
-            .map { EFriendRelationship.byEncoded(it.obj?.friendRelationshipsWith?.get(steamId.toString())) }
+            .map { it.obj?.convert() ?: EFriendRelationship.None }
     }
 
     private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) {
-        personaFriendListUpdateMutex.withLock {
-            // 1. Request persona states
-            requestPersonas(if (newList.bincremental == true) {
-                newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }
-                    .map { f -> f.steamId }
-            } else {
-                newList.friends.map { f -> f.steamId }
-            })
+        // 1. Request persona states
+        requestPersonas(if (newList.bincremental == true) {
+            newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }
+                .map { f -> f.steamId }
+        } else {
+            newList.friends.map { f -> f.steamId }
+        })
 
-            // 2. Update friend-list flow
-            database.realm.write {
-                val steamLongId = currentPersona.value.id.longId
-
-                newList.friends.forEach { changedFriend ->
-                    KSteamLogging.logVerbose("Persona") { "realm/friends@change ${changedFriend.ulfriendid} -> ${changedFriend.efriendrelationship}" }
-                    val persona = query<RealmPersona>("id == $0", changedFriend.ulfriendid).first().find() ?: copyToRealm(RealmPersona().apply { id = changedFriend.ulfriendid ?: 0 })
-                    persona.friendRelationshipsWith[steamLongId.toString()] = changedFriend.efriendrelationship ?: 0
-                }
+        // 2. Update friend-list flow
+        database.realm.write {
+            newList.friends.forEach { changedFriend ->
+                KSteamLogging.logVerbose("Persona") { "realm/friends@change ${changedFriend.ulfriendid} -> ${EFriendRelationship.byEncoded(changedFriend.efriendrelationship)}" }
+                copyToRealm(RealmPersonaRelationship(src = currentPersona.value.id, target = changedFriend.ulfriendid.toSteamId(), enum = changedFriend.efriendrelationship ?: 0), updatePolicy = UpdatePolicy.ALL)
             }
         }
     }
