@@ -267,7 +267,7 @@ internal class AppInfo: RealmObject {
             var trackNumber: Int = 0
 
             @SerialName("originalname")
-            var originalName: Int = 0
+            var originalName: String = ""
 
             @SerialName("m")
             var minutes: Int = 0
