@@ -14,6 +14,7 @@ import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsPackageChangeNumber
+import bruhcollective.itaysonlab.ksteam.platform.dispatchListProcessing
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
@@ -113,7 +114,7 @@ class Pics internal constructor(
     }
 
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
-        KSteamLogging.logVerbose("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
+        KSteamLogging.logDebug("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
 
         val requiresUpdate = withContext(Dispatchers.Default) {
             licenses.filter { sLicense ->
@@ -133,6 +134,8 @@ class Pics internal constructor(
         updatePackagesMetadata(requiresUpdate)
         appIds = checkAppsIntegrity(licenses)
 
+        KSteamLogging.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
+
         _isPicsAvailable.value = PicsState.Ready
     }
 
@@ -150,28 +153,27 @@ class Pics internal constructor(
             }
         }
 
-        loadPackageInfo(requiresUpdate)
-            .distinctBy { it.packageid }
-            .forEach { packageInfoProto ->
-                val packageId = packageInfoProto.packageid ?: return@forEach
-                val changeNumber = packageInfoProto.change_number ?: return@forEach
-                val buffer = packageInfoProto.buffer?.toByteArray() ?: return@forEach
+        val parsedPackages = dispatchListProcessing(loadPackageInfo(requiresUpdate)) { packageInfoProto ->
+            val changeNumber = packageInfoProto.change_number ?: return@dispatchListProcessing null
+            val buffer = packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
+            val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: return@dispatchListProcessing null
 
-                parseBinaryVdf<PackageInfo>(buffer)?.also { packageInfo ->
-                    database.realm.write {
-                        copyToRealm(PicsPackageChangeNumber().apply {
-                            this.packageId = packageId
-                            this.changeNumber = changeNumber
-                        }, updatePolicy = UpdatePolicy.ALL)
+            parsedPackageInfo to changeNumber
+        }
 
-                        copyToRealm(packageInfo, updatePolicy = UpdatePolicy.ALL)
-                    }
-                }
+        database.realm.write {
+            parsedPackages.forEach { (packageInfo, changeNumber) ->
+                copyToRealm(PicsPackageChangeNumber().apply {
+                    this.packageId = packageInfo.packageId
+                    this.changeNumber = changeNumber
+                }, updatePolicy = UpdatePolicy.ALL)
+
+                copyToRealm(packageInfo, updatePolicy = UpdatePolicy.ALL)
             }
+        }
     }
 
     // This is trying to mimic Steam client behavior
-    @OptIn(ExperimentalStdlibApi::class)
     private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>): List<Int> {
         // Get ids of app that we actually own
         val appIds = licenses
@@ -200,6 +202,16 @@ class Pics internal constructor(
             val changeNumber = sAppInfo.change_number ?: return@filter false
             val databaseChangeNumber = database.realm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
 
+            if (databaseChangeNumber == null) {
+                KSteamLogging.logVerbose("Pics:HandleLicenses") {
+                    "[$appId] not yet cached: ${changeNumber}"
+                }
+            } else if (changeNumber > databaseChangeNumber) {
+                KSteamLogging.logVerbose("Pics:HandleLicenses") {
+                    "[$appId] is outdated: ${changeNumber} > ${databaseChangeNumber}"
+                }
+            }
+
             // if null, package was NOT cached
             databaseChangeNumber == null || changeNumber > databaseChangeNumber
         }.mapNotNull { tokens[it.appid] }
@@ -211,30 +223,30 @@ class Pics internal constructor(
             return appIds
         } else {
             KSteamLogging.logDebug("Pics:HandleLicenses") {
-                "Requesting metadata for ${requiresUpdate.size} apps"
+                "Requesting metadata for ${requiresUpdate.size} apps [${requiresUpdate.joinToString { "${it.appid} = ${it.access_token}" }}]"
             }
         }
 
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        loadAppsInfo(requiresUpdate)
-            .distinctBy { it.appid }
-            .forEach { packageInfoProto ->
-                val appId = packageInfoProto.appid ?: return@forEach
-                val changeNumber = packageInfoProto.change_number ?: return@forEach
-                val buffer = packageInfoProto.buffer?.toByteArray() ?: return@forEach
+        val parsedApps = dispatchListProcessing(loadAppsInfo(requiresUpdate)) { appInfoProto ->
+            val changeNumber = appInfoProto.change_number ?: return@dispatchListProcessing null
+            val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
+            val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: return@dispatchListProcessing null
 
-                parseTextVdf<AppInfo>(buffer)?.also { appInfo ->
-                    database.realm.write {
-                        copyToRealm(PicsAppChangeNumber().apply {
-                            this.appId = appId
-                            this.changeNumber = changeNumber
-                        }, updatePolicy = UpdatePolicy.ALL)
+            parsedAppInfo to changeNumber
+        }
 
-                        copyToRealm(appInfo, updatePolicy = UpdatePolicy.ALL)
-                    }
-                }
+        database.realm.write {
+            parsedApps.forEach { (appInfo, changeNumber) ->
+                copyToRealm(PicsAppChangeNumber().apply {
+                    this.appId = appInfo.appId
+                    this.changeNumber = changeNumber
+                }, updatePolicy = UpdatePolicy.ALL)
+
+                copyToRealm(appInfo, updatePolicy = UpdatePolicy.ALL)
             }
+        }
 
         return appIds
     }
@@ -322,19 +334,18 @@ class Pics internal constructor(
         binaryFormat = false
     }
 
-    internal inline fun <reified T> parseBinaryVdf(source: ByteArray) = parseVdf<T>(vdfBinary, source)
-    internal inline fun <reified T> parseTextVdf(source: ByteArray) = parseVdf<T>(vdfText, source)
+    private inline fun <reified T> parseBinaryVdf(source: ByteArray) = parseVdf<T>(vdfBinary, source)
+    private inline fun <reified T> parseTextVdf(source: ByteArray) = parseVdf<T>(vdfText, source)
 
-    internal inline fun <reified T> parseVdf(vdf: Vdf, source: ByteArray): T? {
+    private inline fun <reified T> parseVdf(vdf: Vdf, source: ByteArray): T? {
         return try {
-            vdf.decodeFromBufferedSource<T>(
-                RootNodeSkipperDeserializationStrategy(),
-                Buffer().also { buffer ->
-                    buffer.write(source)
-                })
+            vdf.decodeFromBufferedSource<T>(RootNodeSkipperDeserializationStrategy(), Buffer().also { buffer ->
+                buffer.write(source)
+            })
         } catch (mfe: Exception) {
             // We try to cover almost all types, but sometimes stuff... happens
             KSteamLogging.logVerbose("Pics:Unknown") { source.toByteString().hex() }
+            mfe.printStackTrace()
             null
         }
     }
