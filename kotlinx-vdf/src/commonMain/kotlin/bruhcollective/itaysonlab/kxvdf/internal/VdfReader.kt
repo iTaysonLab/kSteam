@@ -53,6 +53,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
                 }
 
                 val indexInDescriptor = descriptor.getElementIndex(tag.name)
+
                 return if (indexInDescriptor == CompositeDecoder.UNKNOWN_NAME) {
                     if (vdf.ignoreUnknownKeys) {
                         // consume all
@@ -94,6 +95,7 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
         return when (descriptor.kind) {
             is StructureKind.CLASS -> VdfDecoder(vdf, reader)
             is StructureKind.MAP -> VdfMapDecoder(vdf, reader)
+            is StructureKind.LIST -> VdfListDecoder(vdf, reader)
             else -> this
         }
     }
@@ -127,6 +129,48 @@ internal open class VdfDecoder(private val vdf: Vdf, private val reader: VdfRead
     }
 }
 
+/**
+ * A special subset of [VdfDecoder] that can decode lists, while ignoring their VDF index (fixing errors on lists starting from 1)
+ */
+@OptIn(ExperimentalSerializationApi::class)
+internal class VdfListDecoder(vdf: Vdf, private val reader: VdfReader): VdfDecoder(vdf, reader) {
+    private var indexInList = 0
+
+    override fun decodeElementIndex(descriptor: SerialDescriptor): Int {
+        return if (reader.exhausted()) {
+            CompositeDecoder.DECODE_DONE
+        } else {
+            decodeElementIndexInternal()
+        }
+    }
+
+    private fun decodeElementIndexInternal(): Int {
+        if (reader.exhausted()) {
+            return CompositeDecoder.DECODE_DONE
+        }
+
+        return when (reader.nextTag()) {
+            is VdfTag.NodeEnd, is VdfTag.EndOfFile -> {
+                CompositeDecoder.DECODE_DONE
+            }
+
+            is VdfTag.NodeStart, is VdfTag.NodeElementName -> {
+                indexInList++
+            }
+
+            else -> {
+                // Should never happen - values are consumed already in nested decoders
+                CompositeDecoder.UNKNOWN_NAME
+            }
+        }
+    }
+}
+
+/**
+ * A special subset of [VdfDecoder] that can decode maps.
+ *
+ * TODO make some set of kotlin.Any/Contextual serializer to parse multi-typed maps? (see rootNode->depots in VDF manifests)
+ */
 @OptIn(ExperimentalSerializationApi::class)
 internal class VdfMapDecoder(vdf: Vdf, private val reader: VdfReader): VdfDecoder(vdf, reader) {
     private var indexInMap = 0
@@ -298,7 +342,7 @@ internal sealed class VdfReader (internal val source: BufferedSource) {
                 }
             }
 
-            return when (val type = BinaryVdfType.values()[source.readByte().toInt()]) {
+            return when (val type = BinaryVdfType.entries[source.readByte().toInt()]) {
                 BinaryVdfType.End -> {
                     VdfTag.NodeEnd(hierarchy.removeLastOrNull() ?: "")
                 }
