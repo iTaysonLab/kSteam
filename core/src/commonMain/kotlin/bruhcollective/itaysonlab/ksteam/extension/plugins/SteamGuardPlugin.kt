@@ -5,7 +5,9 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 /**
  * This "plugin" allows independent kSteam extensions to access Steam Guard-related services.
  *
- * Any [Handler] might implement this interface, but the first added in order will be used.
+ * Any [Handler] might implement this interface.
+ *
+ * [Handler]s will be executed in order of addition. If the code is null, kSteam will try to use next [Handler] until a non-null value will be found.
  */
 interface SteamGuardPlugin {
     /**

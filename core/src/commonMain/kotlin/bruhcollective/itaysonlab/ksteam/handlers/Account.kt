@@ -148,8 +148,17 @@ class Account internal constructor(
         }
 
         if (mappedConfirmations.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
-            val guardCode = steamClient.getImplementingHandlerOrNull<SteamGuardPlugin>()
-                ?.getCodeFor(SteamId(signInResult.steamid?.toULong() ?: 0u))
+            val steamId = SteamId(signInResult.steamid?.toULong() ?: 0u)
+            var guardCode: String? = null
+
+            for (handler in steamClient.getImplementingHandlers<SteamGuardPlugin>()) {
+                val hCode = handler.getCodeFor(steamId)
+
+                if (hCode != null) {
+                    guardCode = hCode
+                    break
+                }
+            }
 
             if (guardCode != null) {
                 KSteamLogging.logVerbose(TAG) { "[login] kSteam persistence has Steam Guard for this SteamID, skipping 2FA..." }

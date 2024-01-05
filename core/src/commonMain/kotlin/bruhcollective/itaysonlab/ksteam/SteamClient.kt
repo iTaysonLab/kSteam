@@ -164,6 +164,16 @@ class SteamClient internal constructor(
         return handlers.values.filterIsInstance<T>().firstOrNull()
     }
 
+    /**
+     * A [getHandler] alternative to find a set of plugins.
+     *
+     * A plugin in kSteam is an "abstract" plug-in [BaseHandler] that can be used in the core module/extensions without the need to depend on a specific implementation.
+     * For example, a "core" module might use a metadata plugin to prefer cached for saving some bandwidth.
+     */
+    inline fun <reified T> getImplementingHandlers(): List<T> {
+        return handlers.values.filterIsInstance<T>()
+    }
+
     private inline fun <reified T : BaseHandler> T.createAssociation() = T::class to this
 
     private suspend fun HttpRequestBuilder.writeSteamData() = apply {
