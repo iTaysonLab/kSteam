@@ -39,7 +39,7 @@ class Configuration internal constructor(
     //
 
     fun getUuid(): String {
-        return machineUuid.ifEmpty {
+        return "android:" + machineUuid.ifEmpty {
             getRandomUuid().also { machineUuid = it }
         }
     }
