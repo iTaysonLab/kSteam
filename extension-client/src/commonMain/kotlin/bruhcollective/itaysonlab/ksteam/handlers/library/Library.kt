@@ -2,9 +2,7 @@ package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.player
-import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
+import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
@@ -388,13 +386,5 @@ class Library(
                 }
             }
         }
-    }
-}
-
-internal fun <T> Sequence<T>.takeIfNotZero(n: Int): Sequence<T> {
-    require(n >= 0) { "Requested element count $n is less than zero." }
-    return when (n) {
-        0 -> this
-        else -> take(n)
     }
 }

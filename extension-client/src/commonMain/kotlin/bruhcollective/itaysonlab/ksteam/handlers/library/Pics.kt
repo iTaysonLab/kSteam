@@ -3,11 +3,9 @@ package bruhcollective.itaysonlab.ksteam.handlers.library
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
-import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
@@ -35,7 +33,7 @@ import steam.webui.common.*
 class Pics internal constructor(
     private val steamClient: SteamClient,
     internal val database: KSteamRealmDatabase
-) : BaseHandler, MetadataPlugin {
+) : BaseHandler {
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
@@ -365,6 +363,4 @@ class Pics internal constructor(
         // 3. PICS is ready to use
         Ready
     }
-
-    override suspend fun getMetadataFor(appIds: List<Int>): Map<Int, AppSummary> = emptyMap() // getAppSummariesByAppId(appIds)
 }

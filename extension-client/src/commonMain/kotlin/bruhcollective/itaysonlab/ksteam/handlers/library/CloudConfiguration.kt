@@ -1,4 +1,4 @@
-package bruhcollective.itaysonlab.ksteam.handlers.library.internal
+package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging

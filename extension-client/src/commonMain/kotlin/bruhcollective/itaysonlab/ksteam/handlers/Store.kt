@@ -1,14 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.extension.plugins.MetadataPlugin
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
-import steam.webui.common.CStoreBrowse_GetItems_Request
-import steam.webui.common.CStoreBrowse_GetItems_Response
-import steam.webui.common.StoreBrowseContext
-import steam.webui.common.StoreBrowseItemDataRequest
-import steam.webui.common.StoreItem
-import steam.webui.common.StoreItemID
+import steam.webui.common.*
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
 
@@ -40,7 +34,7 @@ class Store internal constructor(
     suspend fun getAppSummaries(appIds: List<Int>): Map<Int, AppSummary> {
         if (appIds.isEmpty()) return emptyMap()
 
-        val picsSummaries = steamClient.getImplementingHandlerOrNull<MetadataPlugin>()?.getMetadataFor(appIds) ?: emptyMap()
+        val picsSummaries = emptyMap<Int, AppSummary>() // steamClient.getImplementingHandlerOrNull<MetadataPlugin>()?.getMetadataFor(appIds) ?: emptyMap()
 
         val netSummaries = if (picsSummaries.isNotEmpty()) {
             getNetworkApps(appIds.filterNot { picsSummaries.containsKey(it) })

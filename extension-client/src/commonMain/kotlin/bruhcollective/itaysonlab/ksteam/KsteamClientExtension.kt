@@ -11,7 +11,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
 import bruhcollective.itaysonlab.ksteam.handlers.library.Library
 import bruhcollective.itaysonlab.ksteam.handlers.library.Pics
-import bruhcollective.itaysonlab.ksteam.handlers.library.internal.CloudConfiguration
+import bruhcollective.itaysonlab.ksteam.handlers.library.CloudConfiguration
 
 class KsteamClient (
     private val configuration: KsteamClientExtensionConfiguration
