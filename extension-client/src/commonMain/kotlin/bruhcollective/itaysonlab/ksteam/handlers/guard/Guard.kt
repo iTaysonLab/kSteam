@@ -38,7 +38,9 @@ class Guard(
     private val sgAddFlow = MutableStateFlow<SgCreationFlowState>(SgCreationFlowState.Idle)
     val guardConfigurationFlow = sgAddFlow.asStateFlow()
 
-    fun instanceForCurrentUser() = instanceFor(steamClient.currentSessionSteamId)
+    fun instanceForCurrentUser() = instanceFor(steamClient.currentSessionSteamId.takeIf {
+        it.longId != 0L
+    } ?: steamClient.configuration.autologinSteamId)
 
     /**
      * Request a Steam Guard instance for a [steamId].
