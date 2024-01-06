@@ -7,7 +7,10 @@ import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
 import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
 import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
+import bruhcollective.itaysonlab.ksteam.guardMoveConfirm
+import bruhcollective.itaysonlab.ksteam.guardMoveStart
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
+import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.handlers.configuration
 import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -96,10 +99,7 @@ class Guard(
      * This will send an SMS to a phone, from which you need to extract the code and send it to the server.
      */
     suspend fun confirmMove() {
-        twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(
-            CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request()
-        )
-
+        steamClient.webApi.guardMoveStart(accessToken = steamClient.account.getCurrentAccount()!!.accessToken)
         sgAddFlow.value = SgCreationFlowState.SmsSent(hint = "", moving = true, guardConfiguration = null)
     }
 
@@ -120,13 +120,14 @@ class Guard(
         }
 
         val guardConfiguration = if (previous.moving) {
-            twoFactor.RemoveAuthenticatorViaChallengeContinue().executeSteam(
-                data = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(
+            steamClient.webApi.guardMoveConfirm(
+                accessToken = steamClient.account.getCurrentAccount()!!.accessToken,
+                obj = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(
                     sms_code = code,
                     version = 2,
                     generate_new_token = true
                 )
-            ).let {
+            )?.let {
                 if (it.success == true) {
                     it.replacement_token?.toConfig()
                 } else {
