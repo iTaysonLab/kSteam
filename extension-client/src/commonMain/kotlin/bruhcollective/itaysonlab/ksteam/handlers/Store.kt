@@ -2,9 +2,11 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
+import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import steam.webui.common.*
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
+import steam.webui.storebrowse.GrpcStoreBrowse
 
 /**
  * Access store data using this interface.
@@ -14,6 +16,10 @@ import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
 class Store internal constructor(
     private val steamClient: SteamClient
 ) : BaseHandler {
+    private val storeBrowse by lazy {
+        GrpcStoreBrowse(steamClient.unifiedMessages)
+    }
+
     // TODO: make it "compressable" or store in some kind of LRU cache with on-disk
     private val storeItemsMap = mutableMapOf<StoreItemID, StoreItem>()
     private val rpLocalizationMap = mutableMapOf<Int, Map<String, String>>()
@@ -99,18 +105,13 @@ class Store internal constructor(
             return emptyList() // short-circuit
         }
 
-        return steamClient.unifiedMessages.execute(
-            methodName = "StoreBrowse.GetItems",
-            requestAdapter = CStoreBrowse_GetItems_Request.ADAPTER,
-            responseAdapter = CStoreBrowse_GetItems_Response.ADAPTER,
-            requestData = CStoreBrowse_GetItems_Request(
-                ids = ids,
-                context = StoreBrowseContext(
-                    language = steamClient.language.vdfName,
-                    country_code = steamClient.persona.currentPersona.value.country
-                ), data_request = request
-            )
-        ).data.store_items
+        return storeBrowse.GetItems().executeSteam(data = CStoreBrowse_GetItems_Request(
+            ids = ids,
+            context = StoreBrowseContext(
+                language = steamClient.language.vdfName,
+                country_code = steamClient.persona.currentPersona.value.country
+            ), data_request = request
+        )).store_items
     }
 
     private fun storeItemToId(item: StoreItem) = when (item.item_type) {
