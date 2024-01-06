@@ -9,7 +9,7 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * Marks that the following [GrpcCall] should be executed as a non-authenticated one. Only affects [SteamGrpcCall] requests.
  */
-fun <S: Any, R: Any> GrpcCall<S, R>.markAsNonAuthed() = apply {
+private fun <S: Any, R: Any> GrpcCall<S, R>.markAsAnonymous() = apply {
     require(this is SteamGrpcCall<S, R>) { "This method is only applicable to kSteam gRPC calls!" }
     requestMetadata = mapOf("ks_anon" to "1")
 }
@@ -18,8 +18,9 @@ fun <S: Any, R: Any> GrpcCall<S, R>.markAsNonAuthed() = apply {
  * This exception is thrown if [SteamGrpcCall]'s execute method returns unsuccessful result.
  */
 class SteamRpcException(
+    val method: String,
     val result: EResult
-): Exception()
+): Exception("Steam RPC method $method failed: $result")
 
 /**
  * Executes this [GrpcCall] as a Steam call.
@@ -32,10 +33,10 @@ class SteamRpcException(
 @Throws(SteamRpcException::class, IOException::class, CancellationException::class)
 suspend fun <S: Any, R: Any> GrpcCall<S, R>.executeSteam(
     data: S,
-    authorized: Boolean = false
+    anonymous: Boolean = false
 ): R {
-    if (authorized) {
-        markAsNonAuthed()
+    if (anonymous) {
+        markAsAnonymous()
     }
 
     return execute(data)

@@ -5,10 +5,8 @@ import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
 import com.squareup.wire.*
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import okio.Timeout
 
@@ -68,6 +66,7 @@ class UnifiedMessages internal constructor(
         override val method: GrpcMethod<S, R>,
     ): GrpcCall<S, R> {
         private var cancelled = false
+        private var executed = false
 
         override var requestMetadata: Map<String, String> = mapOf()
         override val responseMetadata: Map<String, String>? = null
@@ -81,18 +80,20 @@ class UnifiedMessages internal constructor(
         override fun clone(): GrpcCall<S, R> = SteamGrpcCall(runtime, method)
         override fun isCanceled(): Boolean = cancelled
 
-        override fun isExecuted(): Boolean {
-            TODO("Not yet implemented")
-        }
+        override fun isExecuted(): Boolean = executed
 
         override fun executeBlocking(request: S): R = runBlocking {
             execute(request)
         }
 
         override suspend fun execute(request: S): R {
+            executed = true
+
+            val methodName = method.path.removePrefix("/").replace("/", ".")
+
             val steamResult = runtime.execute(
-                signed = requestMetadata.getOrElse("ks_anon") { "0" } == "1",
-                methodName = method.path.removePrefix("/").replace("/", "."),
+                signed = requestMetadata.getOrElse("ks_anon") { "0" } == "0",
+                methodName = methodName,
                 requestAdapter = method.requestAdapter,
                 responseAdapter = method.responseAdapter,
                 requestData = request
@@ -101,7 +102,7 @@ class UnifiedMessages internal constructor(
             if (steamResult.isSuccess) {
                 return steamResult.data
             } else {
-                throw SteamRpcException(steamResult.result)
+                throw SteamRpcException(method = methodName, result = steamResult.result)
             }
         }
 

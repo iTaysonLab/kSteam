@@ -73,7 +73,7 @@ class Account internal constructor(
                     } else {
                         "Unknown"
                     }
-                ), authorized = false
+                ), anonymous = true
             )
         } catch (e: SteamRpcException) {
             return null
@@ -101,7 +101,7 @@ class Account internal constructor(
     ): AuthorizationResult {
         val rsaData = authenticationClient.GetPasswordRSAPublicKey().executeSteam(
             CAuthentication_GetPasswordRSAPublicKey_Request(account_name = username),
-            authorized = false
+            anonymous = true
         )
 
         val encryptedPassword =
@@ -124,7 +124,7 @@ class Account internal constructor(
                     account_name = username,
                     encrypted_password = encryptedPassword,
                     encryption_timestamp = rsaData.timestamp,
-                ), authorized = false
+                ), anonymous = true
             )
         } catch (e: SteamRpcException) {
             return if (e.result == EResult.InvalidPassword) {
@@ -187,7 +187,7 @@ class Account internal constructor(
                     code_type = authState.sumProtos.filterNot {
                         it == EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation || it == EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation
                     }.first().value
-                ), authorized = false
+                ), anonymous = true
             )
         }
 
@@ -298,7 +298,7 @@ class Account internal constructor(
             CAuthentication_PollAuthSessionStatus_Request(
                 client_id = pollInfo!!.clientId,
                 request_id = pollInfo!!.requestId
-            ), authorized = false
+            ), anonymous = true
         )
     }
 
