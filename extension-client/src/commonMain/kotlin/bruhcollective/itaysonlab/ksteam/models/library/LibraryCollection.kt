@@ -12,12 +12,12 @@ import kotlinx.serialization.Serializable
  * A library collection is a defined set of filters which is used to sort applications in user's Steam library.
  */
 @Immutable
-sealed class LibraryCollection (
-    val id: String,
-    val name: String,
-    internal val timestamp: Int,
-    internal val version: Long,
-) {
+sealed interface LibraryCollection {
+    val id: String
+    val name: String
+    val timestamp: Int
+    val version: Long
+
     companion object {
         val Placeholder = Simple("", "", 0, 0, emptyList(), emptyList())
 
@@ -48,28 +48,26 @@ sealed class LibraryCollection (
      *
      * You can add applications here.
      */
-    class Simple(
-        id: String,
-        name: String,
-        timestamp: Int,
-        version: Long = 0,
+    data class Simple(
+        override val id: String,
+        override val name: String,
+        override val timestamp: Int,
+        override val version: Long = 0,
         val added: List<Long> = emptyList(),
         val removed: List<Long> = emptyList(),
-    ): LibraryCollection(id, name, timestamp, version)
+    ): LibraryCollection
 
     /**
      * A dynamic collection which can specify a variety of filters.
      */
-    class Dynamic(
-        id: String,
-        name: String,
-        timestamp: Int,
-        version: Long = 0,
+    data class Dynamic(
+        override val id: String,
+        override val name: String,
+        override val timestamp: Int,
+        override val version: Long = 0,
         val filters: DynamicFilters = DynamicFilters(),
-    ): LibraryCollection(id, name, timestamp, version)
+    ): LibraryCollection
 }
-
-
 
 @Serializable
 internal data class RemoteCollectionModel(

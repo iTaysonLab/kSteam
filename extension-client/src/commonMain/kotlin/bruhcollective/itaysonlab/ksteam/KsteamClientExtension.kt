@@ -9,9 +9,9 @@ import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
+import bruhcollective.itaysonlab.ksteam.handlers.library.CloudConfiguration
 import bruhcollective.itaysonlab.ksteam.handlers.library.Library
 import bruhcollective.itaysonlab.ksteam.handlers.library.Pics
-import bruhcollective.itaysonlab.ksteam.handlers.library.CloudConfiguration
 
 class KsteamClient (
     private val configuration: KsteamClientExtensionConfiguration
@@ -59,8 +59,9 @@ class KsteamClientExtensionConfiguration {
      * - [Pics] will no longer auto-fetch new licenses on start or runtime user purchases
      * - [Library] will no longer auto-fetch user's library information (last played games and collections)
      *
-     * Recommended Value: true if you need to access user's library or access CDN tokens
-     * Default: true
+     * Recommended Value: `true` if you need to access user's library or access CDN tokens
+     *
+     * Default: `true`
      */
     var enablePics: Boolean = true
 
