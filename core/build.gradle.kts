@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r32"
+version = "r36"
 
 kotlin {
     multiplatformSetup(additionalNativeTargetConfig = {
