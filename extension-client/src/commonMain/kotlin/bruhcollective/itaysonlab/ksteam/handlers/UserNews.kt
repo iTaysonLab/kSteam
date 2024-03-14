@@ -13,6 +13,7 @@ import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import steam.webui.usernews.CUserNews_GetUserNews_Request
 import steam.webui.usernews.CUserNews_GetUserNews_Response
+import kotlin.time.measureTimedValue
 
 /**
  * Access Steam friend activity using this handler.
@@ -33,37 +34,41 @@ class UserNews internal constructor(
         count: Int = 100,
         startTime: Int = 0,
         endTime: Int = 0,
-    ): List<ActivityFeedEntry> {
-        val newsProto = steamClient.unifiedMessages.execute(
-            methodName = "UserNews.GetUserNews",
-            requestAdapter = CUserNews_GetUserNews_Request.ADAPTER,
-            responseAdapter = CUserNews_GetUserNews_Response.ADAPTER,
-            requestData = CUserNews_GetUserNews_Request(
-                filterappid = appId,
-                filterflags = showEvents,
-                count = count,
-                starttime = startTime,
-                endtime = endTime,
-                language = steamClient.language.vdfName
-            )
-        ).data
+    ): List<ActivityFeedEntry> = measure("getUserNews") {
+        val newsProto = measure("getUserNews:getUserNews") {
+            steamClient.unifiedMessages.execute(
+                methodName = "UserNews.GetUserNews",
+                requestAdapter = CUserNews_GetUserNews_Request.ADAPTER,
+                responseAdapter = CUserNews_GetUserNews_Response.ADAPTER,
+                requestData = CUserNews_GetUserNews_Request(
+                    filterappid = appId,
+                    filterflags = showEvents,
+                    count = count,
+                    starttime = startTime,
+                    endtime = endTime,
+                    language = steamClient.language.vdfName
+                )
+            ).data
+        }
 
         // region Mapping achievements
 
         val achievementMap = mutableMapOf<String, ActivityFeedEntry.NewAchievements.Achievement>()
 
-        newsProto.achievement_display_data.forEach { displayData ->
-            val achAppId = displayData.appid ?: return@forEach
+        measure("getUserNews:mapAchievements") {
+            newsProto.achievement_display_data.forEach { displayData ->
+                val achAppId = displayData.appid ?: return@forEach
 
-            displayData.achievements.forEach { achievement ->
-                achievementMap[achievement.name.orEmpty()] = ActivityFeedEntry.NewAchievements.Achievement(
-                    internalName = achievement.name.orEmpty(),
-                    displayName = achievement.display_name.orEmpty(),
-                    displayDescription = achievement.display_description.orEmpty(),
-                    icon = SteamCdn.formatCommunityImageUrl(achAppId, achievement.icon.orEmpty()),
-                    unlockedPercent = (achievement.unlocked_pct ?: 0f).toDouble(),
-                    hidden = achievement.hidden ?: false
-                )
+                displayData.achievements.forEach { achievement ->
+                    achievementMap[achievement.name.orEmpty()] = ActivityFeedEntry.NewAchievements.Achievement(
+                        internalName = achievement.name.orEmpty(),
+                        displayName = achievement.display_name.orEmpty(),
+                        displayDescription = achievement.display_description.orEmpty(),
+                        icon = SteamCdn.formatCommunityImageUrl(achAppId, achievement.icon.orEmpty()),
+                        unlockedPercent = (achievement.unlocked_pct ?: 0f).toDouble(),
+                        hidden = achievement.hidden ?: false
+                    )
+                }
             }
         }
 
@@ -79,45 +84,55 @@ class UserNews internal constructor(
 
         val publishedFiles = mutableMapOf<Int, MutableList<Long>>()
 
-        newsProto.news.asSequence().filter { event ->
-            (event.gameid != null && event.gameid != 0L)
-                    || (event.steamid_actor != null && event.steamid_actor != 0L)
-                    || (event.appids.isNotEmpty())
-                    || (event.packageid != null && event.packageid != 0)
-                    || (event.clan_announcementid != null && event.clan_announcementid != 0L)
-                    || (event.publishedfileid != null && event.publishedfileid != 0L)
-        }.forEach { event ->
-            if (event.clan_announcementid != null && event.steamid_actor != 0L) {
-                totalClanSteamIds.add(event.steamid_actor.toSteamId())
-                totalClanAnnouncementIds.add(event.clan_announcementid)
-            } else if (event.steamid_actor != 0L) {
-                event.steamid_actor?.let { totalUserIds.add(it.toSteamId()) }
-            }
+        measure("getUserNews:mapIds") {
+            newsProto.news.asSequence().filter { event ->
+                (event.gameid != null && event.gameid != 0L)
+                        || (event.steamid_actor != null && event.steamid_actor != 0L)
+                        || (event.appids.isNotEmpty())
+                        || (event.packageid != null && event.packageid != 0)
+                        || (event.clan_announcementid != null && event.clan_announcementid != 0L)
+                        || (event.publishedfileid != null && event.publishedfileid != 0L)
+            }.forEach { event ->
+                if (event.clan_announcementid != null && event.steamid_actor != 0L) {
+                    totalClanSteamIds.add(event.steamid_actor.toSteamId())
+                    totalClanAnnouncementIds.add(event.clan_announcementid)
+                } else if (event.steamid_actor != 0L) {
+                    event.steamid_actor?.let { totalUserIds.add(it.toSteamId()) }
+                }
 
-            if (event.gameid != 0L) {
-                totalAppIds.add(event.gameid?.toInt() ?: return@forEach)
-            }
+                if (event.gameid != 0L) {
+                    totalAppIds.add(event.gameid?.toInt() ?: return@forEach)
+                }
 
-            if (event.appids.isNotEmpty()) {
-                totalAppIds.addAll(event.appids)
-            }
+                if (event.appids.isNotEmpty()) {
+                    totalAppIds.addAll(event.appids)
+                }
 
-            if (event.publishedfileid != null && event.publishedfileid != 0L) {
-                publishedFiles.getOrPut(event.gameid.toInt()) {
-                    mutableListOf()
-                }.add(event.publishedfileid)
+                if (event.publishedfileid != null && event.publishedfileid != 0L) {
+                    publishedFiles.getOrPut(event.gameid.toInt()) {
+                        mutableListOf()
+                    }.add(event.publishedfileid)
+                }
             }
         }
 
         // endregion
 
         val totalSteamIds = (totalUserIds + totalClanSteamIds).distinctBy(SteamId::id)
-        val summariesMap = steamClient.store.getAppSummaries(totalAppIds)
-        val userMap = steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
 
-        val publishedFileMap = publishedFiles.entries.flatMap { entry ->
-            steamClient.publishedFiles.getDetails(entry.key, entry.value)
-        }.associateBy(PublishedFile::id)
+        val summariesMap = measure("getUserNews:getAppSummaries") {
+            steamClient.store.getAppSummaries(totalAppIds)
+        }
+
+        val userMap = measure("getUserNews:getProfileSummaries") {
+            steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
+        }
+
+        val publishedFileMap = measure("getUserNews:getPublishedFiles") {
+            publishedFiles.entries.flatMap { entry ->
+                steamClient.publishedFiles.getDetails(entry.key, entry.value)
+            }.associateBy(PublishedFile::id)
+        }
 
         // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
 
@@ -130,7 +145,7 @@ class UserNews internal constructor(
         val intDuplicateStack = DuplicateStack<Int>()
         val longDuplicateStack = DuplicateStack<Long>()
 
-        for (i in 0 until totalEventSize) {
+        for (i in 0..<totalEventSize) {
             val event = newsProto.news[i]
             val eventNext = newsProto.news.getOrNull(i + 1)
 
@@ -266,17 +281,24 @@ class UserNews internal constructor(
          *
          * Shows: unlocked achievements, published screenshots + videos, user status ("Post about this game"), new user + curator reviews, wishlist additions, first-time play
          */
-        val AppOverviewList = EUserNewsType.AchievementUnlocked + EUserNewsType.FilePublished_Screenshot + EUserNewsType.FilePublished_Video + EUserNewsType.UserStatus + EUserNewsType.RecommendedGame + EUserNewsType.CuratorRecommendedGame + EUserNewsType.AddedGameToWishlist + EUserNewsType.PlayedGameFirstTime // + EUserNewsType.PostedAnnouncement
+        // EUserNewsType.PostedAnnouncement but it is unresolvable in Steam3 API
+        val AppOverviewList = EUserNewsType.AchievementUnlocked + EUserNewsType.FilePublished_Screenshot + EUserNewsType.FilePublished_Video + EUserNewsType.UserStatus + EUserNewsType.RecommendedGame + EUserNewsType.CuratorRecommendedGame + EUserNewsType.AddedGameToWishlist + EUserNewsType.PlayedGameFirstTime
 
         /**
          * Mimics what is shown in "Friend Activity" webpage
          *
-         * Shows: unlocked achievements, published screenshots + videos, user status ("Post about this game"), new user + curator reviews, wishlist additions, first-time play, game events, added/removed friends
+         * Shows: unlocked achievements, published screenshots + videos, user status ("Post about this game"), new user + curator reviews, wishlist additions, first-time play, added/removed friends
          */
         val FriendActivity = AppOverviewList + EUserNewsType.FriendAdded + EUserNewsType.FriendRemoved
     }
 
     override suspend fun onEvent(packet: SteamPacket) = Unit
+
+    private inline fun <T> measure(label: String, func: () -> T): T {
+        return measureTimedValue(func).also {
+            KSteamLogging.logDebug("UserNews") { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
+        }.value
+    }
 
     private class DuplicateStack <T> {
         private val stack = mutableListOf<T>()
