@@ -11,7 +11,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 private fun <S: Any, R: Any> GrpcCall<S, R>.markAsAnonymous() = apply {
     require(this is SteamGrpcCall<S, R>) { "This method is only applicable to kSteam gRPC calls!" }
-    requestMetadata = mapOf("ks_anon" to "1")
+    requestMetadata = mapOf(SteamGrpcCall.AnonymousMarker to "1")
 }
 
 /**
@@ -27,7 +27,7 @@ class SteamRpcException(
  *
  * Differences from an arbitrary execution:
  * - auto-check for using [SteamGrpcCall]
- * - possibility to set non-authed request without explicitly calling [markAsNonAuthed]
+ * - possibility to set non-authed request without explicitly calling [markAsAnonymous]
  * - API-defined [SteamRpcException] for non-standard results
  */
 @Throws(SteamRpcException::class, IOException::class, CancellationException::class)

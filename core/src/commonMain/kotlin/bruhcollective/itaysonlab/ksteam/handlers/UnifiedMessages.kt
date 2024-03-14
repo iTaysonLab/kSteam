@@ -65,6 +65,10 @@ class UnifiedMessages internal constructor(
         private val runtime: UnifiedMessages,
         override val method: GrpcMethod<S, R>,
     ): GrpcCall<S, R> {
+        internal companion object {
+            const val AnonymousMarker = "ks_anon"
+        }
+
         private var cancelled = false
         private var executed = false
 
@@ -92,7 +96,7 @@ class UnifiedMessages internal constructor(
             val methodName = method.path.removePrefix("/").replace("/", ".")
 
             val steamResult = runtime.execute(
-                signed = requestMetadata.getOrElse("ks_anon") { "0" } == "0",
+                signed = requestMetadata.getOrElse(AnonymousMarker) { "0" } == "0",
                 methodName = methodName,
                 requestAdapter = method.requestAdapter,
                 responseAdapter = method.responseAdapter,
