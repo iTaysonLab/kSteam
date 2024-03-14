@@ -24,7 +24,7 @@ import kotlin.experimental.and
  * For creating an instance if it is not created yet, refer to the [Guard] handler.
  */
 class GuardInstance(
-    internal val steamId: SteamId,
+    val steamId: SteamId,
     private val configuration: GuardStructure,
     private val clockContext: GuardClockContext
 ) {
