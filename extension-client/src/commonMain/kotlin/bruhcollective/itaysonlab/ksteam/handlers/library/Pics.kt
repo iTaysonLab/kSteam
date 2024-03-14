@@ -12,13 +12,13 @@ import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsPackageChangeNumber
-import bruhcollective.itaysonlab.ksteam.platform.dispatchListProcessing
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
 import io.realm.kotlin.UpdatePolicy
 import io.realm.kotlin.ext.query
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -129,8 +129,10 @@ class Pics internal constructor(
             }
         }
 
-        updatePackagesMetadata(requiresUpdate)
-        appIds = checkAppsIntegrity(licenses)
+        withContext(Dispatchers.IO) {
+            updatePackagesMetadata(requiresUpdate)
+            checkAppsIntegrity(licenses)
+        }
 
         KSteamLogging.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
 
@@ -141,180 +143,188 @@ class Pics internal constructor(
         _isPicsAvailable.value = PicsState.UpdatingPackages
 
         if (requiresUpdate.isEmpty()) {
-            KSteamLogging.logDebug("Pics:HandleLicenses") {
+            KSteamLogging.logDebug("Pics:UpdatePackagesMetadata") {
                 "Package metadata is in up-to-date state, no update required"
             }
             return
         } else {
-            KSteamLogging.logDebug("Pics:HandleLicenses") {
+            KSteamLogging.logDebug("Pics:UpdatePackagesMetadata") {
                 "Requesting metadata for ${requiresUpdate.size} packages"
             }
         }
 
-        val parsedPackages = dispatchListProcessing(loadPackageInfo(requiresUpdate)) { packageInfoProto ->
-            val changeNumber = packageInfoProto.change_number ?: return@dispatchListProcessing null
-            val buffer = packageInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
-            val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: return@dispatchListProcessing null
-
-            parsedPackageInfo to changeNumber
-        }
-
-        database.realm.write {
-            parsedPackages.forEach { (packageInfo, changeNumber) ->
-                copyToRealm(PicsPackageChangeNumber().apply {
-                    this.packageId = packageInfo.packageId
-                    this.changeNumber = changeNumber
-                }, updatePolicy = UpdatePolicy.ALL)
-
-                copyToRealm(packageInfo, updatePolicy = UpdatePolicy.ALL)
-            }
-        }
+        picsFlow(
+            request = CMsgClientPICSProductInfoRequest(
+                meta_data_only = false,
+                packages = requiresUpdate.map {
+                    CMsgClientPICSProductInfoRequest_PackageInfo(
+                        packageid = it.package_id,
+                        access_token = it.access_token,
+                    )
+                }
+            ), selector = CMsgClientPICSProductInfoResponse::packages
+        ).collect(::writePicsPackageChunk)
     }
 
     // This is trying to mimic Steam client behavior
-    private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>): List<Int> {
+    private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>) {
         // Get ids of app that we actually own
-        val appIds = licenses
-            .mapNotNull { it.package_id }
+        appIds = licenses.mapNotNull { it.package_id }
             .let { owningPackages -> database.realm.query<PackageInfo>("packageId IN $0", owningPackages).find() }
             .flatMap { it.appIds }
             .distinct()
 
-        // Firstly, we request app tokens to access metadata
+        // We request app tokens to access any metadata at all
         val tokens = steamClient.execute(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
                 adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
                 payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
             )
-        ).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.associateBy {
-            it.appid ?: 0
+        ).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.filter { token ->
+            token.appid != null
+        }.associate {
+            it.appid!! to it.access_token
         }
 
-        // Firstly, we load cloud app metadata
-        val metadata = loadAppsInfo(tokens.values, withoutContent = true)
-
-        // Secondly, we diff the change numbers
-        val requiresUpdate = metadata.filter { sAppInfo ->
-            val appId = sAppInfo.appid ?: return@filter false
-            val changeNumber = sAppInfo.change_number ?: return@filter false
-            val databaseChangeNumber = database.realm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
-
-            if (databaseChangeNumber == null) {
-                KSteamLogging.logVerbose("Pics:HandleLicenses") {
-                    "[$appId] not yet cached: ${changeNumber}"
-                }
-            } else if (changeNumber > databaseChangeNumber) {
-                KSteamLogging.logVerbose("Pics:HandleLicenses") {
-                    "[$appId] is outdated: ${changeNumber} > ${databaseChangeNumber}"
-                }
-            }
-
-            // if null, package was NOT cached
-            databaseChangeNumber == null || changeNumber > databaseChangeNumber
-        }.mapNotNull { tokens[it.appid] }
-
-        if (requiresUpdate.isEmpty()) {
-            KSteamLogging.logDebug("Pics:HandleLicenses") {
-                "App metadata is in up-to-date state, no update required"
-            }
-            return appIds
+        if (database.realm.query<AppInfo>().count().find() > 0) {
+            // Not a new launch, we should check everything
+            partiallyRefreshAppIds(tokens)
         } else {
-            KSteamLogging.logDebug("Pics:HandleLicenses") {
-                "Requesting metadata for ${requiresUpdate.size} apps [${requiresUpdate.joinToString { "${it.appid} = ${it.access_token}" }}]"
-            }
+            // Short-circuit through the non-content PICS requests and immediately request everything
+            fullyRefreshAppInfos(tokens)
         }
+    }
 
+    private suspend fun fullyRefreshAppInfos(tokens: Map<Int, Long?>) {
+        KSteamLogging.logDebug("Pics:HandleLicenses") { "[Full] Requesting metadata for ${tokens.size} apps" }
         _isPicsAvailable.value = PicsState.UpdatingApps
 
-        val parsedApps = dispatchListProcessing(loadAppsInfo(requiresUpdate)) { appInfoProto ->
-            val changeNumber = appInfoProto.change_number ?: return@dispatchListProcessing null
-            val buffer = appInfoProto.buffer?.toByteArray() ?: return@dispatchListProcessing null
-            val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: return@dispatchListProcessing null
+        // And now, we request those apps and write them!
 
-            parsedAppInfo to changeNumber
-        }
-
-        database.realm.write {
-            parsedApps.forEach { (appInfo, changeNumber) ->
-                copyToRealm(PicsAppChangeNumber().apply {
-                    this.appId = appInfo.appId
-                    this.changeNumber = changeNumber
-                }, updatePolicy = UpdatePolicy.ALL)
-
-                copyToRealm(appInfo, updatePolicy = UpdatePolicy.ALL)
-            }
-        }
-
-        return appIds
-    }
-
-    private suspend fun loadPackageInfo(licenses: List<CMsgClientLicenseList_License>): List<CMsgClientPICSProductInfoResponse_PackageInfo> {
-        if (licenses.isEmpty()) {
-            return emptyList()
-        }
-
-        return requestDataFromPics(
+        picsFlow(
             request = CMsgClientPICSProductInfoRequest(
                 meta_data_only = false,
-                packages = licenses.map {
-                    CMsgClientPICSProductInfoRequest_PackageInfo(
-                        packageid = it.package_id,
-                        access_token = it.access_token,
-                    )
+                apps = tokens.map { (appId, accessToken) ->
+                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
                 }
-            ), emitter = {
-                it.packages
-            }
-        )
+            ), selector = CMsgClientPICSProductInfoResponse::apps
+        ).collect(::writePicsAppChunk)
     }
 
-    private suspend fun loadAppsInfo(
-        tokens: Collection<CMsgClientPICSAccessTokenResponse_AppToken>,
-        withoutContent: Boolean = false
-    ): List<CMsgClientPICSProductInfoResponse_AppInfo> {
-        if (tokens.isEmpty()) {
-            return emptyList()
+    private suspend fun partiallyRefreshAppIds(tokens: Map<Int, Long?>) {
+        // Here, we add app IDs that we will update from PICS
+        val appIdsToUpdate = mutableListOf<Int>()
+
+        // Then, we load cloud app metadata
+        picsFlow(
+            request = CMsgClientPICSProductInfoRequest(
+                meta_data_only = true,
+                apps = tokens.map { (appId, accessToken) ->
+                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
+                }
+            ), selector = CMsgClientPICSProductInfoResponse::apps
+        ).collect { metadataChunk ->
+            // Here, we diff the change numbers and note what apps we are missing in the DB
+            for (appInfo in metadataChunk) {
+                val appId = appInfo.appid ?: continue
+                val changeNumber = appInfo.change_number ?: continue
+                val databaseChangeNumber = database.realm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
+
+                if (databaseChangeNumber == null) {
+                    KSteamLogging.logVerbose("Pics:HandleLicenses") {
+                        "[$appId] not yet cached: $changeNumber"
+                    }
+
+                    appIdsToUpdate.add(appId)
+                } else if (changeNumber > databaseChangeNumber) {
+                    KSteamLogging.logVerbose("Pics:HandleLicenses") {
+                        "[$appId] is outdated: $changeNumber > $databaseChangeNumber"
+                    }
+
+                    appIdsToUpdate.add(appId)
+                } // otherwise it is actual
+            }
         }
 
-        return requestDataFromPics(
+        if (appIdsToUpdate.isEmpty()) {
+            KSteamLogging.logDebug("Pics:HandleLicenses") { "App metadata is in up-to-date state, no update required" }
+            return
+        }
+
+        KSteamLogging.logDebug("Pics:HandleLicenses") { "[Partial] Requesting metadata for ${appIdsToUpdate.size} apps" }
+        _isPicsAvailable.value = PicsState.UpdatingApps
+
+        // And now, we request those apps and write them!
+
+        picsFlow(
             request = CMsgClientPICSProductInfoRequest(
-                meta_data_only = withoutContent,
-                apps = tokens.mapNotNull {
-                    CMsgClientPICSProductInfoRequest_AppInfo(
-                        appid = it.appid ?: return@mapNotNull null,
-                        access_token = it.access_token ?: 0,
-                    )
+                meta_data_only = false,
+                apps = appIdsToUpdate.map { appId ->
+                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = tokens[appId])
                 }
-            ), emitter = {
-                it.apps
-            }
-        )
+            ), selector = CMsgClientPICSProductInfoResponse::apps
+        ).collect(::writePicsAppChunk)
     }
 
-    @Suppress("RemoveExplicitTypeArguments") // this breaks IDE completion
-    private suspend fun <T> requestDataFromPics(
+    private suspend fun <T> picsFlow(
         request: CMsgClientPICSProductInfoRequest,
-        emitter: (CMsgClientPICSProductInfoResponse) -> List<T>
-    ): List<T> {
-        val destination = mutableListOf<T>()
-
-        steamClient.subscribe(
+        selector: (CMsgClientPICSProductInfoResponse) -> List<T>
+    ): Flow<List<T>> {
+        return steamClient.subscribe(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
                 adapter = CMsgClientPICSProductInfoRequest.ADAPTER,
                 payload = request
             )
-        ).transformWhile<SteamPacket, List<T>> { packet ->
+        ).transformWhile { packet ->
             packet.getProtoPayload(CMsgClientPICSProductInfoResponse.ADAPTER).data.let { response ->
-                emit(response.let(emitter))
+                emit(selector(response))
                 response.response_pending ?: false
             }
-        }.collect { newBatch ->
-            destination.addAll(newBatch)
         }
+    }
 
-        return destination
+    private suspend fun writePicsPackageChunk(
+        chunk: List<CMsgClientPICSProductInfoResponse_PackageInfo>
+    ) {
+        KSteamLogging.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} packages received!" }
+
+        database.realm.write {
+            for (packageInfo in chunk) {
+                val changeNumber = packageInfo.change_number ?: continue
+                val buffer = packageInfo.buffer?.toByteArray() ?: continue
+                val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: continue
+
+                copyToRealm(PicsPackageChangeNumber().apply {
+                    this.packageId = parsedPackageInfo.packageId
+                    this.changeNumber = changeNumber
+                }, updatePolicy = UpdatePolicy.ALL)
+
+                copyToRealm(parsedPackageInfo, updatePolicy = UpdatePolicy.ALL)
+            }
+        }
+    }
+
+    private suspend fun writePicsAppChunk(
+        chunk: List<CMsgClientPICSProductInfoResponse_AppInfo>
+    ) {
+        KSteamLogging.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} apps received!" }
+
+        database.realm.write {
+            for (appInfo in chunk) {
+                val changeNumber = appInfo.change_number ?: continue
+                val buffer = appInfo.buffer?.toByteArray() ?: continue
+                val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: continue
+
+                copyToRealm(PicsAppChangeNumber().apply {
+                    this.appId = parsedAppInfo.appId
+                    this.changeNumber = changeNumber
+                }, updatePolicy = UpdatePolicy.ALL)
+
+                copyToRealm(parsedAppInfo, updatePolicy = UpdatePolicy.ALL)
+            }
+        }
     }
 
     // endregion
