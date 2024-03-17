@@ -11,7 +11,28 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 private fun <S: Any, R: Any> GrpcCall<S, R>.markAsAnonymous() = apply {
     require(this is SteamGrpcCall<S, R>) { "This method is only applicable to kSteam gRPC calls!" }
-    requestMetadata = mapOf(SteamGrpcCall.AnonymousMarker to "1")
+    requestMetadata = requestMetadata + (SteamGrpcCall.AnonymousMarker to "1")
+}
+
+/**
+ * Marks that the following [GrpcCall] should be executed by using a web transport. Only affects [SteamGrpcCall] requests.
+ *
+ * Why use this method?
+ * For some unknown reasons, Steam3 Networking refuses to execute some Unified Messages sent by an internal RPC bridge, returning EResult.Fail with transport_error = 1
+ * However, if you execute them by using a web bridge (api.steampowered.com) with the current token, it will continue executing without problems.
+ *
+ * Affected:
+ * TwoFactor.RemoveAuthenticatorViaChallengeStart
+ * TwoFactor.RemoveAuthenticatorViaChallengeContinue
+ * TwoFactor.RemoveAuthenticator
+ * TwoFactor.FinalizeAddAuthenticator
+ * (and possibly EVERY TwoFactor request?)
+ *
+ * **NOTE:** Web-transported methods cannot be forcibly made anonymous.
+ */
+private fun <S: Any, R: Any> GrpcCall<S, R>.markAsWeb() = apply {
+    require(this is SteamGrpcCall<S, R>) { "This method is only applicable to kSteam gRPC calls!" }
+    requestMetadata = requestMetadata + (SteamGrpcCall.WebMarker to "1")
 }
 
 /**
@@ -33,8 +54,13 @@ class SteamRpcException(
 @Throws(SteamRpcException::class, IOException::class, CancellationException::class)
 suspend fun <S: Any, R: Any> GrpcCall<S, R>.executeSteam(
     data: S,
-    anonymous: Boolean = false
+    anonymous: Boolean = false,
+    web: Boolean = false,
 ): R {
+    if (web) {
+        markAsWeb()
+    }
+
     if (anonymous) {
         markAsAnonymous()
     }

@@ -46,7 +46,7 @@ internal class CMClient(
     private var jobIdCounter = 0L
 
     private var cellId = 0
-    private var clientSessionId = 0
+    internal var clientSessionId = 0
     internal var clientSteamId = SteamId.Empty
 
     internal val dumper = PacketDumper(configuration.rootFolder)

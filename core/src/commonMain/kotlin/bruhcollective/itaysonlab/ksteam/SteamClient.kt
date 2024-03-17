@@ -25,7 +25,9 @@ import io.ktor.http.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.reflect.KClass
 
@@ -106,25 +108,25 @@ class SteamClient internal constructor(
             }
         }
 
-        connectionStatus
-            .onEach {
-                if (it == CMClientState.AwaitingAuthorization) {
-                    // Now we can log in with a default account if available
+        eventsScope.launch {
+            connectionStatus.filter { state ->
+                state == CMClientState.AwaitingAuthorization
+            }.collect { _ ->
+                runCatching {
                     getHandler<Account>().trySignInSaved()
+                }.onFailure { e ->
+                    KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a client state: ${e.message}" }
                 }
-            }.catch { throwable ->
-                KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a client state: ${throwable.message}" }
-            }.launchIn(eventsScope)
+            }
+        }
 
         eventsScope.launch {
             cmClient.incomingPacketsQueue.filter { packet ->
                 // We don't need to dispatch targeted packets to the global event queue
                 packet.header.targetJobId == 0L
             }.collect { packet ->
-                // KSteamLogging.logVerbose("SteamClient:EventFlow", "Dispatching packet to [${handlers.values.joinToString { it::class.simpleName.orEmpty() }}]")
-                handlers.values.forEach { handler ->
-                    try {
-                        // KSteamLogging.logVerbose("SteamClient:EventFlow", "- Dispatching packet to ${handler::class.simpleName.orEmpty()}")
+                for (handler in handlers.values) {
+                    kotlin.runCatching {
                         if (packet.messageId == EMsg.k_EMsgServiceMethod) {
                             handler.onRpcEvent(
                                 (packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(),
@@ -133,7 +135,7 @@ class SteamClient internal constructor(
                         } else {
                             handler.onEvent(packet)
                         }
-                    } catch (e: Exception) {
+                    }.onFailure { e ->
                         KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a packet: ${e.message}" }
                         e.printStackTrace()
                     }
@@ -181,9 +183,9 @@ class SteamClient internal constructor(
 
         if (host == "api.steampowered.com") {
             parameter("access_token", account.getCurrentAccount()?.accessToken.orEmpty())
-        } else {
-            header("Cookie", "mobileClient=android; mobileClientVersion=777777 3.0.0; steamLoginSecure=${account.buildSteamLoginSecureCookie()};")
         }
+
+        header("Cookie", "mobileClient=android; mobileClientVersion=777777 3.7.4; steamLoginSecure=${account.buildSteamLoginSecureCookie()};")
     }
 
     private infix fun MutableMap<KClass<*>, BaseHandler>.bindExtensions(extensions: List<Extension>) = apply {

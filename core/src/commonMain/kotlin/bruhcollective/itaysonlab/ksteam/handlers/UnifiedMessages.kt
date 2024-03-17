@@ -7,6 +7,7 @@ import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
 import com.squareup.wire.*
+import io.ktor.client.call.*
 import kotlinx.coroutines.runBlocking
 import okio.Timeout
 
@@ -67,6 +68,7 @@ class UnifiedMessages internal constructor(
     ): GrpcCall<S, R> {
         internal companion object {
             const val AnonymousMarker = "ks_anon"
+            const val WebMarker = "ks_web"
         }
 
         private var cancelled = false
@@ -83,18 +85,23 @@ class UnifiedMessages internal constructor(
 
         override fun clone(): GrpcCall<S, R> = SteamGrpcCall(runtime, method)
         override fun isCanceled(): Boolean = cancelled
-
         override fun isExecuted(): Boolean = executed
 
-        override fun executeBlocking(request: S): R = runBlocking {
-            execute(request)
-        }
+        override fun executeBlocking(request: S): R = runBlocking { execute(request) }
 
         override suspend fun execute(request: S): R {
             executed = true
 
             val methodName = method.path.removePrefix("/").replace("/", ".")
 
+            return if (requestMetadata.getOrElse(WebMarker) { "0" } == "1") {
+                webTransportImpl(methodName, request)
+            } else {
+                steamTransportImpl(methodName, request)
+            }
+        }
+
+        private suspend fun steamTransportImpl(methodName: String, request: S): R {
             val steamResult = runtime.execute(
                 signed = requestMetadata.getOrElse(AnonymousMarker) { "0" } == "0",
                 methodName = methodName,
@@ -108,6 +115,17 @@ class UnifiedMessages internal constructor(
             } else {
                 throw SteamRpcException(method = methodName, result = steamResult.result)
             }
+        }
+
+        private suspend fun webTransportImpl(methodName: String, request: S): R {
+            val (service, name) = methodName.split(".").let { split ->
+                split[0] to split[1]
+            }
+
+            return runtime.steamClient.webApi.submitProtobufForm(
+                path = "I${service}Service/${name}/v1",
+                data = method.requestAdapter.encodeByteString(request).base64()
+            ).body<ByteArray>().let(method.responseAdapter::decode)
         }
 
         override fun enqueue(request: S, callback: GrpcCall.Callback<S, R>) {

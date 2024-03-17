@@ -5,18 +5,13 @@ import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
 import bruhcollective.itaysonlab.ksteam.web.models.GetCMListForConnectResponse
 import bruhcollective.itaysonlab.ksteam.web.models.QueryTimeData
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.forms.submitForm
-import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
-import io.ktor.client.statement.HttpResponse
-import io.ktor.http.HttpHeaders
-import io.ktor.http.Parameters
-import io.ktor.http.URLBuilder
-import io.ktor.http.appendPathSegments
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.http.content.*
 import kotlinx.serialization.Serializable
 
 class WebApi(
@@ -44,28 +39,18 @@ class WebApi(
         }.postBody<WebApiBoxedResponse<QueryTimeData>>().response
     }
 
-    suspend inline fun <reified T> submitFormTyped(
-        baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
+    suspend fun submitProtobufForm(
         path: String,
-        parameters: Map<String, String>,
-        formParameters: Map<String, String>
-    ): T = submitForm(baseUrl, path, parameters, formParameters).body()
-
-    suspend fun submitForm(
-        baseUrl: String = EnvironmentConstants.COMMUNITY_API_BASE,
-        path: String,
-        parameters: Map<String, String>,
-        formParameters: Map<String, String>
+        data: String
     ): HttpResponse {
-        return apiClient.submitForm(url = URLBuilder(baseUrl).appendPathSegments(path).apply {
-            parameters.forEach { entry ->
-                this.parameters[entry.key] = entry.value
-            }
-        }.buildString(), formParameters = Parameters.build {
-            formParameters.forEach { entry ->
-                this.append(entry.key, entry.value)
-            }
-        })
+        return apiClient.submitFormWithBinaryData(
+            url = URLBuilder(EnvironmentConstants.WEB_API_BASE).appendPathSegments(path).buildString(), formData = listOf(
+                PartData.FormItem(data, {}, Headers.build {
+                    append(HttpHeaders.ContentDisposition, "form-data; name=\"input_protobuf_encoded\"")
+                    append(HttpHeaders.ContentLength, data.length.toString())
+                })
+            )
+        )
     }
 
     private fun insertHeadersTo(builder: HttpRequestBuilder) {
