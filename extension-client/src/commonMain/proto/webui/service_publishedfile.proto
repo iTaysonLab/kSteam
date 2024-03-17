@@ -176,6 +176,7 @@ message CPublishedFile_GetDetails_Request {
 	optional bool strip_description_bbcode = 15;
 	optional int32 desired_revision = 16 [default = 0, (.description) = "enum"];
 	optional bool includereactions = 17 [default = false];
+	optional bool admin_query = 18;
 }
 
 message CPublishedFile_GetDetails_Response {
@@ -270,6 +271,7 @@ message CPublishedFile_GetUserFiles_Request {
 	optional bool return_reactions = 35 [default = false];
 	optional bool return_apps = 36;
 	repeated int32 excluded_content_descriptors = 37 [(.description) = "enum"];
+	optional bool admin_query = 38;
 }
 
 message CPublishedFile_GetUserFiles_Request_KVTag {
@@ -373,6 +375,7 @@ message CPublishedFile_QueryFiles_Request {
 	optional .CPublishedFile_QueryFiles_Request_DateRange date_range_created = 44;
 	optional .CPublishedFile_QueryFiles_Request_DateRange date_range_updated = 45;
 	repeated int32 excluded_content_descriptors = 46 [(.description) = "enum"];
+	optional bool admin_query = 47;
 }
 
 message CPublishedFile_QueryFiles_Request_DateRange {
@@ -425,6 +428,15 @@ message CPublishedFile_RemoveChild_Request {
 message CPublishedFile_RemoveChild_Response {
 }
 
+message CPublishedFile_SetCollectionChildren_Request {
+	optional uint32 appid = 1;
+	optional uint64 publishedfileid = 2;
+	repeated uint64 children = 3;
+}
+
+message CPublishedFile_SetCollectionChildren_Response {
+}
+
 message CPublishedFile_SetPlaytimeForControllerConfigs_Request {
 	optional uint32 appid = 1;
 	repeated .CPublishedFile_SetPlaytimeForControllerConfigs_Request_ControllerConfigUsage controller_config_usage = 2;
@@ -436,6 +448,16 @@ message CPublishedFile_SetPlaytimeForControllerConfigs_Request_ControllerConfigU
 }
 
 message CPublishedFile_SetPlaytimeForControllerConfigs_Response {
+}
+
+message CPublishedFile_SetSubscriptionListFromCollection_Request {
+	optional uint32 appid = 1;
+	optional uint32 list_type = 2;
+	optional uint64 publishedfileid = 3;
+	optional bool add_only = 4;
+}
+
+message CPublishedFile_SetSubscriptionListFromCollection_Response {
 }
 
 message CPublishedFile_StartPlaytimeTracking_Request {
@@ -466,6 +488,7 @@ message CPublishedFile_Subscribe_Request {
 	optional uint32 list_type = 2;
 	optional int32 appid = 3;
 	optional bool notify_client = 4;
+	optional bool include_dependencies = 5;
 }
 
 message CPublishedFile_Subscribe_Response {
@@ -675,7 +698,9 @@ service PublishedFile {
 	rpc RefreshVotingQueue (.CPublishedFile_RefreshVotingQueue_Request) returns (.CPublishedFile_RefreshVotingQueue_Response);
 	rpc RemoveAppRelationship (.CPublishedFile_RemoveAppRelationship_Request) returns (.CPublishedFile_RemoveAppRelationship_Response);
 	rpc RemoveChild (.CPublishedFile_RemoveChild_Request) returns (.CPublishedFile_RemoveChild_Response);
+	rpc SetCollectionChildren (.CPublishedFile_SetCollectionChildren_Request) returns (.CPublishedFile_SetCollectionChildren_Response);
 	rpc SetPlaytimeForControllerConfigs (.CPublishedFile_SetPlaytimeForControllerConfigs_Request) returns (.CPublishedFile_SetPlaytimeForControllerConfigs_Response);
+	rpc SetSubscriptionListFromCollection (.CPublishedFile_SetSubscriptionListFromCollection_Request) returns (.CPublishedFile_SetSubscriptionListFromCollection_Response);
 	rpc StartPlaytimeTracking (.CPublishedFile_StartPlaytimeTracking_Request) returns (.CPublishedFile_StartPlaytimeTracking_Response);
 	rpc StopPlaytimeTracking (.CPublishedFile_StopPlaytimeTracking_Request) returns (.CPublishedFile_StopPlaytimeTracking_Response);
 	rpc StopPlaytimeTrackingForAllAppItems (.CPublishedFile_StopPlaytimeTrackingForAllAppItems_Request) returns (.CPublishedFile_StopPlaytimeTrackingForAllAppItems_Response);
