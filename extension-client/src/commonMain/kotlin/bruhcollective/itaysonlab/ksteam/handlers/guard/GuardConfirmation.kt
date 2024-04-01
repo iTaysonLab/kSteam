@@ -13,7 +13,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 
 /**
- * Mobile confirmations using Steam Guard instances. (trade/market)
+ * Mobile confirmations using a Steam Guard instance.
  */
 class GuardConfirmation(
     private val steamClient: SteamClient

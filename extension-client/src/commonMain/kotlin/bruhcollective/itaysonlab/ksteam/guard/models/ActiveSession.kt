@@ -4,16 +4,17 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import bruhcollective.itaysonlab.ksteam.util.ipString
+import kotlinx.serialization.Serializable
 import steam.enums.EAuthSessionGuardType
 import steam.enums.EAuthTokenPlatformType
 import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
 import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent
-import steam.webui.common.CMsgIPAddress
 
 /**
  * Represents a session which is approved to access Steam.
  */
 @Immutable
+@Serializable
 data class ActiveSession internal constructor(
     val id: Long,
     val deviceName: String,
@@ -26,31 +27,21 @@ data class ActiveSession internal constructor(
     val firstSeen: UsageData?,
     val lastSeen: UsageData?,
     val osType: EOSType,
-    private val _proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription
+    val isCurrentSession: Boolean
 ) {
-    /**
-     * Get a [ByteString] of the CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription protobuf.
-     *
-     * Useful for using as a argument in Android Navigation
-     *
-     * TODO: in Jetisteam, reference to a session by it's ID, so this function can be safely removed
-     */
-    fun protoBytes() = _proto.encodeByteString()
-
     @Immutable
+    @Serializable
     data class UsageData internal constructor(
         val time: Int,
-        val ip: CMsgIPAddress,
+        val ip: String,
         val locale: String,
         val country: String,
         val state: String,
         val city: String
     ) {
-        val ipString = ip.ipString
-
         internal constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent) : this(
             time = proto.time ?: 0,
-            ip = proto.ip ?: CMsgIPAddress(v4 = 0),
+            ip = proto.ip?.ipString.orEmpty(),
             locale = proto.locale.orEmpty(),
             country = proto.country.orEmpty(),
             state = proto.state.orEmpty(),
@@ -58,7 +49,7 @@ data class ActiveSession internal constructor(
         )
     }
 
-    constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription) : this(
+    constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription, isCurrentSession: Boolean) : this(
         id = proto.token_id ?: 0L,
         deviceName = proto.token_description.orEmpty(),
         timeUpdated = proto.time_updated ?: 0,
@@ -71,6 +62,6 @@ data class ActiveSession internal constructor(
         firstSeen = proto.first_seen?.let { UsageData(it) },
         lastSeen = proto.last_seen?.let { UsageData(it) },
         osType = EOSType.byEncoded(proto.os_type),
-        _proto = proto
+        isCurrentSession = isCurrentSession
     )
 }

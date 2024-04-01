@@ -5,7 +5,8 @@ import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
 import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
-import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationFlowState
+import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationResult
+import bruhcollective.itaysonlab.ksteam.guard.models.SgDeletionResult
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
 import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.configuration
@@ -15,8 +16,6 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import steam.webui.twofactor.*
 
 /**
@@ -31,9 +30,6 @@ class Guard(
 
     private val storage = GuardStorage(steamClient)
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
-
-    private val sgAddFlow = MutableStateFlow<SgCreationFlowState>(SgCreationFlowState.Idle)
-    val guardConfigurationFlow = sgAddFlow.asStateFlow()
 
     fun instanceForCurrentUser() = instanceFor(steamClient.currentSessionSteamId.takeIf {
         it.longId != 0L
@@ -55,12 +51,10 @@ class Guard(
     }
 
     /**
-     * Creates a [SgCreationFlowState] flow.
-     *
-     * To obtain it, use [guardConfigurationFlow].
+     * Initializes Steam Guard adding process for the current logged in SteamID.
      */
-    suspend fun initializeSgCreation() {
-        sgAddFlow.value = try {
+    suspend fun initializeSgCreation(): SgCreationResult {
+        return try {
             val response = twoFactor.AddAuthenticator().executeSteam(
                 CTwoFactor_AddAuthenticator_Request(
                     steamid = steamClient.currentSessionSteamId.longId,
@@ -70,120 +64,90 @@ class Guard(
                 )
             )
 
-            SgCreationFlowState.SmsSent(
+            SgCreationResult.SmsSent(
                 hint = response.phone_number_hint.orEmpty(),
                 moving = false,
                 guardConfiguration = response.toConfig()
             )
         } catch (sre: SteamRpcException) {
             if (sre.result == EResult.DuplicateRequest) {
-                SgCreationFlowState.AlreadyHasGuard
+                SgCreationResult.AlreadyHasGuard
             } else {
-                throw sre
+                SgCreationResult.Error(sre.result)
             }
         }
     }
 
     /**
-     * Resets Steam Guard creation.
-     */
-    fun resetSgCreation() {
-        sgAddFlow.value = SgCreationFlowState.Idle
-    }
-
-    /**
-     * Confirms moving Steam Guard to another account.
+     * Initializes Steam Guard moving process for the current logged in SteamID. This will only work if Steam Guard is already present on account.
      *
      * This will send an SMS to a phone, from which you need to extract the code and send it to the server.
      */
-    suspend fun confirmMove() {
-        runCatching {
-            twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(
-                data = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request(),
-                web = true
-            )
+    suspend fun initializeSgMoving(): SgCreationResult {
+        return try {
+            twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(data = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request(), web = true)
+            SgCreationResult.SmsSent(moving = true)
+        } catch (sre: SteamRpcException) {
+            SgCreationResult.Error(sre.result)
         }
-
-        sgAddFlow.value = SgCreationFlowState.SmsSent(hint = "", moving = true, guardConfiguration = null)
     }
 
     /**
-     * This will confirm a move/add request by a code from the SMS.
+     * This will confirm a move request by a code from the SMS.
+     *
+     * @param code the SMS code for confirming the action
+     * @param structure the [GuardStructure] obtained from [SgCreationResult.SmsSent]
      *
      * @return if guard was successfully set up
      */
-    suspend fun confirmSgConfiguration(code: String): Boolean {
-        val previous = sgAddFlow.value as? SgCreationFlowState.SmsSent ?: return false
+    suspend fun confirmSgCreation(code: String, structure: GuardStructure): GuardInstance? {
+        val instance = GuardInstance(steamClient.currentSessionSteamId, structure, GuardClockContextImpl(steamClient))
+        val firstPair = instance.generateCodeWithTime()
 
-        val instance = previous.guardConfiguration?.let {
-            GuardInstance(
-                steamClient.currentSessionSteamId,
-                it,
-                GuardClockContextImpl(steamClient)
+        return twoFactor.FinalizeAddAuthenticator().executeSteam(
+            web = true,
+            data = CTwoFactor_FinalizeAddAuthenticator_Request(
+                steamid = steamClient.currentSessionSteamId.longId,
+                activation_code = code,
+                validate_sms_code = true,
+                authenticator_code = firstPair.codeString,
+                authenticator_time = firstPair.generationTime
             )
-        }
+        ).takeIf { it.success == true }?.let {
+            if (it.want_more == true) {
+                val (secondCode, secondTime) = instance.generateCodeWithTime()
 
-        val guardConfiguration = if (previous.moving) {
-            runCatching {
-                twoFactor.RemoveAuthenticatorViaChallengeContinue().executeSteam(
-                    data = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(
-                        sms_code = code,
-                        version = 2,
-                        generate_new_token = true
-                    ),
-                    web = true
-                ).replacement_token!!.toConfig()
-            }.getOrNull()
-        } else {
-            val firstPair = instance!!.generateCodeWithTime()
-
-            twoFactor.FinalizeAddAuthenticator().executeSteam(
-                web = true,
-                data = CTwoFactor_FinalizeAddAuthenticator_Request(
-                    steamid = steamClient.currentSessionSteamId.longId,
-                    activation_code = code,
-                    validate_sms_code = true,
-                    authenticator_code = firstPair.codeString,
-                    authenticator_time = firstPair.generationTime
+                twoFactor.FinalizeAddAuthenticator().executeSteam(
+                    web = true,
+                    data = CTwoFactor_FinalizeAddAuthenticator_Request(
+                        steamid = steamClient.currentSessionSteamId.longId,
+                        authenticator_code = secondCode,
+                        authenticator_time = secondTime
+                    )
                 )
-            ).let {
-                if (it.success == true) {
-                    if (it.want_more == true) {
-                        val secondPair = instance.generateCodeWithTime()
-
-                        twoFactor.FinalizeAddAuthenticator().executeSteam(
-                            web = true,
-                            data = CTwoFactor_FinalizeAddAuthenticator_Request(
-                                steamid = steamClient.currentSessionSteamId.longId,
-                                authenticator_code = secondPair.codeString,
-                                authenticator_time = secondPair.generationTime
-                            )
-                        )
-                    }
-
-                    previous.guardConfiguration
-                } else {
-                    null
-                }
+            } else {
+                it
             }
+        }?.let {
+            tryAddConfig(steamClient.currentSessionSteamId, structure)
         }
+    }
 
-        return if (guardConfiguration != null) {
-            storage.writeStructure(steamClient.currentSessionSteamId, guardConfiguration)
+    /**
+     * This will confirm a moving request by a code from the SMS.
+     *
+     * @param code the SMS code for confirming the action
+     * @return if guard was successfully set up
+     */
+    suspend fun confirmSgMoving(code: String): GuardInstance? {
+        val structure = runCatching {
+            twoFactor.RemoveAuthenticatorViaChallengeContinue().executeSteam(
+                data = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(sms_code = code, version = 2, generate_new_token = true),
+                web = true
+            ).replacement_token!!.toConfig()
+        }.getOrNull() ?: return null
 
-            GuardInstance(
-                steamClient.currentSessionSteamId,
-                guardConfiguration,
-                GuardClockContextImpl(steamClient)
-            ).let { createdInstance ->
-                lazyInstances[steamClient.currentSessionSteamId] = createdInstance
-                sgAddFlow.value = SgCreationFlowState.Success(createdInstance.revocationCode)
-            }
-
-            true
-        } else {
-            false
-        }
+        return tryAddConfig(steamClient.currentSessionSteamId, structure)
     }
 
     /**
@@ -191,9 +155,12 @@ class Guard(
      *
      * **WARNING:** THIS WILL REPLACE THE CURRENT CONFIG IF IT WAS SUPPLIED!
      */
-    fun tryAddConfig(steamId: SteamId, configuration: GuardStructure) {
-        lazyInstances[steamId] = GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient))
+    fun tryAddConfig(steamId: SteamId, configuration: GuardStructure): GuardInstance {
         storage.writeStructure(steamId, configuration)
+
+        return GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient)).also {
+            lazyInstances[steamId] = it
+        }
     }
 
     /**
@@ -204,22 +171,23 @@ class Guard(
      * @param code manual code for revocation ("I don't have access to Steam Guard"), if null - kSteam will try to use local authenticator
      * @param unsafe force local data deletion even if code was invalid
      * @param removeSgCookies remove all Steam Guard cookies
-     * @return revocation attempts left
+     *
+     * @return the status of deleting process
      */
     suspend fun delete(
         steamId: SteamId,
         code: String? = null,
         removeSgCookies: Boolean = false,
         unsafe: Boolean = false
-    ): Int {
+    ): SgDeletionResult {
         val revocationCode = if (code.isNullOrEmpty()) {
             instanceFor(steamId)?.revocationCode
         } else {
             code
-        } ?: return 0
+        } ?: return SgDeletionResult.UnsupportedOperation
 
-        try {
-            val result = twoFactor.RemoveAuthenticator().executeSteam(
+        val result = try {
+            twoFactor.RemoveAuthenticator().executeSteam(
                 anonymous = code != null,
                 web = true,
                 data = CTwoFactor_RemoveAuthenticator_Request(
@@ -229,19 +197,21 @@ class Guard(
                     remove_all_steamguard_cookies = removeSgCookies
                 )
             )
+        } catch (e: SteamRpcException) {
+            return SgDeletionResult.Error(e.result)
+        }
 
-            val deleteData = result.success == true || unsafe
+        val deleteData = result.success == true || unsafe
 
-            if (deleteData) {
-                storage.deleteStructure(steamId)
-                lazyInstances.remove(steamId)
-            }
+        if (deleteData) {
+            storage.deleteStructure(steamId)
+            lazyInstances.remove(steamId)
+        }
 
-            return result.revocation_attempts_remaining ?: 0
-        } catch (e: Exception) {
-            e.printStackTrace()
-
-            return 0
+        return if (result.success == true) {
+            SgDeletionResult.Success
+        } else {
+            SgDeletionResult.InvalidCode(result.revocation_attempts_remaining ?: 0)
         }
     }
 

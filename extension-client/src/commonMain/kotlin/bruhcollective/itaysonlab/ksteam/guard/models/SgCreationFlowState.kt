@@ -1,40 +1,47 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
-/**
- * A series of classes describing the logic of adding/moving a Steam Guard.
- */
-sealed interface SgCreationFlowState {
-    /**
-     * Steam Guard creation process was not started yet.
-     */
-    object Idle : SgCreationFlowState
+import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 
+/**
+ * A series of classes describing the result of adding/moving a Steam Guard.
+ */
+sealed interface SgCreationResult {
     /**
      * This means that the user has set up Steam Guard on another device.
      *
      * Confirm this request or reset Steam Guard setup.
      */
-    object AlreadyHasGuard : SgCreationFlowState
+    data object AlreadyHasGuard : SgCreationResult
 
     /**
      * This means an SMS was sent and a code must be provided to finish move/addition.
+     *
+     * The [guardConfiguration] field is an intermediate structure that is used when creating Steam Guard for the first time.
      */
     data class SmsSent(
-        val hint: String,
-        val moving: Boolean,
-        internal val guardConfiguration: GuardStructure?
-    ) : SgCreationFlowState
+        val hint: String = "",
+        val moving: Boolean = false,
+        val guardConfiguration: GuardStructure? = null
+    ): SgCreationResult
 
     /**
-     * Steam Guard is configured on this kSteam instance.
-     *
-     * On this step, you should display a recovery code.
+     * An error occurred when creating or moving Steam Guard.
      */
-    class Success(
-        val recoveryCode: String
-    ) : SgCreationFlowState
+    data class Error(
+        val code: EResult
+    ): SgCreationResult
+}
 
-    class Error(
-        val message: String
-    ) : SgCreationFlowState
+sealed interface SgDeletionResult {
+    data object UnsupportedOperation: SgDeletionResult
+
+    data object Success: SgDeletionResult
+
+    data class InvalidCode (
+        val attemptsLeft: Int
+    ) : SgDeletionResult
+
+    data class Error(
+        val code: EResult
+    ): SgDeletionResult
 }

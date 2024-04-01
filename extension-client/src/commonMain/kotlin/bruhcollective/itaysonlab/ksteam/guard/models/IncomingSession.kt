@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
+import kotlinx.serialization.Serializable
 import steam.enums.EAuthSessionSecurityHistory
 import steam.enums.EAuthTokenPlatformType
 import steam.enums.ESessionPersistence
@@ -10,7 +11,8 @@ import steam.webui.authentication.CAuthentication_GetAuthSessionInfo_Response
  * Represents a session which is waiting to be confirmed/rejected.
  */
 @Immutable
-data class AwaitingSession internal constructor(
+@Serializable
+data class IncomingSession internal constructor(
     val id: Long,
     val ip: String,
     val geoloc: String,

@@ -1,8 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.guard.models
 
+import kotlinx.serialization.Serializable
+
 /**
  * Intermediate structure representing saved SG metadata.
  */
+@Serializable
 data class GuardStructure (
     val sharedSecret: String, // Required, Base64
     val serialNumber: Long = 0L,
