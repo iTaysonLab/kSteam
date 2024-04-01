@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.messages
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.util.EnumCache
 import okio.BufferedSink
 import okio.BufferedSource
 import steam.webui.common.CMsgProtoBufHeader
@@ -16,7 +17,7 @@ sealed interface SteamPacketHeader {
 
     class Binary : SteamPacketHeader {
         private var headerSize: Byte = 36
-        private var headerVersion: Int = 2
+        private var headerVersion: UShort = 2u
 
         override var targetJobId: Long = Long.MAX_VALUE
         override var sourceJobId: Long = Long.MAX_VALUE
@@ -28,7 +29,7 @@ sealed interface SteamPacketHeader {
 
         override fun read(buffer: BufferedSource) {
             headerSize = buffer.readByte()
-            headerVersion = buffer.readIntLe()
+            headerVersion = buffer.readShortLe().toUShort()
             targetJobId = buffer.readLongLe()
             sourceJobId = buffer.readLongLe()
             headerCanary = buffer.readByte().toUByte()
@@ -38,7 +39,7 @@ sealed interface SteamPacketHeader {
 
         override fun write(buffer: BufferedSink) {
             buffer.writeByte(headerSize.toInt())
-            buffer.writeIntLe(headerVersion)
+            buffer.writeShortLe(headerVersion.toInt())
             buffer.writeLongLe(targetJobId)
             buffer.writeLongLe(sourceJobId)
             buffer.writeByte(headerCanary.toInt())
@@ -84,7 +85,7 @@ sealed interface SteamPacketHeader {
                 protoHeader = protoHeader.copy(target_job_name = value)
             }
 
-        val result: EResult get() = EResult.byEncoded(protoHeader.eresult ?: EResult.Fail.encoded)
+        val result: EResult get() = EnumCache.eResult(protoHeader.eresult ?: 0)
 
         override fun read(buffer: BufferedSource) {
             val headerLength = buffer.readIntLe().toLong()

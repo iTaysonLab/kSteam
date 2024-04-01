@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.messages
 import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
+import bruhcollective.itaysonlab.ksteam.util.EnumCache
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
 import okio.BufferedSink
@@ -21,7 +22,7 @@ import okio.Sink
  *
  * Type depends on chosen EMsg (protobuf ones uses a special mask on their ID)
  */
-class SteamPacket private constructor(
+class SteamPacket (
     val messageId: EMsg,
     val header: SteamPacketHeader,
     var payload: ByteArray
@@ -57,7 +58,7 @@ class SteamPacket private constructor(
 
             val packetBuffer = rawPacket.buffer()
             val messageIdRaw = packetBuffer.readIntLe()
-            val messageId = EMsg.byEncoded(messageIdRaw and ProtobufClearMask)
+            val messageId = EnumCache.eMsg(messageIdRaw and ProtobufClearMask)
 
             KSteamLogging.logVerbose("SteamPacket:ParseNet") {
                 "Received message: $messageId (protobuf: ${(messageIdRaw and ProtobufMask) != 0})"
