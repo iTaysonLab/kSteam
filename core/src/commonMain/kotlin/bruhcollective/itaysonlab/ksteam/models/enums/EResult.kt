@@ -1,5 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.enums
 
+import bruhcollective.itaysonlab.ksteam.util.EnumCache
+
 enum class EResult (val encoded: Int) {
     Invalid(0),
     OK(1),
@@ -130,6 +132,6 @@ enum class EResult (val encoded: Int) {
     PhoneNumberIsVOIP(127);
 
     companion object {
-        fun byEncoded(num: Int) = entries.firstOrNull { it.encoded == num } ?: Fail
+        fun byEncoded(num: Int) = EnumCache.eResult(num)
     }
 }

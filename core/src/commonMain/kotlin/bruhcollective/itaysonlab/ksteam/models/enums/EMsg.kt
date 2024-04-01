@@ -1,5 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.enums
 
+import bruhcollective.itaysonlab.ksteam.util.EnumCache
+
 enum class EMsg (val encoded: Int) {
     k_EMsgInvalid(0),
     k_EMsgMulti(1),
@@ -1486,6 +1488,6 @@ enum class EMsg (val encoded: Int) {
     k_EMsgServerSecretChanged(12100);
 
     companion object {
-        fun byEncoded(num: Int) = entries.firstOrNull { it.encoded == num } ?: k_EMsgInvalid
+        fun byEncoded(num: Int): EMsg = EnumCache.eMsg(num)
     }
 }
