@@ -1,31 +1,52 @@
 package bruhcollective.itaysonlab.ksteam.debug
 
+import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
+import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import kotlinx.datetime.Clock
+import okio.FileSystem
 import okio.Path
+import okio.SYSTEM
 
 /**
  * This is a simple dumper infrastructure which can save Steam3 packets in a NetHook-style files.
  */
 class PacketDumper internal constructor(
-    saveRootFolder: Path
+    saveRootFolder: Path,
+    private val logger: Logger
 ) {
     private val sessionFolder = saveRootFolder / "dumps" / Clock.System.now().epochSeconds.toString()
-
-    var dumpMode: DumpMode = DumpMode.Disable
     private var loggedPacketIndex: Int = 0
 
+    var mode: DumpMode = DumpMode.Disable
+
     fun onPacket(packet: SteamPacket, directionOut: Boolean) {
-        if (dumpMode == DumpMode.Disable) return
+        if (mode == DumpMode.Disable) return
 
-        provideOkioFilesystem().createDirectories(sessionFolder, mustCreate = false)
+        val direction = if (directionOut) "out" else "in"
 
-        provideOkioFilesystem().write(
-            file = sessionFolder / "${loggedPacketIndex}_${if (directionOut) "out" else "in"}_${packet.messageId.name.removePrefix("k_")}.bin",
-            mustCreate = true
-        ) {
-            write(packet.encode())
+        logger.logVerbose("PacketDumper") {
+            when (val header = packet.header) {
+                is SteamPacketHeader.Protobuf -> {
+                    if (header.targetJobId != 0L) {
+                        "[$direction] ${packet.messageId} [protobuf, result = ${header.result}, job = ${header.targetJobName}]"
+                    } else {
+                        "[$direction] ${packet.messageId} [protobuf]"
+                    }
+                }
+
+                is SteamPacketHeader.Binary -> {
+                    "[$direction] ${packet.messageId} [binary]"
+                }
+            }
+        }
+
+        FileSystem.SYSTEM.apply {
+            createDirectories(sessionFolder, mustCreate = false)
+
+            write(file = sessionFolder / "${loggedPacketIndex}_${direction}_${packet.messageId.name.removePrefix("k_")}.bin", mustCreate = true) {
+                write(packet.encode())
+            }
         }
 
         loggedPacketIndex++

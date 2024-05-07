@@ -1,9 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.handlers.library
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.handlers.*
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
@@ -14,13 +11,13 @@ import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.models.library.RemoteCollectionModel
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
+import bruhcollective.itaysonlab.ksteam.util.executeSteamOrNull
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.Json
 import steam.webui.cloudconfigstore.CCloudConfigStore_Entry
 import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Request
-import steam.webui.player.CPlayer_GetLastPlayedTimes_Response
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Response_Game
 import steam.webui.player.CPlayer_LastPlayedTimes_Notification
 import kotlin.time.Duration.Companion.minutes
@@ -29,8 +26,8 @@ import kotlin.time.Duration.Companion.minutes
  * Provides access to user's owned app library.
  */
 class Library(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     companion object {
         private const val LOG_TAG = "PicsExt:Library"
         const val FavoriteCollection = "favorite"
@@ -227,15 +224,12 @@ class Library(
                 _isLoadingPlayTimes.value = true
 
                 while (true) {
-                    KSteamLogging.logDebug("Library:Collector") { "Requesting last played times" }
+                    steamClient.logger.logDebug("Library:Collector") { "Requesting last played times" }
 
                     _playtime.update {
-                        steamClient.unifiedMessages.execute(
-                            methodName = "Player.ClientGetLastPlayedTimes",
-                            requestAdapter = CPlayer_GetLastPlayedTimes_Request.ADAPTER,
-                            responseAdapter = CPlayer_GetLastPlayedTimes_Response.ADAPTER,
-                            requestData = CPlayer_GetLastPlayedTimes_Request()
-                        ).dataNullable?.games?.associateBy { it.appid ?: 0 }.orEmpty()
+                        steamClient.grpc.player.ClientGetLastPlayedTimes().executeSteamOrNull(
+                            data = CPlayer_GetLastPlayedTimes_Request()
+                        )?.games?.associateBy { it.appid ?: 0 }.orEmpty()
                     }
 
                     _isLoadingPlayTimes.value = false
@@ -254,7 +248,7 @@ class Library(
                 cloudCollector = null
 
                 if (it != null && it !is CancellationException) {
-                    KSteamLogging.logError("Library:Collector") { "Error occurred when collecting library data: ${it.message}" }
+                    steamClient.logger.logError("Library:Collector") { "Error occurred when collecting library data: ${it.message}" }
                     it.printStackTrace()
 
                     delay(1000L)
@@ -268,11 +262,11 @@ class Library(
     private fun handleUserLibrary(entries: List<CCloudConfigStore_Entry>) {
         _isLoadingLibrary.value = true
 
-        if (KSteamLogging.enableVerboseLogs) {
-            KSteamLogging.logVerbose("Library:Cloud") { "Printing cloud keys:" }
+        if (steamClient.logger.enableVerboseLogs) {
+            steamClient.logger.logVerbose("Library:Cloud") { "Printing cloud keys:" }
 
             entries.forEach { entry ->
-                KSteamLogging.logVerbose("Library:Cloud") { entry.toString() }
+                steamClient.logger.logVerbose("Library:Cloud") { entry.toString() }
             }
         }
 
@@ -281,13 +275,13 @@ class Library(
             val entryObject = try {
                 json.decodeFromString<RemoteCollectionModel>(entry.value_ ?: return@mapNotNull null)
             } catch (e: Exception) {
-                KSteamLogging.logError("Library:Collection") { entry.value_.toString() }
+                steamClient.logger.logError("Library:Collection") { entry.value_.toString() }
                 e.printStackTrace()
                 return@mapNotNull null
             }
 
             LibraryCollection.fromJsonCollection(entryObject, entry.timestamp ?: return@mapNotNull null, entry.version ?: return@mapNotNull null).also { c ->
-                KSteamLogging.logVerbose("Library:Collection") { c.toString() }
+                steamClient.logger.logVerbose("Library:Collection") { c.toString() }
             }
         }.filter {
             when (it.id) {
@@ -349,33 +343,25 @@ class Library(
         _ownedGames.value = steamClient.player.getOwnedGames().associateBy { it.id }
     }
 
-    override suspend fun onEvent(packet: SteamPacket) {
-        when (packet.messageId) {
-            EMsg.k_EMsgClientLogOnResponse -> {
-                if (packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER).dataNullable?.eresult == EResult.OK.encoded) {
-                    startCollector()
-                }
+    init {
+        steamClient.on(EMsg.k_EMsgClientLogOnResponse) { packet ->
+            if (packet.isProtobuf() && CMsgClientLogonResponse.ADAPTER.decode(packet.payload).eresult == EResult.OK.encoded) {
+                startCollector()
             }
-
-            EMsg.k_EMsgClientLicenseList -> {
-                requestOwnedGames()
-            }
-
-            EMsg.k_EMsgClientLoggedOff, EMsg.k_EMsgClientLogOff -> {
-                cloudCollector?.cancel()
-                userPlayTimesCollector?.cancel()
-            }
-
-            else -> Unit
         }
-    }
 
-    override suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) {
-        if (rpcMethod == "PlayerClient.NotifyLastPlayedTimes#1") {
-            packet.getProtoPayload(CPlayer_LastPlayedTimes_Notification.ADAPTER).dataNullable?.let { notification ->
-                KSteamLogging.logDebug(LOG_TAG) {
-                    "Received last played times notification: $notification"
-                }
+        steamClient.on(EMsg.k_EMsgClientLicenseList) { packet ->
+            requestOwnedGames()
+        }
+
+        steamClient.on(EMsg.k_EMsgClientLoggedOff) { packet ->
+            cloudCollector?.cancel()
+            userPlayTimesCollector?.cancel()
+        }
+
+        steamClient.onRpc("PlayerClient.NotifyLastPlayedTimes#1") { packet ->
+            CPlayer_LastPlayedTimes_Notification.ADAPTER.decode(packet.payload).let { notification ->
+                steamClient.logger.logDebug(LOG_TAG) { "Received last played times notification: $notification" }
 
                 _playtime.update {
                     it.toMutableMap().apply {

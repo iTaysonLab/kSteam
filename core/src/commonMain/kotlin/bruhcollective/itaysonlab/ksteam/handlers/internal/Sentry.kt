@@ -1,26 +1,27 @@
 package bruhcollective.itaysonlab.ksteam.handlers.internal
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.storage
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.platform.provideOkioFilesystem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.withContext
-import okio.ByteString
-import okio.Path
-import okio.use
+import okio.*
 import steam.webui.common.CMsgClientUpdateMachineAuth
 import steam.webui.common.CMsgClientUpdateMachineAuthResponse
 
 internal class Sentry(
     private val steamClient: SteamClient
-) : BaseHandler {
+) {
+    init {
+        steamClient.on(EMsg.k_EMsgClientUpdateMachineAuth) { packet ->
+            writeSentryFile(packet.header, CMsgClientUpdateMachineAuth.ADAPTER.decode(packet.payload))
+        }
+    }
+
     private fun persistKey(steamId: SteamId) = "sentries.${steamId}"
 
     private fun sentryFile(steamId: SteamId, fileName: String) = steamClient.storage.storageFor(steamId) / fileName
@@ -29,27 +30,25 @@ internal class Sentry(
         return steamClient.config.persistenceDriver.getString(persistKey(steamId))?.let {
             sentryFile(steamId, it)
         }?.takeIf {
-            provideOkioFilesystem().exists(it)
+            FileSystem.SYSTEM.exists(it)
         }
     }
 
     fun sentryHash(steamId: SteamId): ByteString? {
-        return provideOkioFilesystem().read(sentryFile(steamId) ?: return null) {
+        return FileSystem.SYSTEM.read(sentryFile(steamId) ?: return null) {
             readByteString().sha1()
         }
     }
 
     private suspend fun writeSentryFile(packetHeader: SteamPacketHeader, data: CMsgClientUpdateMachineAuth) =
         withContext(Dispatchers.IO) {
-            val fs = provideOkioFilesystem()
-
             val currentId = steamClient.currentSessionSteamId
             val filename = data.filename.let { if (it.isNullOrEmpty()) "sentry" else it }
             val filepath = sentryFile(currentId, filename)
 
             steamClient.config.persistenceDriver.set(persistKey(currentId), filename)
 
-            fs.write(filepath) {
+            FileSystem.SYSTEM.write(filepath) {
                 write(
                     byteString = data.bytes ?: ByteString.EMPTY,
                     byteCount = data.cubtowrite ?: data.bytes?.size ?: 0,
@@ -63,21 +62,15 @@ internal class Sentry(
                 CMsgClientUpdateMachineAuthResponse(
                     filename = filename,
                     eresult = EResult.OK.encoded,
-                    filesize = fs.openReadOnly(filepath).use {
+                    filesize = FileSystem.SYSTEM.openReadOnly(filepath).use {
                         it.size().toInt()
                     },
                     sha_file = sentryHash(currentId),
                     offset = data.offset,
                     cubwrote = data.cubtowrite,
                 )
-            ).apply {
-                header.targetJobId = packetHeader.sourceJobId
+            ).withHeader {
+                targetJobId = packetHeader.sourceJobId
             })
         }
-
-    override suspend fun onEvent(packet: SteamPacket) {
-        if (packet.messageId == EMsg.k_EMsgClientUpdateMachineAuth) {
-            writeSentryFile(packet.header, packet.getProtoPayload(CMsgClientUpdateMachineAuth.ADAPTER).data)
-        }
-    }
 }

@@ -22,7 +22,7 @@ val CMsgIPAddress.ipString: String
         }
     }
 
-fun ipv4ToCmIpAddress(a0: Int, a1: Int, a2: Int, a3: Int): Int {
+internal fun ipv4ToCmIpAddress(a0: Int, a1: Int, a2: Int, a3: Int): Int {
     var address = a3 and 0xFF
 
     address = address or ((a2 shl 8) and 0xFF00)

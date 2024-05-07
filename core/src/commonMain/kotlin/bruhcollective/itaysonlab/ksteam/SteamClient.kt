@@ -1,14 +1,12 @@
 package bruhcollective.itaysonlab.ksteam
 
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
-import bruhcollective.itaysonlab.ksteam.extension.Extension
-import bruhcollective.itaysonlab.ksteam.extension.HandlerMap
+import bruhcollective.itaysonlab.ksteam.grpc.SteamGrpcClients
+import bruhcollective.itaysonlab.ksteam.grpc.SteamGrpcClientsImpl
 import bruhcollective.itaysonlab.ksteam.handlers.Account
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.handlers.Configuration
+import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages
-import bruhcollective.itaysonlab.ksteam.handlers.account
 import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
 import bruhcollective.itaysonlab.ksteam.handlers.internal.Storage
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
@@ -22,14 +20,10 @@ import bruhcollective.itaysonlab.ksteam.web.WebApi
 import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.http.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlin.reflect.KClass
 
 /**
  * The actual kSteam main client which processes requests to/from Steam.
@@ -37,40 +31,37 @@ import kotlin.reflect.KClass
  * For creating a kSteam instance, use the [kSteam] function instead, which provides more user-friendly configuration.
  */
 class SteamClient internal constructor(
-    internal val config: SteamClientConfiguration,
-    injectedExtensions: List<Extension>
+    internal val config: SteamClientConfiguration
 ) {
-    private val eventsScope = CreateSupervisedCoroutineScope("kSteam-events", Dispatchers.IO)
+    private val eventsScope = CreateSupervisedCoroutineScope("events", config.coroutineDispatcher)
 
-    val webApi = WebApi(config.apiClient)
+    val configuration: Configuration = Configuration(this)
+    val logger: Logger = Logger()
+    val webApi = WebApi(apiClient = config.apiClient, configuration = configuration)
+    val dumper = PacketDumper(saveRootFolder = config.rootFolder, logger = logger)
 
     private val serverList = CMList(webApi)
-    private val cmClient = CMClient(configuration = config, serverList = serverList)
 
-    val handlers: HandlerMap = mutableMapOf<KClass<*>, BaseHandler>(
-        Configuration(this).createAssociation(),
-        Account(this).createAssociation(),
-        UnifiedMessages(this).createAssociation(),
-        Sentry(this).createAssociation(),
-        Storage(this).createAssociation(),
-    ) bindExtensions injectedExtensions
+    private val cmClient = CMClient(
+        serverList = serverList,
+        dumper = dumper,
+        logger = logger,
+        dispatcher = config.coroutineDispatcher,
+        httpClient = config.networkClient
+    )
 
     val language get() = config.language
     val workingDirectory get() = config.rootFolder
     val persistence get() = config.persistenceDriver
-
     val connectionStatus get() = cmClient.clientState
-
     val currentSessionSteamId get() = cmClient.clientSteamId
 
-    /**
-     * Manages [PacketDumper] mode.
-     *
-     * A mode of [PacketDumper.DumpMode.Full] will dump all packets to the "dumps" folder of the kSteam configuration folder.
-     */
-    var dumperMode: PacketDumper.DumpMode
-        get() = cmClient.dumper.dumpMode
-        set(value) { cmClient.dumper.dumpMode = value }
+    // Sub-systems
+    val account: Account = Account(this)
+    val unifiedMessages: UnifiedMessages = UnifiedMessages(this)
+    val storage: Storage = Storage(this)
+    val grpc: SteamGrpcClients = SteamGrpcClientsImpl(unifiedMessages)
+    internal val sentry: Sentry = Sentry(this)
 
     /**
      * Main function, which you need to call before doing anything with kSteam.
@@ -78,7 +69,9 @@ class SteamClient internal constructor(
      * This will establish connection with Steam Network servers.
      */
     suspend fun start() {
-        cmClient.tryConnect()
+        if (cmNetworkEnabled()) {
+            cmClient.tryConnect()
+        }
     }
 
     /**
@@ -88,8 +81,9 @@ class SteamClient internal constructor(
      */
     fun stop() {
         cmClient.stop()
+        config.apiClient.close()
+        config.networkClient.close()
         eventsScope.cancel()
-        handlers.values.forEach(BaseHandler::onClose)
     }
 
     init {
@@ -107,76 +101,78 @@ class SteamClient internal constructor(
                 }
             }
         }
+    }
 
-        eventsScope.launch {
-            connectionStatus.filter { state ->
-                state == CMClientState.AwaitingAuthorization
-            }.collect { _ ->
-                runCatching {
-                    getHandler<Account>().trySignInSaved()
-                }.onFailure { e ->
-                    KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a client state: ${e.message}" }
+    /**
+     * Subscribes to a change of [CMClientState].
+     *
+     * @param status what status is required to have
+     * @return a [Job] to cancel the execution if needed
+     */
+    fun onClientState(status: CMClientState, consumer: suspend () -> Unit): Job {
+        return connectionStatus.filter { state ->
+            state == status
+        }.onEach { _ ->
+            eventsScope.launch {
+                consumer()
+            }
+        }.launchIn(eventsScope)
+    }
+
+    /**
+     * Subscribes to incoming messages of the specific type. This will only process "jobless" messages (messages that are not a response to something).
+     *
+     * @param id a [EMsg] that needs to be received
+     * @param consumer a receiver for incoming messages
+     * @return a [Job] to cancel the execution if needed
+     */
+    fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): Job {
+        return cmClient.incomingPacketsQueue.filter { packet ->
+            packet.header.targetJobId == 0L && packet.messageId == id
+        }.onEach { packet ->
+            eventsScope.launch { consumer(packet) }
+        }.launchIn(eventsScope)
+    }
+
+    /**
+     * Subscribes to incoming RPC messages of the specific type. This will only process "jobless" messages (messages that are not a response to something).
+     *
+     * @param method a RPC definition like "Service.Message"
+     * @param consumer a receiver for incoming messages
+     * @return a [Job] to cancel the execution if needed
+     */
+    fun onRpc(method: String, consumer: suspend (SteamPacket) -> Unit): Job {
+        return cmClient.incomingPacketsQueue.filter { packet ->
+            packet.header.targetJobId == 0L && packet.messageId == EMsg.k_EMsgServiceMethod
+        }.onEach { packet ->
+            if ((packet.header as SteamPacketHeader.Protobuf).targetJobName == method) {
+                eventsScope.launch {
+                    consumer(packet)
                 }
             }
-        }
-
-        eventsScope.launch {
-            cmClient.incomingPacketsQueue.filter { packet ->
-                // We don't need to dispatch targeted packets to the global event queue
-                packet.header.targetJobId == 0L
-            }.collect { packet ->
-                for (handler in handlers.values) {
-                    kotlin.runCatching {
-                        if (packet.messageId == EMsg.k_EMsgServiceMethod) {
-                            handler.onRpcEvent(
-                                (packet.header as SteamPacketHeader.Protobuf).targetJobName.orEmpty(),
-                                packet
-                            )
-                        } else {
-                            handler.onEvent(packet)
-                        }
-                    }.onFailure { e ->
-                        KSteamLogging.logError("SteamClient:EventFlow") { "Error occurred when collecting a packet: ${e.message}" }
-                        e.printStackTrace()
-                    }
-                }
-            }
-        }
+        }.launchIn(eventsScope)
     }
 
     /**
-     * Return a [BaseHandler] registered on the [SteamClient] initialization.
-     *
-     * A [BaseHandler] is an abstract which provides separated Steam controls.
+     * Execute a [SteamPacket] and await for a response.
      */
-    inline fun <reified T : BaseHandler> getHandler(): T {
-        val handler = handlers[T::class]
-            ?: throw IllegalStateException("No typed handler registered (trying to get: ${T::class.simpleName}).")
-        return (handler as? T)
-            ?: throw IllegalStateException("Typed handler registered with incorrect mapping (trying to get: ${T::class.simpleName}, got: ${handler::class.simpleName}).")
+    suspend fun execute(packet: SteamPacket): SteamPacket = requireCmTransport {
+        cmClient.execute(packet)
     }
 
     /**
-     * A [getHandler] alternative to find a plugin.
-     *
-     * A plugin in kSteam is an "abstract" plug-in [BaseHandler] that can be used in the core module/extensions without the need to depend on a specific implementation.
-     * For example, a "core" module might use a metadata plugin to prefer cached for saving some bandwidth.
+     * Execute a [SteamPacket] and subscribe for a set of responses. It is the caller responsibility to close the [Flow].
      */
-    inline fun <reified T> getImplementingHandlerOrNull(): T? {
-        return handlers.values.filterIsInstance<T>().firstOrNull()
+    suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> = requireCmTransport {
+        cmClient.subscribe(packet)
     }
 
     /**
-     * A [getHandler] alternative to find a set of plugins.
-     *
-     * A plugin in kSteam is an "abstract" plug-in [BaseHandler] that can be used in the core module/extensions without the need to depend on a specific implementation.
-     * For example, a "core" module might use a metadata plugin to prefer cached for saving some bandwidth.
+     * Execute a [SteamPacket] without waiting for a response.
      */
-    inline fun <reified T> getImplementingHandlers(): List<T> {
-        return handlers.values.filterIsInstance<T>()
+    suspend fun executeAndForget(packet: SteamPacket) = requireCmTransport {
+        cmClient.executeAndForget(packet)
     }
-
-    private inline fun <reified T : BaseHandler> T.createAssociation() = T::class to this
 
     private suspend fun HttpRequestBuilder.writeSteamData() = apply {
         account.tokenRequested.first { it }
@@ -188,30 +184,13 @@ class SteamClient internal constructor(
         header("Cookie", "mobileClient=android; mobileClientVersion=777777 3.7.4; steamLoginSecure=${account.buildSteamLoginSecureCookie()};")
     }
 
-    private infix fun MutableMap<KClass<*>, BaseHandler>.bindExtensions(extensions: List<Extension>) = apply {
-        extensions.forEach {
-            putAll(it.createHandlers(this@SteamClient))
+    internal fun cmNetworkEnabled() = config.transportMode == SteamClientConfiguration.TransportMode.WebSocket
+
+    private suspend inline fun <T> requireCmTransport(crossinline func: suspend () -> T): T {
+        if (cmNetworkEnabled()) {
+            return func()
+        } else {
+            throw UnsupportedTransportException()
         }
     }
-
-    /**
-     * Execute a [SteamPacket] and await for a response.
-     *
-     * Most developers won't need to use this method directly if there is a matching [BaseHandler] for the task.
-     */
-    suspend fun execute(packet: SteamPacket) = cmClient.execute(packet)
-
-    /**
-     * Execute a [SteamPacket] and subscribe for a set of responses. It is the caller responsibility to close the [Flow].
-     *
-     * Most developers won't need to use this method directly if there is a matching [BaseHandler] for the task.
-     */
-    suspend fun subscribe(packet: SteamPacket) = cmClient.subscribe(packet)
-
-    /**
-     * Execute a [SteamPacket] without waiting for a response.
-     *
-     * Most developers won't need to use this method directly if there is a matching [BaseHandler] for the task.
-     */
-    suspend fun executeAndForget(packet: SteamPacket) = cmClient.executeAndForget(packet)
 }

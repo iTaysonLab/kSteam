@@ -1,17 +1,17 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
+import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import steam.webui.publishedfile.CPublishedFile_GetDetails_Request
-import steam.webui.publishedfile.CPublishedFile_GetDetails_Response
 
 /**
  * Access Steam User-Generated content using this handler.
  */
 class PublishedFiles internal constructor(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     private companion object {
         private const val LOG_TAG = "CoreExt:PublishedFiles"
     }
@@ -23,15 +23,12 @@ class PublishedFiles internal constructor(
         appId: Int,
         fileIds: List<Long>
     ): List<PublishedFile> {
-        return steamClient.unifiedMessages.execute(
-            methodName = "PublishedFile.GetDetails",
-            requestAdapter = CPublishedFile_GetDetails_Request.ADAPTER,
-            responseAdapter = CPublishedFile_GetDetails_Response.ADAPTER,
-            requestData = CPublishedFile_GetDetails_Request(
+        return steamClient.grpc.publishedFile.GetDetails().executeSteam(
+            data = CPublishedFile_GetDetails_Request(
                 appid = appId,
                 publishedfileids = fileIds
             )
-        ).data.publishedfiledetails.map { file ->
+        ).publishedfiledetails.map { file ->
             val creatorSteamId = file.creator.toSteamId()
             val creatorPersona = steamClient.persona.persona(creatorSteamId)
 

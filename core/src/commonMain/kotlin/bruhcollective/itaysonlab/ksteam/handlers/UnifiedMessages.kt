@@ -3,13 +3,13 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
-import bruhcollective.itaysonlab.ksteam.models.Result
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
 import com.squareup.wire.*
 import io.ktor.client.call.*
 import kotlinx.coroutines.runBlocking
 import okio.Timeout
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Clients and kSteam use this handler to use Steam's Web API.
@@ -18,7 +18,7 @@ import okio.Timeout
  */
 class UnifiedMessages internal constructor(
     private val steamClient: SteamClient
-) : BaseHandler, GrpcClient() {
+) : GrpcClient() {
     /**
      * Create a Unified Message request using the Steam network transport. It is generally recommended to use [GrpcClient] infrastructure instead, unless you want to execute method while you are not signed in.
      *
@@ -28,14 +28,15 @@ class UnifiedMessages internal constructor(
      * @param responseAdapter Wire adapter for response body
      * @param requestData request body
      */
+    @Throws(SteamRpcException::class, CancellationException::class)
     suspend fun <Request: Any, Response: Any> execute(
         signed: Boolean = true,
         methodName: String,
         requestAdapter: ProtoAdapter<Request>,
         responseAdapter: ProtoAdapter<Response>,
         requestData: Request
-    ): Result<Response> {
-        return steamClient.execute(SteamPacket.newProto(
+    ): Response {
+        val packet = SteamPacket.newProto(
             messageId = if (signed) {
                 EMsg.k_EMsgServiceMethodCallFromClient
             } else {
@@ -43,12 +44,18 @@ class UnifiedMessages internal constructor(
             },
             adapter = requestAdapter,
             payload = requestData
-        ).apply {
-            (header as SteamPacketHeader.Protobuf).targetJobName = "$methodName#1"
-        }).getProtoPayload(responseAdapter)
-    }
+        ).withHeader {
+            (this as SteamPacketHeader.Protobuf).targetJobName = "$methodName#1"
+        }
 
-    override suspend fun onEvent(packet: SteamPacket) = Unit
+        val result = steamClient.execute(packet)
+
+        if (result.success) {
+            return responseAdapter.decode(result.payload)
+        } else {
+            throw SteamRpcException(method = methodName, result = result.result)
+        }
+    }
 
     // Wire gPRC notes
 
@@ -94,7 +101,7 @@ class UnifiedMessages internal constructor(
 
             val methodName = method.path.removePrefix("/").replace("/", ".")
 
-            return if (requestMetadata.getOrElse(WebMarker) { "0" } == "1") {
+            return if (runtime.steamClient.cmNetworkEnabled().not() || requestMetadata.getOrElse(WebMarker) { "0" } == "1") {
                 webTransportImpl(methodName, request)
             } else {
                 steamTransportImpl(methodName, request)
@@ -102,19 +109,13 @@ class UnifiedMessages internal constructor(
         }
 
         private suspend fun steamTransportImpl(methodName: String, request: S): R {
-            val steamResult = runtime.execute(
+            return runtime.execute(
                 signed = requestMetadata.getOrElse(AnonymousMarker) { "0" } == "0",
                 methodName = methodName,
                 requestAdapter = method.requestAdapter,
                 responseAdapter = method.responseAdapter,
                 requestData = request
             )
-
-            if (steamResult.isSuccess) {
-                return steamResult.data
-            } else {
-                throw SteamRpcException(method = methodName, result = steamResult.result)
-            }
         }
 
         private suspend fun webTransportImpl(methodName: String, request: S): R {
@@ -122,10 +123,12 @@ class UnifiedMessages internal constructor(
                 split[0] to split[1]
             }
 
-            return runtime.steamClient.webApi.submitProtobufForm(
+            val form = runtime.steamClient.webApi.submitProtobufForm(
                 path = "I${service}Service/${name}/v1",
                 data = method.requestAdapter.encodeByteString(request).base64()
-            ).body<ByteArray>().let(method.responseAdapter::decode)
+            )
+
+            return form.body<ByteArray>().let(method.responseAdapter::decode)
         }
 
         override fun enqueue(request: S, callback: GrpcCall.Callback<S, R>) {

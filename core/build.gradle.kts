@@ -8,23 +8,10 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r36"
+version = "r37"
 
 kotlin {
-    multiplatformSetup(additionalNativeTargetConfig = {
-        compilations.getByName("main") {
-            cinterops {
-                val libdeflate by creating {
-                    defFile(project.file("src/nativeInterop/cinterop/libdeflate.def"))
-                    compilerOpts("-I/src/nativeInterop/cinterop")
-
-                    includeDirs {
-                        allHeaders("src/nativeInterop/cinterop")
-                    }
-                }
-            }
-        }
-    })
+    multiplatformSetup()
 
     androidDependencies {
         implementation("androidx.compose.runtime:runtime:1.4.3")

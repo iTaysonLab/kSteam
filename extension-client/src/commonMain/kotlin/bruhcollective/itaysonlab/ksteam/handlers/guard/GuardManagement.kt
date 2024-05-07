@@ -1,12 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.handlers.guard
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.guard.models.ActiveSession
 import bruhcollective.itaysonlab.ksteam.guard.models.IncomingSession
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.guard
-import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -19,10 +15,8 @@ import steam.webui.authentication.*
  * Manages Steam Guard instance: revoking active sessions, approving or rejecting incoming sessions
  */
 class GuardManagement(
-    private val steamClient: SteamClient
-) : BaseHandler {
-    private val authService by lazy { GrpcAuthenticationClient(steamClient.unifiedMessages) }
-
+    private val steamClient: ExtendedSteamClient
+) {
     /**
      * Creates a Flow which will poll for any new sessions that needs to be confirmed.
      */
@@ -39,7 +33,7 @@ class GuardManagement(
      * Returns the list of sign-in session IDs that are awaiting to be confirmed.
      */
     suspend fun getIncomingSessionIdQueue(): List<Long> {
-        return authService.GetAuthSessionsForAccount().executeSteam(
+        return steamClient.grpc.authenticationClient.GetAuthSessionsForAccount().executeSteam(
             data = CAuthentication_GetAuthSessionsForAccount_Request()
         ).client_ids
     }
@@ -48,7 +42,7 @@ class GuardManagement(
      * Returns currently approved sessions for the account.
      */
     suspend fun getActiveSessions(): List<ActiveSession> {
-        return authService.EnumerateTokens().executeSteam(
+        return steamClient.grpc.authenticationClient.EnumerateTokens().executeSteam(
             data = CAuthentication_RefreshToken_Enumerate_Request()
         ).let { response ->
             response.refresh_tokens.map { refreshToken ->
@@ -62,7 +56,7 @@ class GuardManagement(
      */
     suspend fun getIncomingSessionInfo(id: Long): IncomingSession? {
         return runCatching {
-            authService.GetAuthSessionInfo().executeSteam(
+            steamClient.grpc.authenticationClient.GetAuthSessionInfo().executeSteam(
                 data = CAuthentication_GetAuthSessionInfo_Request(client_id = id)
             ).let { IncomingSession(id, it) }
         }.getOrNull()
@@ -72,7 +66,7 @@ class GuardManagement(
      * Revokes a specific session. Requires Steam Guard to be initialized in this kSteam instance.
      */
     suspend fun revokeSession(id: Long) {
-        authService.RevokeRefreshToken().executeSteam(
+        steamClient.grpc.authenticationClient.RevokeRefreshToken().executeSteam(
             data = CAuthentication_RefreshToken_Revoke_Request(
                 token_id = id,
                 steamid = steamClient.currentSessionSteamId.longId,
@@ -86,7 +80,7 @@ class GuardManagement(
      * Revokes this session. Unlike [revokeSession], does not require Steam Guard data.
      */
     suspend fun revokeCurrentSession() {
-        authService.RevokeRefreshToken().executeSteam(
+        steamClient.grpc.authenticationClient.RevokeRefreshToken().executeSteam(
             data = CAuthentication_RefreshToken_Revoke_Request(
                 revoke_action = EAuthTokenRevokeAction.k_EAuthTokenRevokeLogout.ordinal
             )
@@ -106,7 +100,7 @@ class GuardManagement(
             ESessionPersistence.k_ESessionPersistence_Ephemeral
         }
 
-        authService.UpdateAuthSessionWithMobileConfirmation().executeSteam(
+        steamClient.grpc.authenticationClient.UpdateAuthSessionWithMobileConfirmation().executeSteam(
             data = CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request(
                 version = session.version,
                 client_id = session.id,
@@ -124,7 +118,7 @@ class GuardManagement(
      * @param session an incoming session
      */
     suspend fun rejectIncomingSession(session: IncomingSession) {
-        authService.UpdateAuthSessionWithMobileConfirmation().executeSteam(
+        steamClient.grpc.authenticationClient.UpdateAuthSessionWithMobileConfirmation().executeSteam(
             data = CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request(
                 version = session.version,
                 client_id = session.id,
@@ -135,6 +129,4 @@ class GuardManagement(
             )
         )
     }
-
-    override suspend fun onEvent(packet: SteamPacket) = Unit
 }

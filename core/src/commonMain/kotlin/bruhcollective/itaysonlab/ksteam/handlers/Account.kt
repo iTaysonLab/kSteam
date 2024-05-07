@@ -3,14 +3,13 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
 import bruhcollective.itaysonlab.ksteam.models.account.SteamAccountAuthorization
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.platform.encryptWithRsa
 import bruhcollective.itaysonlab.ksteam.platform.getIpv4Address
 import bruhcollective.itaysonlab.ksteam.util.*
@@ -35,12 +34,10 @@ import kotlin.random.Random
 
 class Account internal constructor(
     private val steamClient: SteamClient
-) : BaseHandler {
+) {
     private companion object {
         const val TAG = "Account"
     }
-
-    private val authenticationClient by lazy { GrpcAuthenticationClient(steamClient.unifiedMessages) }
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -63,7 +60,7 @@ class Account internal constructor(
      */
     suspend fun getSignInQrCode(): QrCodeData? {
         val qrData = try {
-            authenticationClient.BeginAuthSessionViaQR().executeSteam(
+            steamClient.grpc.authenticationClient.BeginAuthSessionViaQR().executeSteam(
                 CAuthentication_BeginAuthSessionViaQR_Request(
                     device_friendly_name = deviceInfo.deviceName,
                     device_details = deviceInfo.toAuthDetails(),
@@ -99,7 +96,7 @@ class Account internal constructor(
         password: String,
         rememberSession: Boolean = true,
     ): AuthorizationResult {
-        val rsaData = authenticationClient.GetPasswordRSAPublicKey().executeSteam(
+        val rsaData = steamClient.grpc.authenticationClient.GetPasswordRSAPublicKey().executeSteam(
             CAuthentication_GetPasswordRSAPublicKey_Request(account_name = username),
             anonymous = true
         )
@@ -109,7 +106,7 @@ class Account internal constructor(
                 .toByteString().base64().dropLast(1)
 
         val signInResult = try {
-            authenticationClient.BeginAuthSessionViaCredentials().executeSteam(
+            steamClient.grpc.authenticationClient.BeginAuthSessionViaCredentials().executeSteam(
                 CAuthentication_BeginAuthSessionViaCredentials_Request(
                     device_friendly_name = deviceInfo.deviceName,
                     device_details = deviceInfo.toAuthDetails(),
@@ -134,7 +131,7 @@ class Account internal constructor(
             }
         }
 
-        KSteamLogging.logVerbose(TAG) { "[login] success, waiting for 2FA with available types: [${signInResult.allowed_confirmations.joinToString()}]" }
+        steamClient.logger.logVerbose(TAG) { "[login] success, waiting for 2FA with available types: [${signInResult.allowed_confirmations.joinToString()}]" }
 
         pollInfo = PollInfo(signInResult.client_id!! to signInResult.request_id!!)
         authState.emit(AuthorizationState.AwaitingTwoFactor(signInResult))
@@ -147,7 +144,7 @@ class Account internal constructor(
             createWatcherFlow(signInResult.interval ?: 5f)
         }
 
-        if (mappedConfirmations.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
+        /*if (mappedConfirmations.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceCode)) {
             val steamId = SteamId(signInResult.steamid?.toULong() ?: 0u)
             var guardCode: String? = null
 
@@ -161,12 +158,12 @@ class Account internal constructor(
             }
 
             if (guardCode != null) {
-                KSteamLogging.logVerbose(TAG) { "[login] kSteam persistence has Steam Guard for this SteamID, skipping 2FA..." }
+                steamClient.logger.logVerbose(TAG) { "[login] kSteam persistence has Steam Guard for this SteamID, skipping 2FA..." }
                 updateCurrentSessionWithCode(guardCode)
             }
-        }
+        }*/
 
-        return AuthorizationResult.Success
+        return AuthorizationResult.ProceedToTfa
     }
 
     /**
@@ -179,7 +176,7 @@ class Account internal constructor(
         require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
 
         (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).let { authState ->
-            authenticationClient.UpdateAuthSessionWithSteamGuardCode().executeSteam(
+            steamClient.grpc.authenticationClient.UpdateAuthSessionWithSteamGuardCode().executeSteam(
                 CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request(
                     client_id = pollInfo!!.clientId,
                     steamid = authState.steamId.longId,
@@ -225,7 +222,7 @@ class Account internal constructor(
             sendClientLogon(steamId = steamId, token = accountToSignIn.refreshToken)
             true
         } else {
-            KSteamLogging.logWarning(TAG) { "[autologin] no saved accounts in kSteam persistence, skipping..." }
+            steamClient.logger.logWarning(TAG) { "[autologin] no saved accounts in kSteam persistence, skipping..." }
             false
         }
     }
@@ -294,7 +291,7 @@ class Account internal constructor(
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
         require(pollInfo != null) { "pollInfo should not be null" }
 
-        return authenticationClient.PollAuthSessionStatus().executeSteam(
+        return steamClient.grpc.authenticationClient.PollAuthSessionStatus().executeSteam(
             CAuthentication_PollAuthSessionStatus_Request(
                 client_id = pollInfo!!.clientId,
                 request_id = pollInfo!!.requestId
@@ -322,7 +319,7 @@ class Account internal constructor(
 
         return if (pollAnswer.access_token != null && pollAnswer.refresh_token != null) {
             // Success, now we can cancel the session
-            KSteamLogging.logVerbose(TAG) { "[poller] successfully logged in -> $pollAnswer" }
+            steamClient.logger.logVerbose(TAG) { "[poller] successfully logged in -> $pollAnswer" }
 
             val steamId = try {
                 SteamId(json.decodeFromString<JwtToken>(pollAnswer.refresh_token.split(".")[1].decodeBase64String()).sub.toULong())
@@ -332,7 +329,7 @@ class Account internal constructor(
             }
 
             if (steamId == null) {
-                KSteamLogging.logError(TAG) { "[poller] received JWT, but no Steam ID exposed: couldn't continue signing in" }
+                steamClient.logger.logError(TAG) { "[poller] received JWT, but no Steam ID exposed: couldn't continue signing in" }
                 return true
             }
 
@@ -354,30 +351,36 @@ class Account internal constructor(
         }
     }
 
-    override suspend fun onEvent(packet: SteamPacket) {
-        when (packet.messageId) {
-            EMsg.k_EMsgClientLogOnResponse -> {
-                if (packet.isProtobuf()) {
-                    val response = packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER)
+    init {
+        steamClient.onClientState(CMClientState.AwaitingAuthorization) {
+            trySignInSaved()
+        }
 
-                    if (response.data.eresult == EResult.OK.encoded) {
-                        // We are logged in to Steam3 server
-                        authStateWatcher?.cancel()
-                        authState.value = AuthorizationState.Success
+        steamClient.on(EMsg.k_EMsgClientLogOnResponse) { packet ->
+            if (packet.success && packet.isProtobuf()) {
+                CMsgClientLogonResponse.ADAPTER.decode(packet.payload).also { response ->
+                    steamClient.logger.logVerbose(TAG) { "Logon Response: $response" }
 
-                        updateAccessToken()
-                        tokenRequested.value = true
+                    if (response.eresult != EResult.OK.encoded) {
+                        return@on
                     }
-                } else {
-                    // Ignore, that's kicked out for inactivity, Restarter should reconnect again
+
+                    steamClient.configuration.cellId = response.cell_id ?: 0
                 }
-            }
 
-            EMsg.k_EMsgClientLogOff, EMsg.k_EMsgClientLoggedOff -> {
-                tokenRequested.value = false
-            }
+                // We are logged in to Steam3 server
+                authStateWatcher?.cancel()
+                authState.value = AuthorizationState.Success
 
-            else -> {}
+                updateAccessToken()
+                tokenRequested.value = true
+            } else {
+                // Ignore, that's kicked out for inactivity, Restarter should reconnect again
+            }
+        }
+
+        steamClient.on(EMsg.k_EMsgClientLoggedOff) {
+            tokenRequested.value = false
         }
     }
 
@@ -388,7 +391,7 @@ class Account internal constructor(
     suspend fun updateAccessToken() {
         try {
             getCurrentAccount()?.let { account ->
-                authenticationClient.GenerateAccessTokenForApp().executeSteam(
+                steamClient.grpc.authenticationClient.GenerateAccessTokenForApp().executeSteam(
                     CAuthentication_AccessToken_GenerateForApp_Request(
                         refresh_token = account.refreshToken,
                         steamid = steamClient.currentSessionSteamId.longId
@@ -406,7 +409,7 @@ class Account internal constructor(
 
     enum class AuthorizationResult {
         // Now you should use the state from Account.clientAuthState to show TFA interface
-        Success,
+        ProceedToTfa,
 
         // The password does not match.
         InvalidPassword,

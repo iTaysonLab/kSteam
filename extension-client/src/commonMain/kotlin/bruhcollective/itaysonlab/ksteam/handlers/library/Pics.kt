@@ -1,9 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers.library
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
@@ -31,9 +29,9 @@ import steam.webui.common.*
  */
 @OptIn(ExperimentalSerializationApi::class)
 class Pics internal constructor(
-    private val steamClient: SteamClient,
+    private val steamClient: ExtendedSteamClient,
     internal val database: KSteamRealmDatabase
-) : BaseHandler {
+) {
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
@@ -105,14 +103,14 @@ class Pics internal constructor(
      * 5: Request appinfos from PICS, parse text VDFs
      * Bonus: collect already cached appinfos, get change number, ask PICS for changes and then refresh the outdated app/packages!
      */
-    override suspend fun onEvent(packet: SteamPacket) {
-        if (packet.messageId == EMsg.k_EMsgClientLicenseList) {
-            handleServerLicenseList(packet.getProtoPayload(CMsgClientLicenseList.ADAPTER).data.licenses)
+    init {
+        steamClient.on(EMsg.k_EMsgClientLicenseList) { packet ->
+            handleServerLicenseList(CMsgClientLicenseList.ADAPTER.decode(packet.payload).licenses)
         }
     }
 
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
-        KSteamLogging.logDebug("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
+        steamClient.logger.logDebug("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
 
         val requiresUpdate = withContext(Dispatchers.Default) {
             licenses.filter { sLicense ->
@@ -134,7 +132,7 @@ class Pics internal constructor(
             checkAppsIntegrity(licenses)
         }
 
-        KSteamLogging.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
+        steamClient.logger.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
 
         _isPicsAvailable.value = PicsState.Ready
     }
@@ -143,12 +141,12 @@ class Pics internal constructor(
         _isPicsAvailable.value = PicsState.UpdatingPackages
 
         if (requiresUpdate.isEmpty()) {
-            KSteamLogging.logDebug("Pics:UpdatePackagesMetadata") {
+            steamClient.logger.logDebug("Pics:UpdatePackagesMetadata") {
                 "Package metadata is in up-to-date state, no update required"
             }
             return
         } else {
-            KSteamLogging.logDebug("Pics:UpdatePackagesMetadata") {
+            steamClient.logger.logDebug("Pics:UpdatePackagesMetadata") {
                 "Requesting metadata for ${requiresUpdate.size} packages"
             }
         }
@@ -181,7 +179,7 @@ class Pics internal constructor(
                 adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
                 payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
             )
-        ).getProtoPayload(CMsgClientPICSAccessTokenResponse.ADAPTER).data.app_access_tokens.filter { token ->
+        ).payload.let(CMsgClientPICSAccessTokenResponse.ADAPTER::decode).app_access_tokens.filter { token ->
             token.appid != null
         }.associate {
             it.appid!! to it.access_token
@@ -197,7 +195,7 @@ class Pics internal constructor(
     }
 
     private suspend fun fullyRefreshAppInfos(tokens: Map<Int, Long?>) {
-        KSteamLogging.logDebug("Pics:HandleLicenses") { "[Full] Requesting metadata for ${tokens.size} apps" }
+        steamClient.logger.logDebug("Pics:HandleLicenses") { "[Full] Requesting metadata for ${tokens.size} apps" }
         _isPicsAvailable.value = PicsState.UpdatingApps
 
         // And now, we request those apps and write them!
@@ -232,13 +230,13 @@ class Pics internal constructor(
                 val databaseChangeNumber = database.realm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
 
                 if (databaseChangeNumber == null) {
-                    KSteamLogging.logVerbose("Pics:HandleLicenses") {
+                    steamClient.logger.logVerbose("Pics:HandleLicenses") {
                         "[$appId] not yet cached: $changeNumber"
                     }
 
                     appIdsToUpdate.add(appId)
                 } else if (changeNumber > databaseChangeNumber) {
-                    KSteamLogging.logVerbose("Pics:HandleLicenses") {
+                    steamClient.logger.logVerbose("Pics:HandleLicenses") {
                         "[$appId] is outdated: $changeNumber > $databaseChangeNumber"
                     }
 
@@ -248,11 +246,11 @@ class Pics internal constructor(
         }
 
         if (appIdsToUpdate.isEmpty()) {
-            KSteamLogging.logDebug("Pics:HandleLicenses") { "App metadata is in up-to-date state, no update required" }
+            steamClient.logger.logDebug("Pics:HandleLicenses") { "App metadata is in up-to-date state, no update required" }
             return
         }
 
-        KSteamLogging.logDebug("Pics:HandleLicenses") { "[Partial] Requesting metadata for ${appIdsToUpdate.size} apps" }
+        steamClient.logger.logDebug("Pics:HandleLicenses") { "[Partial] Requesting metadata for ${appIdsToUpdate.size} apps" }
         _isPicsAvailable.value = PicsState.UpdatingApps
 
         // And now, we request those apps and write them!
@@ -278,7 +276,7 @@ class Pics internal constructor(
                 payload = request
             )
         ).transformWhile { packet ->
-            packet.getProtoPayload(CMsgClientPICSProductInfoResponse.ADAPTER).data.let { response ->
+            CMsgClientPICSProductInfoResponse.ADAPTER.decode(packet.payload).let { response ->
                 emit(selector(response))
                 response.response_pending ?: false
             }
@@ -288,7 +286,7 @@ class Pics internal constructor(
     private suspend fun writePicsPackageChunk(
         chunk: List<CMsgClientPICSProductInfoResponse_PackageInfo>
     ) {
-        KSteamLogging.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} packages received!" }
+        steamClient.logger.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} packages received!" }
 
         database.realm.write {
             for (packageInfo in chunk) {
@@ -309,7 +307,7 @@ class Pics internal constructor(
     private suspend fun writePicsAppChunk(
         chunk: List<CMsgClientPICSProductInfoResponse_AppInfo>
     ) {
-        KSteamLogging.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} apps received!" }
+        steamClient.logger.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} apps received!" }
 
         database.realm.write {
             for (appInfo in chunk) {
@@ -352,7 +350,7 @@ class Pics internal constructor(
             })
         } catch (mfe: Exception) {
             // We try to cover almost all types, but sometimes stuff... happens
-            KSteamLogging.logVerbose("Pics:Unknown") { source.toByteString().hex() }
+            steamClient.logger.logVerbose("Pics:Unknown") { source.toByteString().hex() }
             mfe.printStackTrace()
             null
         }

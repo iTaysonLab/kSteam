@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.apps
 
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatCommunityImageUrl
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatStaticAppImageUrl
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityImageUrl
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatStaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.common.StoreItem
 

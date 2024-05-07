@@ -1,8 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.news.*
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
@@ -16,8 +15,8 @@ import kotlin.time.measureTimedValue
  * Access Steam news using this handler.
  */
 class News internal constructor(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     private companion object {
         private const val LOG_TAG = "CoreExt:News"
     }
@@ -89,7 +88,7 @@ class News internal constructor(
         // Get documents aka events references
         // 30 is the chunk limit in SteamJS
 
-        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting event entries, total: ${calendar.documents.size}" }
+        steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting event entries, total: ${calendar.documents.size}" }
 
         val alreadyReturned = calendar.events.map(NewsEntry::gid)
         val entries = calendar.events.toMutableList()
@@ -102,7 +101,7 @@ class News internal constructor(
 
         // Get app summaries
 
-        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting apps, total: ${calendar.apps.size}" }
+        steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting apps, total: ${calendar.apps.size}" }
 
         val appsMap = calendar.apps.associateBy { it.appId }
         val apps = measure("getEventsInCalendarRange:getAppSummaries") {
@@ -111,9 +110,9 @@ class News internal constructor(
 
         // Get clans summaries
 
-        KSteamLogging.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
+        steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
 
-        measure("getEventsInCalendarRange:requestClanPersonas") {
+        measure<Unit>("getEventsInCalendarRange:requestClanPersonas") {
             entries.asSequence().filter { entry ->
                 entry.appid == 0 && entry.clanSteamid.isNotEmpty()
             }.map { it.clanSteamid.toULongOrNull().toSteamId() }.toList().let {
@@ -224,11 +223,9 @@ class News internal constructor(
 
     private inline fun <T> measure(label: String, func: () -> T): T {
         return measureTimedValue(func).also {
-            KSteamLogging.logDebug(LOG_TAG) { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
+            steamClient.logger.logDebug(LOG_TAG) { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
         }.value
     }
-
-    override suspend fun onEvent(packet: SteamPacket) = Unit
 
     object Collections {
         const val Featured = "featured"

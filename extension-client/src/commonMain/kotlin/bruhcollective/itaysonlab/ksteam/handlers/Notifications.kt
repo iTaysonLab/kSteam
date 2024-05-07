@@ -1,16 +1,15 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.notifications.Notification
 import bruhcollective.itaysonlab.ksteam.models.notifications.NotificationFeed
+import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import steam.enums.SteamNotificationType
 import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Request
-import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Response
 
 /**
  * Access persona data using this interface.
@@ -18,8 +17,8 @@ import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Re
  * All data will be kept inside the in-memory cache.
  */
 class Notifications internal constructor(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     private val json = Json { ignoreUnknownKeys = true }
 
     private val _notifications = MutableStateFlow<NotificationFeed>(NotificationFeed.Loading)
@@ -36,16 +35,13 @@ class Notifications internal constructor(
     suspend fun requestNotifications(includeHidden: Boolean) {
         _notifications.value = NotificationFeed.Loading
 
-        val rawNotifications = steamClient.unifiedMessages.execute(
-            methodName = "SteamNotification.GetSteamNotifications",
-            requestAdapter = CSteamNotification_GetSteamNotifications_Request.ADAPTER,
-            responseAdapter = CSteamNotification_GetSteamNotifications_Response.ADAPTER,
-            requestData = CSteamNotification_GetSteamNotifications_Request(include_hidden = includeHidden)
+        val rawNotifications = steamClient.grpc.steamNotification.GetSteamNotifications().executeSteam(
+            data = CSteamNotification_GetSteamNotifications_Request(include_hidden = includeHidden)
         )
 
-        _confirmationCount.value = rawNotifications.data.confirmation_count ?: 0
+        _confirmationCount.value = rawNotifications.confirmation_count ?: 0
 
-        val parsedNotifications = rawNotifications.data.notifications
+        val parsedNotifications = rawNotifications.notifications
             .partition { SteamNotificationType.fromValue(it.notification_type ?: 0) == SteamNotificationType.Item }
             .let { itemsAndOthers ->
                 val itemWithExtras = if (itemsAndOthers.first.isNotEmpty()) {
@@ -154,11 +150,5 @@ class Notifications internal constructor(
         _notifications.value = NotificationFeed.Loaded(
             notifications = parsedNotifications
         )
-    }
-
-    override suspend fun onEvent(packet: SteamPacket) {
-        when (packet.messageId) {
-            else -> {}
-        }
     }
 }

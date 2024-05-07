@@ -1,21 +1,19 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
+import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import steam.webui.player.CPlayer_GetOwnedGames_Request
-import steam.webui.player.CPlayer_GetOwnedGames_Response
 import steam.webui.player.CPlayer_GetPlayNext_Request
-import steam.webui.player.CPlayer_GetPlayNext_Response
 import kotlin.jvm.JvmInline
 
 /**
  * Access Player information using this handler.
  */
 class Player internal constructor(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     private val libraryCache = mutableMapOf<SteamId, List<OwnedGame>>()
 
     /**
@@ -28,30 +26,24 @@ class Player internal constructor(
             return it
         }
 
-        return steamClient.unifiedMessages.execute(
-            methodName = "Player.GetOwnedGames",
-            requestAdapter = CPlayer_GetOwnedGames_Request.ADAPTER,
-            responseAdapter = CPlayer_GetOwnedGames_Response.ADAPTER,
-            requestData = CPlayer_GetOwnedGames_Request(
+        return steamClient.grpc.player.GetOwnedGames().executeSteam(
+            data = CPlayer_GetOwnedGames_Request(
                 steamid = steamId.longId,
                 include_appinfo = true,
                 include_extended_appinfo = true,
                 include_free_sub = includeFreeGames,
                 include_played_free_games = includeFreeGames
             )
-        ).dataNullable?.games?.map(::OwnedGame).orEmpty().also { libraryCache[steamId] = it }
+        ).games.map(::OwnedGame).also { libraryCache[steamId] = it }
     }
 
     /**
      * Requests a list of apps to show in "Play Next" shelf
      */
     suspend fun getPlayNextQueue(): List<Int> {
-        return steamClient.unifiedMessages.execute(
-            methodName = "Player.GetPlayNext",
-            requestAdapter = CPlayer_GetPlayNext_Request.ADAPTER,
-            responseAdapter = CPlayer_GetPlayNext_Response.ADAPTER,
-            requestData = CPlayer_GetPlayNext_Request()
-        ).dataNullable?.appids.orEmpty()
+        return steamClient.grpc.player.GetPlayNext().executeSteam(
+            data = CPlayer_GetPlayNext_Request()
+        ).appids
     }
 
     @JvmInline
@@ -59,6 +51,4 @@ class Player internal constructor(
         val count get() = packed.first
         val list get() = packed.second
     }
-
-    override suspend fun onEvent(packet: SteamPacket) = Unit
 }

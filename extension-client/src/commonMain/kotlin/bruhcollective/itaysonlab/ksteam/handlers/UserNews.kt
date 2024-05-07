@@ -1,9 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.enums.plus
@@ -11,16 +9,16 @@ import bruhcollective.itaysonlab.ksteam.models.news.usernews.ActivityFeedEntry
 import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
 import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
+import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import steam.webui.usernews.CUserNews_GetUserNews_Request
-import steam.webui.usernews.CUserNews_GetUserNews_Response
 import kotlin.time.measureTimedValue
 
 /**
  * Access Steam friend activity using this handler.
  */
 class UserNews internal constructor(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     /**
      * Get activity events for a specific [AppId].
      *
@@ -36,11 +34,8 @@ class UserNews internal constructor(
         endTime: Int = 0,
     ): List<ActivityFeedEntry> = measure("getUserNews") {
         val newsProto = measure("getUserNews:getUserNews") {
-            steamClient.unifiedMessages.execute(
-                methodName = "UserNews.GetUserNews",
-                requestAdapter = CUserNews_GetUserNews_Request.ADAPTER,
-                responseAdapter = CUserNews_GetUserNews_Response.ADAPTER,
-                requestData = CUserNews_GetUserNews_Request(
+            steamClient.grpc.userNews.GetUserNews().executeSteam(
+                data = CUserNews_GetUserNews_Request(
                     filterappid = appId,
                     filterflags = showEvents,
                     count = count,
@@ -48,7 +43,7 @@ class UserNews internal constructor(
                     endtime = endTime,
                     language = steamClient.language.vdfName
                 )
-            ).data
+            )
         }
 
         // region Mapping achievements
@@ -64,7 +59,7 @@ class UserNews internal constructor(
                         internalName = achievement.name.orEmpty(),
                         displayName = achievement.display_name.orEmpty(),
                         displayDescription = achievement.display_description.orEmpty(),
-                        icon = SteamCdn.formatCommunityImageUrl(achAppId, achievement.icon.orEmpty()),
+                        icon = EnvironmentConstants.formatCommunityImageUrl(achAppId, achievement.icon.orEmpty()),
                         unlockedPercent = (achievement.unlocked_pct ?: 0f).toDouble(),
                         hidden = achievement.hidden ?: false
                     )
@@ -245,8 +240,8 @@ class UserNews internal constructor(
                 }
 
                 else -> {
-                    KSteamLogging.logDebug("News:GetUserNews") { "Unknown event received, enum type: $eventType - dumping proto data below" }
-                    KSteamLogging.logDebug("News:GetUserNews") { event.toString() }
+                    steamClient.logger.logDebug("News:GetUserNews") { "Unknown event received, enum type: $eventType - dumping proto data below" }
+                    steamClient.logger.logDebug("News:GetUserNews") { event.toString() }
 
                     ActivityFeedEntry.UnknownEvent(
                         date = eventDate,
@@ -292,11 +287,9 @@ class UserNews internal constructor(
         val FriendActivity = AppOverviewList + EUserNewsType.FriendAdded + EUserNewsType.FriendRemoved
     }
 
-    override suspend fun onEvent(packet: SteamPacket) = Unit
-
     private inline fun <T> measure(label: String, func: () -> T): T {
         return measureTimedValue(func).also {
-            KSteamLogging.logDebug("UserNews") { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
+            steamClient.logger.logDebug("UserNews") { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
         }.value
     }
 

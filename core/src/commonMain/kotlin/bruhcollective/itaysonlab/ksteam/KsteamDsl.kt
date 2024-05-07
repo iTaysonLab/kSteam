@@ -1,11 +1,6 @@
 package bruhcollective.itaysonlab.ksteam
 
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLoggingVerbosity
-import bruhcollective.itaysonlab.ksteam.debug.LoggingTransport
-import bruhcollective.itaysonlab.ksteam.debug.NoopLoggingTransport
-import bruhcollective.itaysonlab.ksteam.extension.Extension
-import bruhcollective.itaysonlab.ksteam.extension.ExtensionFactory
+import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.persistence.MemoryPersistenceDriver
@@ -27,30 +22,29 @@ internal annotation class KsteamDsl
  */
 @KsteamDsl
 class KSteamConfiguration {
-    private val extensions = mutableListOf<Extension>()
     private var ktorEngineResolver: () -> HttpClient = { HttpClient(CIO) }
 
     /**
-     * Specifies a logging transport where kSteam will log output
+     * Specifies a logging transport where kSteam will log output.
      * 
-     * Defaults to [NoopLoggingTransport], which will consume logs without any actions.
+     * Defaults to [Logger.Transport.Noop], which will consume logs without any actions.
      */
-    var loggingTransport: LoggingTransport = NoopLoggingTransport
+    var loggingTransport: Logger.Transport = Logger.Transport.Noop
 
     /**
      * Specifies a logging verbosity (how much data will be logged)
      * 
      * Recommended:
-     * - [KSteamLoggingVerbosity.Disable] if you are using kSteam in an end-user application
-     * - [KSteamLoggingVerbosity.Warning] if you are using kSteam in an end-user application and want logs
-     * - [KSteamLoggingVerbosity.Debug] if you are developing an end-user application
-     * - [KSteamLoggingVerbosity.Verbose] if you are developing kSteam
+     * - [Logger.Verbosity.Disable] if you are using kSteam in an end-user application
+     * - [Logger.Verbosity.Warning] if you are using kSteam in an end-user application and want logs
+     * - [Logger.Verbosity.Debug] if you are developing an end-user application
+     * - [Logger.Verbosity.Verbose] if you are developing kSteam
      * 
-     * [KSteamLoggingVerbosity.Verbose] can output sensitive info to a chosen [LoggingTransport]. A warning will be printed if it is selected.
+     * [Logger.Verbosity.Verbose] can output sensitive info to a chosen [Logger.Transport]. A warning will be printed if it is selected.
      *
-     * Defaults to [KSteamLoggingVerbosity.Warning], which will cover Error and Warning messages.
+     * Defaults to [Logger.Verbosity.Warning], which will cover Error and Warning messages.
      */
-    var loggingVerbosity: KSteamLoggingVerbosity = KSteamLoggingVerbosity.Warning
+    var loggingVerbosity: Logger.Verbosity = Logger.Verbosity.Warning
 
     /**
      * Specifies a folder where kSteam will store session data.
@@ -87,20 +81,6 @@ class KSteamConfiguration {
     var persistenceDriver: KsteamPersistenceDriver = MemoryPersistenceDriver
 
     /**
-     * Installs an [bruhcollective.itaysonlab.ksteam.extension.Extension] into the client.
-     *
-     * @param factory an extension's factory to be added
-     * @param configure a lambda to provide configuration (sometimes not required)
-     */
-    @KsteamDsl
-    fun <Configuration, Extension: bruhcollective.itaysonlab.ksteam.extension.Extension> install(
-        factory: ExtensionFactory<Configuration, Extension>,
-        configure: @KsteamDsl Configuration.() -> Unit = {}
-    ) {
-        extensions += factory.create(configure)
-    }
-
-    /**
      * Installs a custom Ktor [HttpClient]. Defaults to using cross-platform Ktor's CIO engine.
      *
      * Useful if you need additional tweaks or a different engine that is more applicable for your task/platform.
@@ -117,9 +97,6 @@ class KSteamConfiguration {
      * After building, call [SteamClient.start] to send/receive packets.
      */
     fun build(): SteamClient {
-        KSteamLogging.transport = loggingTransport
-        KSteamLogging.verbosity = loggingVerbosity
-        
         return SteamClient(
             config = SteamClientConfiguration(
                 rootFolder = rootFolder ?: getDefaultWorkingDirectory()?.toPath(normalize = true) ?: error("Current platform does not support auto-resolving of the working directory. Please, set it manually in the kSteam DSL."),
@@ -128,8 +105,11 @@ class KSteamConfiguration {
                 language = language,
                 authPrivateIpLogic = authPrivateIpLogic,
                 persistenceDriver = persistenceDriver
-            ), injectedExtensions = extensions
-        )
+            )
+        ).apply {
+            logger.transport = loggingTransport
+            logger.verbosity = loggingVerbosity
+        }
     }
 }
 

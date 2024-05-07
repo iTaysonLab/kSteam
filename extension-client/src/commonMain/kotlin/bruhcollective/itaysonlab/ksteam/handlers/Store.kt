@@ -1,12 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
+import bruhcollective.itaysonlab.ksteam.util.executeSteamOrNull
 import steam.webui.common.*
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
-import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response
-import steam.webui.storebrowse.GrpcStoreBrowse
 
 /**
  * Access store data using this interface.
@@ -14,26 +13,19 @@ import steam.webui.storebrowse.GrpcStoreBrowse
  * All data will be kept inside the in-memory cache.
  */
 class Store internal constructor(
-    private val steamClient: SteamClient
-) : BaseHandler {
-    private val storeBrowse by lazy {
-        GrpcStoreBrowse(steamClient.unifiedMessages)
-    }
-
+    private val steamClient: ExtendedSteamClient
+) {
     // TODO: make it "compressable" or store in some kind of LRU cache with on-disk
     private val storeItemsMap = mutableMapOf<StoreItemID, StoreItem>()
     private val rpLocalizationMap = mutableMapOf<Int, Map<String, String>>()
 
     suspend fun getRichPresenceLocalization(appId: Int): Map<String, String> {
         return rpLocalizationMap.getOrPut(appId) {
-            (steamClient.unifiedMessages.execute(
-                methodName = "Community.GetAppRichPresenceLocalization",
-                requestAdapter = CCommunity_GetAppRichPresenceLocalization_Request.ADAPTER,
-                responseAdapter = CCommunity_GetAppRichPresenceLocalization_Response.ADAPTER,
-                requestData = CCommunity_GetAppRichPresenceLocalization_Request(
+            steamClient.grpc.community.GetAppRichPresenceLocalization().executeSteamOrNull(
+                data = CCommunity_GetAppRichPresenceLocalization_Request(
                     appid = appId, language = steamClient.language.vdfName
                 )
-            ).dataNullable?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap())
+            )?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap()
         }
     }
 
@@ -105,7 +97,7 @@ class Store internal constructor(
             return emptyList() // short-circuit
         }
 
-        return storeBrowse.GetItems().executeSteam(data = CStoreBrowse_GetItems_Request(
+        return steamClient.grpc.storeBrowse.GetItems().executeSteam(data = CStoreBrowse_GetItems_Request(
             ids = ids,
             context = StoreBrowseContext(
                 language = steamClient.language.vdfName,

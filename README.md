@@ -5,7 +5,7 @@ kSteam is a **JVM/Android Kotlin library** which allows you to connect to the Va
 
 Its usage is mostly based on **Kotlin Coroutines** and **states** to better suit for modern application development.
 
-> This library is in very early state, so expect bugs and incomplete features.
+> This library is in very early state, so expect bugs and incomplete features. Also, releases are mostly not binary compatible between each other due to rapid development process.
 > 
 > Please note that this library is **UNOFFICIAL** and not endorsed, sponsored, allowed, developed by Valve Corporation or related to it. Don't report bugs to them!
 ---
@@ -14,14 +14,14 @@ Its usage is mostly based on **Kotlin Coroutines** and **states** to better suit
 
 Refer to the [examples document](README_Examples.md) for more information how to use kSteam for various needs.
 
-You can also check out [Cobalt](https://github.com/iTaysonLab/Jetisteam/) - an Android replacement for the official Steam client that uses 
+You can also check out [Cobalt](https://github.com/iTaysonLab/Jetisteam/) - an Android replacement for the official Steam client that uses kSteam.
 
 ### Platform Support
 - JVM/Android: highest priority
 - iOS/macOS: experimental
 - WASM: nearly impossible due to possible CORS issues
 
-Android has several special features: Jetpack Compose stability annotations for optimized rendering and support for secure preferences.
+Android has several special features: Jetpack Compose stability annotations for optimized rendering.
 
 ### Features
 - Access to the Steam network by using the modern WebSocket approach
@@ -39,7 +39,7 @@ Android has several special features: Jetpack Compose stability annotations for 
 ### Modules
 - `core`: main kSteam core, especially a small client that can connect to the Steam network and handle API/Authorization requests.
 - `core-persistence`: implementation for kSteam persistence subsystem, allowing for saving user credentials and machine tokens.
-- `client`: full-blown client based on kSteam core that provides user-friendly access to Steam API with active caching. **Relies heavily on Realm Database.**
+- `extension-client`: full-blown client based on kSteam core that provides user-friendly access to Steam API with active caching. **Relies heavily on Realm Database.**
 - `kotlinx-vdf`: KotlinX Serialization adapter for Valve Data Format, useful for PICS/Library parsing.
 - `proto-common`: common Steam protobufs used in several kSteam modules.
 
@@ -47,7 +47,7 @@ Android has several special features: Jetpack Compose stability annotations for 
 
 If you are planning to use kSteam only for basic Steam communication, consider using `core` and `core-persistance` (optional) modules. They provide authorization, credential management (optional) and raw Steam API connection (by using protobufs or binary messages).
 
-However, if you are going to create a GUI client, consider including the `client` module as well (if your target platform is supported by the Realm Database). It provides a lot of useful Steam API mappings paired with automatic Kotlin Flow support for dynamic UI.
+However, if you are going to create a GUI client, consider including the `extension-client` module as well (if your target platform is supported by the Realm Database). It provides a lot of useful Steam API mappings paired with automatic Kotlin Flow support for dynamic UI.
 
 The `kotlinx-vdf` module is already provided with the modules above, but you can import it separately in case of not requiring to use any of kSteam features.
 

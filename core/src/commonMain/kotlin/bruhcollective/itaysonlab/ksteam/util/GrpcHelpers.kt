@@ -67,3 +67,13 @@ suspend fun <S: Any, R: Any> GrpcCall<S, R>.executeSteam(
 
     return execute(data)
 }
+
+suspend fun <S: Any, R: Any> GrpcCall<S, R>.executeSteamOrNull(
+    data: S,
+    anonymous: Boolean = false,
+    web: Boolean = false,
+): R? {
+    return runCatching {
+        executeSteam(data, anonymous = anonymous, web = web)
+    }.getOrNull()
+}

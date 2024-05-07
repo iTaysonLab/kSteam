@@ -1,10 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaRelationship
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
@@ -27,9 +26,9 @@ import steam.webui.friendslist.CMsgClientFriendsList
  * All data will be kept inside the in-memory cache.
  */
 class Persona internal constructor(
-    private val steamClient: SteamClient,
+    private val steamClient: ExtendedSteamClient,
     private val database: KSteamRealmDatabase
-) : BaseHandler {
+) {
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
     val currentPersona = _currentPersonaData.asStateFlow()
 
@@ -37,7 +36,7 @@ class Persona internal constructor(
     val currentPersonaOnlineStatus = _currentPersonaOnlineStatus.asStateFlow()
 
     private suspend fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
-        KSteamLogging.logVerbose("Persona") { "realm/persona@new ${incoming.joinToString()}" }
+        steamClient.logger.logVerbose("Persona") { "realm/persona@new ${incoming.joinToString()}" }
 
         database.realm.write {
             incoming.forEach { friend ->
@@ -59,7 +58,7 @@ class Persona internal constructor(
             // Hook our InitialResults change result to quickly request for more personas
             if (realmChanges is InitialResults<RealmPersona>) {
                 val missingSteamIds = ids - realmChanges.list.map { it.id.toSteamId() }.toSet()
-                KSteamLogging.logVerbose("Persona") { "realm/mutiple@initial missing: [${missingSteamIds.joinToString()}]" }
+                steamClient.logger.logVerbose("Persona") { "realm/mutiple@initial missing: [${missingSteamIds.joinToString()}]" }
                 requestPersonas(missingSteamIds) // this will give us missing SteamID's
             }
         }.map { it.list.map(RealmPersona::convert) } // and this will give us kSteam Personas
@@ -76,7 +75,7 @@ class Persona internal constructor(
             "id == $0", id.longId
         ).first().asFlow().onEach { realmChanges ->
             if (realmChanges is PendingObject<RealmPersona>) {
-                KSteamLogging.logVerbose("Persona") { "realm/single@pending $id" }
+                steamClient.logger.logVerbose("Persona") { "realm/single@pending $id" }
                 requestPersonas(listOf(id))
             }
         }.map { it.obj?.convert() ?: Persona.Unknown } // and this will give us kSteam Persona
@@ -139,7 +138,7 @@ class Persona internal constructor(
         // 2. Update friend-list flow
         database.realm.write {
             newList.friends.forEach { changedFriend ->
-                KSteamLogging.logVerbose("Persona") { "realm/friends@change ${changedFriend.ulfriendid} -> ${EFriendRelationship.byEncoded(changedFriend.efriendrelationship)}" }
+                steamClient.logger.logVerbose("Persona") { "realm/friends@change ${changedFriend.ulfriendid} -> ${EFriendRelationship.byEncoded(changedFriend.efriendrelationship)}" }
                 copyToRealm(RealmPersonaRelationship(src = currentPersona.value.id, target = changedFriend.ulfriendid.toSteamId(), enum = changedFriend.efriendrelationship ?: 0), updatePolicy = UpdatePolicy.ALL)
             }
         }
@@ -151,7 +150,7 @@ class Persona internal constructor(
     suspend fun requestPersonas(ids: List<SteamId>) {
         if (ids.isEmpty()) return
 
-        KSteamLogging.logDebug("Handlers:Persona") {
+        steamClient.logger.logDebug("Handlers:Persona") {
             "Requesting persona states for: ${ids.joinToString { it.id.toString() }}"
         }
 
@@ -165,49 +164,46 @@ class Persona internal constructor(
         ))
     }
 
-    override suspend fun onEvent(packet: SteamPacket) {
-        when (packet.messageId) {
-            EMsg.k_EMsgClientPersonaState -> {
-                updatePersonaState(packet.getProtoPayload(CMsgClientPersonaState.ADAPTER).data.friends)
-            }
+    init {
+        steamClient.on(EMsg.k_EMsgClientPersonaState) { packet ->
+            updatePersonaState(CMsgClientPersonaState.ADAPTER.decode(packet.payload).friends)
+        }
 
-            EMsg.k_EMsgClientClanState -> {
-                KSteamLogging.logVerbose("Persona-ClanState") {
-                    packet.getProtoPayload(CMsgClientClanState.ADAPTER).dataNullable.toString()
+        steamClient.on(EMsg.k_EMsgClientClanState) { packet ->
+            steamClient.logger.logVerbose("Persona-ClanState") {
+                CMsgClientClanState.ADAPTER.decode(packet.payload).toString()
+            }
+        }
+
+        steamClient.on(EMsg.k_EMsgClientAccountInfo) { packet ->
+            CMsgClientAccountInfo.ADAPTER.decode(packet.payload).let { obj ->
+                _currentPersonaData.update {
+                    it.copy(
+                        id = SteamId(packet.header.steamId),
+                        name = obj.persona_name.orEmpty(),
+                        flags = AccountFlags(obj.account_flags ?: 0),
+                        country = obj.ip_country ?: "US",
+                    )
                 }
             }
 
-            EMsg.k_EMsgClientAccountInfo -> {
-                packet.getProtoPayload(CMsgClientAccountInfo.ADAPTER).data.let { obj ->
-                    _currentPersonaData.update {
-                        it.copy(
-                            id = SteamId(packet.header.steamId),
-                            name = obj.persona_name.orEmpty(),
-                            flags = AccountFlags(obj.account_flags ?: 0),
-                            country = obj.ip_country ?: "US",
-                        )
-                    }
-                }
+            setOnlineStatus(EPersonaState.Online)
+        }
 
-                setOnlineStatus(EPersonaState.Online)
-            }
+        steamClient.on(EMsg.k_EMsgClientFriendsList) { packet ->
+            handleFriendListChanges(CMsgClientFriendsList.ADAPTER.decode(packet.payload))
+        }
 
-            EMsg.k_EMsgClientFriendsList -> {
-                packet.getProtoPayload(CMsgClientFriendsList.ADAPTER).data.let { obj ->
-                    handleFriendListChanges(obj)
-                }
-            }
+        steamClient.on(EMsg.k_EMsgClientLogOnResponse) { packet ->
+            if (packet.isProtobuf()) {
+                CMsgClientLogonResponse.ADAPTER.decode(packet.payload).let { logonResponse ->
+                    if (logonResponse.eresult != EResult.OK.encoded) return@let
 
-            EMsg.k_EMsgClientLogOnResponse -> {
-                packet.getProtoPayload(CMsgClientLogonResponse.ADAPTER).data.let { logonResponse ->
-                    if (logonResponse.eresult != EResult.OK.encoded) return
                     _currentPersonaData.update {
                         it.copy(vanityUrl = logonResponse.vanity_url.orEmpty())
                     }
                 }
             }
-
-            else -> {}
         }
     }
 }

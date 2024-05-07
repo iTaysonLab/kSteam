@@ -80,7 +80,9 @@ class GuardInstance(
 
     fun sgCreateRevokeSignature(tokenId: Long): ByteString {
         return Buffer().apply {
-            writeLong(tokenId)
+            for (char in tokenId.toString().padEnd(length = 20, padChar = '0')) {
+                writeByte(char.code)
+            }
         }.hmacSha256(sharedSecret)
     }
 

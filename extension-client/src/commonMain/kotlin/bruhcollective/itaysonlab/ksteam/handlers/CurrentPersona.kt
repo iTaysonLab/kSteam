@@ -1,24 +1,23 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import steam.webui.common.CMsgClientWalletInfoUpdate
 
 /**
  * Provides information about current signed in user, such as:
  * - VAC bans
  * - Wallet
  */
-class CurrentPersona: BaseHandler {
-    override suspend fun onEvent(packet: SteamPacket) {
-        when (packet.messageId) {
-            EMsg.k_EMsgClientWalletInfoUpdate -> {
-                packet.getProtoPayload(CMsgClientWalletInfoUpdate.ADAPTER).dataNullable?.apply {
-                    // println(this)
-                }
-            }
+class CurrentPersona (
+    steamClient: ExtendedSteamClient
+) {
+    init {
+        steamClient.on(EMsg.k_EMsgClientWalletInfoUpdate) { packet ->
+            // packet.getProtoPayload(CMsgClientWalletInfoUpdate.ADAPTER)
+        }
 
-            else -> Unit
+        steamClient.on(EMsg.k_EMsgClientVacStatusResponse) { packet ->
+            // [Ban Count] - [Banned AppID 1] - [Banned AppID 2] - ....
         }
     }
 }

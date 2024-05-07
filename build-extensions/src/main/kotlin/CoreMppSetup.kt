@@ -5,13 +5,9 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
-@OptIn(ExperimentalKotlinGradlePluginApi::class)
 fun KotlinMultiplatformExtension.multiplatformSetup(
     additionalNativeTargetConfig: KotlinNativeTarget.() -> Unit = {}
 ) {
-    // Enable Kotlin 1.8.20's new default hierarchy
-    // targetHierarchy.default()
-
     // Setup JVM toolchain to 11
     jvmToolchain(11)
 

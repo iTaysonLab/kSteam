@@ -6,7 +6,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.okio.decodeFromBufferedSource
 import kotlinx.serialization.json.okio.encodeToBufferedSink
 import kotlinx.serialization.serializer
+import okio.FileSystem
 import okio.Path
+import okio.SYSTEM
 import kotlin.reflect.KProperty
 
 class FileProxiedObject <T> (
@@ -18,10 +20,8 @@ class FileProxiedObject <T> (
         ignoreUnknownKeys = true
     }
 
-    private val okioFs = provideOkioFilesystem()
-
     @OptIn(ExperimentalSerializationApi::class)
-    private val initialContents = okioFs.let { fs ->
+    private val initialContents = FileSystem.SYSTEM.let { fs ->
         if (fs.exists(fileRef).not()) {
             // regenerate the file
             commit(default)
@@ -41,7 +41,7 @@ class FileProxiedObject <T> (
 
     @OptIn(ExperimentalSerializationApi::class)
     private fun commit(data: T) {
-        okioFs.apply {
+        FileSystem.SYSTEM.apply {
             fileRef.parent?.let { createDirectories(it) }
 
             write(fileRef) {

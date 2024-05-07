@@ -1,3 +1,0 @@
-headers = libdeflate/libdeflate.h
-compilerOpts = -I/src/nativeInterop/cinterop
-linkerOpts = -I/src/nativeInterop/cinterop

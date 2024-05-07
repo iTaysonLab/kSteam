@@ -1,10 +1,7 @@
-package bruhcollective.itaysonlab.ksteam.handlers.library
+package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
+import bruhcollective.itaysonlab.ksteam.util.executeSteamOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -12,8 +9,8 @@ import kotlinx.coroutines.flow.update
 import steam.webui.cloudconfigstore.*
 
 internal class CloudConfiguration(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     private val currentState = MutableStateFlow<Map<Int, CCloudConfigStore_NamespaceData>>(emptyMap())
 
     suspend fun request(namespace: Int): Flow<List<CCloudConfigStore_Entry>> {
@@ -27,20 +24,17 @@ internal class CloudConfiguration(
     }
 
     private suspend fun downloadAndSet(namespace: Int, version: Long = 0) {
-        steamClient.unifiedMessages.execute(
-            methodName = "CloudConfigStore.Download",
-            requestAdapter = CCloudConfigStore_Download_Request.ADAPTER,
-            responseAdapter = CCloudConfigStore_Download_Response.ADAPTER,
-            requestData = CCloudConfigStore_Download_Request(
+        steamClient.grpc.cloudConfigStore.Download().executeSteamOrNull(
+            data = CCloudConfigStore_Download_Request(
                 versions = listOf(
                     CCloudConfigStore_NamespaceVersion(
                         enamespace = namespace,
                         version = version
                     )
                 )
-            ),
-        ).dataNullable?.data_?.firstOrNull().let { newNamespace ->
-            KSteamLogging.logDebug("CloudConfig:Rpc") { "Namespace received: $newNamespace" }
+            )
+        )?.data_?.firstOrNull().let { newNamespace ->
+            steamClient.logger.logDebug("CloudConfig:Rpc") { "Namespace received: $newNamespace" }
             currentState.update { map ->
                 map.toMutableMap().apply {
                     put(
@@ -56,11 +50,11 @@ internal class CloudConfiguration(
         }
     }
 
-    override suspend fun onRpcEvent(rpcMethod: String, packet: SteamPacket) {
-        if (rpcMethod == "CloudConfigStoreClient.NotifyChange#1") {
-            packet.getProtoPayload(CCloudConfigStore_Change_Notification.ADAPTER).dataNullable?.let { notification ->
+    init {
+        steamClient.onRpc("CloudConfigStoreClient.NotifyChange#1") { packet ->
+            CCloudConfigStore_Change_Notification.ADAPTER.decode(packet.payload).let { notification ->
                 notification.versions.forEach { updatedNamespace ->
-                    KSteamLogging.logDebug("CloudConfig:Rpc") { "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}" }
+                    steamClient.logger.logDebug("CloudConfig:Rpc") { "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}" }
                     downloadAndSet(updatedNamespace.enamespace ?: return@forEach)
                 }
             }

@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.web
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
-import bruhcollective.itaysonlab.ksteam.debug.KSteamLogging
+import bruhcollective.itaysonlab.ksteam.handlers.Configuration
 import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
 import bruhcollective.itaysonlab.ksteam.web.models.GetCMListForConnectResponse
 import bruhcollective.itaysonlab.ksteam.web.models.QueryTimeData
@@ -16,11 +16,8 @@ import kotlinx.serialization.Serializable
 
 class WebApi(
     private val apiClient: HttpClient,
+    private val configuration: Configuration
 ) {
-    private companion object {
-        const val LOG_TAG = "Core:WebApi"
-    }
-
     val gateway = this[EnvironmentConstants.WEB_API_BASE]
     val community = this[EnvironmentConstants.COMMUNITY_API_BASE]
     val store = this[EnvironmentConstants.STORE_API_BASE]
@@ -30,6 +27,10 @@ class WebApi(
             "cmtype" with "websockets"
             "realm" with "steamglobal"
             "maxcount" with 1
+
+            if (configuration.cellId != 0) {
+                "cellid" to configuration.cellId
+            }
         }.body<WebApiBoxedResponse<GetCMListForConnectResponse>>().response.servers
     }
 
@@ -101,20 +102,12 @@ class WebApi(
         suspend inline fun <reified T> postBody(): T = post().body<T>()
 
         suspend fun get(): HttpResponse {
-            KSteamLogging.logVerbose(LOG_TAG) {
-                "[get] ${urlBuilder.build()}"
-            }
-
             return apiClient.get(urlBuilder.build()) {
                 insertHeadersTo(this)
             }
         }
 
         suspend fun post(): HttpResponse {
-            KSteamLogging.logVerbose(LOG_TAG) {
-                "[post] ${urlBuilder.build()}"
-            }
-
             return apiClient.post(urlBuilder.build()) {
                 insertHeadersTo(this)
             }

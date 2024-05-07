@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatCommunityPublicAssetUrl
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityPublicAssetUrl
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 @Immutable

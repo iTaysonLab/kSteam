@@ -10,11 +10,11 @@ import steam.webui.authentication.CAuthentication_DeviceDetails
  *
  * It will be used to show from what device you are trying to log in, so it is recommended to fill it.
  *
- * However, you can only fill the [deviceName] variable if you don't want to fill this (or don't want to add Wire as extra dependency)
+ * However, you can only fill the [deviceName] variable if you don't want to fill this.
  */
 class DeviceInformation(
     /**
-     * OS type. Visible in "All sessions" screen.
+     * OS name and version. Visible in "All sessions" screen.
      */
     internal val osType: EOSType = EOSType.k_Windows10,
 
@@ -34,6 +34,9 @@ class DeviceInformation(
      * **ALWAYS USE k_EAuthTokenPlatformType_SteamClient!**
      * - k_EAuthTokenPlatformType_MobileApp does not allow you to connect to a CM (JWT does not include "client")
      * - k_EAuthTokenPlatformType_WebBrowser is unknown, but also not recommended.
+     *
+     * k_EAuthTokenPlatformType_MobileApp is OK if you are only using "Web" transport mode.
+     * **However, you will need to re-authorize into the account in order to get an updated token with specified JWT rights.**
      */
     internal val platformType: EAuthTokenPlatformType = EAuthTokenPlatformType.k_EAuthTokenPlatformType_SteamClient,
 ) {

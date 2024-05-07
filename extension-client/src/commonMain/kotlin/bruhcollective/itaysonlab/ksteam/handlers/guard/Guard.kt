@@ -1,17 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.handlers.guard
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.extension.plugins.SteamGuardPlugin
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
 import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
 import bruhcollective.itaysonlab.ksteam.guard.models.SgCreationResult
 import bruhcollective.itaysonlab.ksteam.guard.models.SgDeletionResult
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.configuration
-import bruhcollective.itaysonlab.ksteam.handlers.unifiedMessages
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
@@ -22,13 +17,9 @@ import steam.webui.twofactor.*
  * Steam Guard provider.
  */
 class Guard(
-    private val steamClient: SteamClient,
-) : BaseHandler, SteamGuardPlugin {
-    private val twoFactor by lazy {
-        GrpcTwoFactor(steamClient.unifiedMessages)
-    }
-
-    private val storage = GuardStorage(steamClient)
+    private val steamClient: ExtendedSteamClient,
+) {
+    private val storage = GuardStorage(steamClient.client)
     private val lazyInstances = mutableMapOf<SteamId, GuardInstance>()
 
     fun instanceForCurrentUser() = instanceFor(steamClient.currentSessionSteamId.takeIf {
@@ -45,7 +36,7 @@ class Guard(
             GuardInstance(
                 steamId = steamId,
                 configuration = storage.queryStructure(steamId) ?: return null,
-                clockContext = GuardClockContextImpl(steamClient)
+                clockContext = GuardClockContextImpl(steamClient.client)
             )
         }
     }
@@ -55,7 +46,7 @@ class Guard(
      */
     suspend fun initializeSgCreation(): SgCreationResult {
         return try {
-            val response = twoFactor.AddAuthenticator().executeSteam(
+            val response = steamClient.grpc.twoFactor.AddAuthenticator().executeSteam(
                 CTwoFactor_AddAuthenticator_Request(
                     steamid = steamClient.currentSessionSteamId.longId,
                     authenticator_type = 1,
@@ -85,7 +76,7 @@ class Guard(
      */
     suspend fun initializeSgMoving(): SgCreationResult {
         return try {
-            twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(data = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request(), web = true)
+            steamClient.grpc.twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(data = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request(), web = true)
             SgCreationResult.SmsSent(moving = true)
         } catch (sre: SteamRpcException) {
             SgCreationResult.Error(sre.result)
@@ -101,10 +92,10 @@ class Guard(
      * @return if guard was successfully set up
      */
     suspend fun confirmSgCreation(code: String, structure: GuardStructure): GuardInstance? {
-        val instance = GuardInstance(steamClient.currentSessionSteamId, structure, GuardClockContextImpl(steamClient))
+        val instance = GuardInstance(steamClient.currentSessionSteamId, structure, GuardClockContextImpl(steamClient.client))
         val firstPair = instance.generateCodeWithTime()
 
-        return twoFactor.FinalizeAddAuthenticator().executeSteam(
+        return steamClient.grpc.twoFactor.FinalizeAddAuthenticator().executeSteam(
             web = true,
             data = CTwoFactor_FinalizeAddAuthenticator_Request(
                 steamid = steamClient.currentSessionSteamId.longId,
@@ -117,7 +108,7 @@ class Guard(
             if (it.want_more == true) {
                 val (secondCode, secondTime) = instance.generateCodeWithTime()
 
-                twoFactor.FinalizeAddAuthenticator().executeSteam(
+                steamClient.grpc.twoFactor.FinalizeAddAuthenticator().executeSteam(
                     web = true,
                     data = CTwoFactor_FinalizeAddAuthenticator_Request(
                         steamid = steamClient.currentSessionSteamId.longId,
@@ -141,7 +132,7 @@ class Guard(
      */
     suspend fun confirmSgMoving(code: String): GuardInstance? {
         val structure = runCatching {
-            twoFactor.RemoveAuthenticatorViaChallengeContinue().executeSteam(
+            steamClient.grpc.twoFactor.RemoveAuthenticatorViaChallengeContinue().executeSteam(
                 data = CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request(sms_code = code, version = 2, generate_new_token = true),
                 web = true
             ).replacement_token!!.toConfig()
@@ -158,7 +149,7 @@ class Guard(
     fun tryAddConfig(steamId: SteamId, configuration: GuardStructure): GuardInstance {
         storage.writeStructure(steamId, configuration)
 
-        return GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient)).also {
+        return GuardInstance(steamId, configuration, GuardClockContextImpl(steamClient.client)).also {
             lazyInstances[steamId] = it
         }
     }
@@ -187,7 +178,7 @@ class Guard(
         } ?: return SgDeletionResult.UnsupportedOperation
 
         val result = try {
-            twoFactor.RemoveAuthenticator().executeSteam(
+            steamClient.grpc.twoFactor.RemoveAuthenticator().executeSteam(
                 anonymous = code != null,
                 web = true,
                 data = CTwoFactor_RemoveAuthenticator_Request(
@@ -215,6 +206,5 @@ class Guard(
         }
     }
 
-    override suspend fun onEvent(packet: SteamPacket) = Unit
-    override suspend fun getCodeFor(account: SteamId) = instanceFor(account)?.generateCodeWithTime()?.codeString
+    suspend fun getCodeFor(account: SteamId) = instanceFor(account)?.generateCodeWithTime()?.codeString
 }

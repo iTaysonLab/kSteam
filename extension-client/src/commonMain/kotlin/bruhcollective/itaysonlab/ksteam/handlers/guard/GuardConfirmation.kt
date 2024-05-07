@@ -1,13 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.handlers.guard
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfResult
 import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfirmationItem
-import bruhcollective.itaysonlab.ksteam.handlers.BaseHandler
-import bruhcollective.itaysonlab.ksteam.handlers.configuration
-import bruhcollective.itaysonlab.ksteam.handlers.guard
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -16,8 +12,8 @@ import io.ktor.http.*
  * Mobile confirmations using a Steam Guard instance.
  */
 class GuardConfirmation(
-    private val steamClient: SteamClient
-) : BaseHandler {
+    private val steamClient: ExtendedSteamClient
+) {
     /**
      * Get a list of confirmations waiting for the response.
      */
@@ -91,6 +87,4 @@ class GuardConfirmation(
 
         return "https://steamcommunity.com/mobileconf/detailspage/${item.id}?p=${steamClient.configuration.getUuid()}&a=${steamId.longId}&k=$b64&t=${sigStamp.generationTime}&m=react&tag=detail"
     }
-
-    override suspend fun onEvent(packet: SteamPacket) = Unit
 }

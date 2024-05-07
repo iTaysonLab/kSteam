@@ -1,19 +1,17 @@
 [versions]
-kotlin = "1.9.21"
-kotlinx-coroutines = "1.7.3"
-kotlinx-json = "1.6.1"
-ksp = "1.9.21-1.0.16"
-agp = "8.1.1"
-ktorClientVersion = "2.3.5"
-okio = "3.6.0"
-realm = "1.13.0"
-wire = "4.9.3"
-dokka = "1.8.10"
+kotlin = "1.9.23"
+kotlinx-coroutines = "1.8.0"
+kotlinx-json = "1.6.3"
+agp = "8.2.0"
+ktorClientVersion = "2.3.10"
+okio = "3.9.0"
+realm = "1.16.0"
+wire = "5.0.0-alpha01"
+dokka = "1.9.20"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
-kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 

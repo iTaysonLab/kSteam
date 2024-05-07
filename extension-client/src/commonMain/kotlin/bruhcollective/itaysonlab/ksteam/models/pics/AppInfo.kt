@@ -10,8 +10,8 @@
 
 package bruhcollective.itaysonlab.ksteam.models.pics
 
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatCommunityImageUrl
-import bruhcollective.itaysonlab.ksteam.cdn.SteamCdn.formatStaticAppImageUrl
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityImageUrl
+import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatStaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
 import io.realm.kotlin.ext.realmDictionaryOf
 import io.realm.kotlin.ext.realmListOf
