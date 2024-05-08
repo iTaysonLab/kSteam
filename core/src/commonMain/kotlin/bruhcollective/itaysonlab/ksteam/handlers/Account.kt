@@ -14,9 +14,7 @@ import bruhcollective.itaysonlab.ksteam.platform.encryptWithRsa
 import bruhcollective.itaysonlab.ksteam.platform.getIpv4Address
 import bruhcollective.itaysonlab.ksteam.util.*
 import io.ktor.util.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -302,7 +300,7 @@ class Account internal constructor(
     private fun createWatcherFlow(interval: Float) {
         authStateWatcher?.cancel()
         authStateWatcher = flow<Unit> {
-            while (true) {
+            while (currentCoroutineContext().isActive) {
                 if (pollAuthStatusInternal()) {
                     break
                 } else {

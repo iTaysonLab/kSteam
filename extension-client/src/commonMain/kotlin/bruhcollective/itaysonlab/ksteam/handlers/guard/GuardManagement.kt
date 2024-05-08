@@ -4,9 +4,11 @@ import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.guard.models.ActiveSession
 import bruhcollective.itaysonlab.ksteam.guard.models.IncomingSession
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.isActive
 import steam.enums.EAuthTokenRevokeAction
 import steam.enums.ESessionPersistence
 import steam.webui.authentication.*
@@ -18,11 +20,13 @@ class GuardManagement(
     private val steamClient: ExtendedSteamClient
 ) {
     /**
-     * Creates a Flow which will poll for any new sessions that needs to be confirmed.
+     * Creates a Flow which will poll *every 5 seconds* for any new sessions that needs to be confirmed.
+     *
+     * `null` means that there are no sessions waiting to be approved.
      */
     fun createIncomingSessionWatcher(): Flow<Long?> {
         return flow {
-            while (true) {
+            while (currentCoroutineContext().isActive) {
                 emit(getIncomingSessionIdQueue().firstOrNull())
                 delay(5000L)
             }

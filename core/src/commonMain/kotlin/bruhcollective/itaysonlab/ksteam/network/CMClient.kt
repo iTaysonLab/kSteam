@@ -133,7 +133,7 @@ internal class CMClient(
 
             mutableClientState.value = CMClientState.AwaitingAuthorization
 
-            while (true) {
+            while (currentCoroutineContext().isActive) {
                 // Check if a message from server is present
                 if (incoming.isEmpty.not()) {
                     val packetToReceive = incoming.receive()
@@ -297,7 +297,7 @@ internal class CMClient(
         val actorJob = Job()
 
         launch(actorJob + CoroutineName("kSteam-heartbeat")) {
-            while (true) {
+            while (currentCoroutineContext().isActive) {
                 logger.logVerbose("CMClient:Heartbeat") { "Adding heartbeat packet to queue" }
 
                 executeAndForget(
