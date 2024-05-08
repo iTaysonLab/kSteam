@@ -6,17 +6,17 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @Immutable
-class MobileConfirmationItem(
-    val type: Int,
+data class MobileConfirmationItem(
+    @SerialName("type") val type: Int,
     @SerialName("type_name") val typeName: String = "",
-    val id: String = "",
+    @SerialName("id") val id: String = "",
     @SerialName("creator_id") val creatorId: String = "",
-    val nonce: String = "",
+    @SerialName("nonce") val nonce: String = "",
     @SerialName("creation_time") val creationTime: Long = 0L,
     @SerialName("cancel") val cancelButtonText: String = "",
     @SerialName("accept") val acceptButtonText: String = "",
-    val icon: String = "",
-    val multi: Boolean = false,
-    val headline: String = "",
-    val summary: List<String> = emptyList(),
+    @SerialName("icon") val icon: String? = null,
+    @SerialName("multi") val multi: Boolean = false,
+    @SerialName("headline") val headline: String = "",
+    @SerialName("summary") val summary: List<String> = emptyList(),
 )
