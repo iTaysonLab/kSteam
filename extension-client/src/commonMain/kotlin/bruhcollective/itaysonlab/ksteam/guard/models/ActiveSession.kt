@@ -49,7 +49,7 @@ data class ActiveSession internal constructor(
         )
     }
 
-    constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription, isCurrentSession: Boolean) : this(
+    constructor(proto: CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription, isCurrentSession: Boolean = false) : this(
         id = proto.token_id ?: 0L,
         deviceName = proto.token_description.orEmpty(),
         timeUpdated = proto.time_updated ?: 0,

@@ -45,12 +45,15 @@ class GuardManagement(
     /**
      * Returns currently approved sessions for the account.
      */
-    suspend fun getActiveSessions(): List<ActiveSession> {
+    suspend fun getActiveSessions(): ActiveSessions {
         return steamClient.grpc.authenticationClient.EnumerateTokens().executeSteam(
             data = CAuthentication_RefreshToken_Enumerate_Request()
         ).let { response ->
-            response.refresh_tokens.map { refreshToken ->
-                ActiveSession(refreshToken, refreshToken.token_id == response.requesting_token)
+            response.refresh_tokens.partition { refreshToken -> refreshToken.token_id == response.requesting_token }.let { parted ->
+                ActiveSessions(
+                    currentSession = ActiveSession(parted.first.first(), true),
+                    sessions = parted.second.map(::ActiveSession)
+                )
             }
         }
     }
@@ -71,6 +74,7 @@ class GuardManagement(
      */
     suspend fun revokeSession(id: Long) {
         steamClient.grpc.authenticationClient.RevokeRefreshToken().executeSteam(
+            web = true,
             data = CAuthentication_RefreshToken_Revoke_Request(
                 token_id = id,
                 steamid = steamClient.currentSessionSteamId.longId,
@@ -85,6 +89,7 @@ class GuardManagement(
      */
     suspend fun revokeCurrentSession() {
         steamClient.grpc.authenticationClient.RevokeRefreshToken().executeSteam(
+            web = true,
             data = CAuthentication_RefreshToken_Revoke_Request(
                 revoke_action = EAuthTokenRevokeAction.k_EAuthTokenRevokeLogout.ordinal
             )
@@ -133,4 +138,15 @@ class GuardManagement(
             )
         )
     }
+
+    /**
+     * Represents active sessions that were approved to access a Steam account.
+     *
+     * @param currentSession the current session from which [getActiveSessions] was called
+     * @param sessions other sessions that got access to the account
+     */
+    data class ActiveSessions (
+        val currentSession: ActiveSession,
+        val sessions: List<ActiveSession>
+    )
 }
