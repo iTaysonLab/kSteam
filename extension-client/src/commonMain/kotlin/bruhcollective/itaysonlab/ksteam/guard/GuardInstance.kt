@@ -15,6 +15,7 @@ import kotlinx.coroutines.isActive
 import okio.Buffer
 import okio.ByteString
 import okio.ByteString.Companion.decodeBase64
+import okio.ByteString.Companion.encodeUtf8
 import kotlin.experimental.and
 
 /**
@@ -79,11 +80,7 @@ class GuardInstance(
     }
 
     fun sgCreateRevokeSignature(tokenId: Long): ByteString {
-        return Buffer().apply {
-            for (char in tokenId.toString().padEnd(length = 20, padChar = '0')) {
-                writeByte(char.code)
-            }
-        }.hmacSha256(sharedSecret)
+        return tokenId.toString().encodeUtf8().hmacSha256(sharedSecret)
     }
 
     suspend fun confirmationTicket(tag: String): ConfirmationTicket {
