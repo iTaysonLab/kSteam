@@ -22,7 +22,10 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /**
@@ -175,13 +178,13 @@ class SteamClient internal constructor(
     }
 
     private suspend fun HttpRequestBuilder.writeSteamData() = apply {
-        account.tokenRequested.first { it }
+        account.awaitTokenRequested()
 
         if (host == "api.steampowered.com") {
             parameter("access_token", account.getCurrentAccount()?.accessToken.orEmpty())
         }
 
-        header("Cookie", "mobileClient=android; mobileClientVersion=777777 3.7.4; steamLoginSecure=${account.buildSteamLoginSecureCookie()};")
+        header("Cookie", account.getWebCookies().joinToString(separator = "; ") { "${it.first}=${it.second}" })
     }
 
     internal fun cmNetworkEnabled() = config.transportMode == SteamClientConfiguration.TransportMode.WebSocket

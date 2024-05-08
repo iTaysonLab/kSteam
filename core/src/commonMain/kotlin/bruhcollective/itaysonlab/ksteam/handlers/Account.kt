@@ -386,6 +386,26 @@ class Account internal constructor(
     fun getCurrentAccount() = steamClient.configuration.getSecureAccount(steamClient.currentSessionSteamId)
     fun buildSteamLoginSecureCookie() = getCurrentAccount()?.let { "${steamClient.currentSessionSteamId}||${it.accessToken}" }.orEmpty()
 
+    suspend fun awaitTokenRequested() {
+        tokenRequested.first { it }
+    }
+
+    /**
+     * Returns a list of cookies to be used for AJAX requests or WebView
+     */
+    fun getWebCookies(): List<Pair<String, String>> {
+        return listOf(
+            "mobileClient" to "android",
+            "mobileClientVersion" to "777777 3.7.4",
+            "steamLoginSecure" to buildSteamLoginSecureCookie()
+        )
+    }
+
+    suspend fun awaitWebCookies(): List<Pair<String, String>> {
+        awaitTokenRequested()
+        return getWebCookies()
+    }
+
     suspend fun updateAccessToken() {
         try {
             getCurrentAccount()?.let { account ->
