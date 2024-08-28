@@ -1,16 +1,16 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.account.SteamAccountAuthorization
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
+import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.platform.getRandomUuid
 
 /**
  * Provides a centralized storage implementation for handlers, backed by client's persistence driver.
  */
 class Configuration internal constructor(
-    private val steamClient: SteamClient
+    val persist: KsteamPersistenceDriver
 ) {
     private companion object Keys {
         const val KEY_MACHINE_ID = "machine_id"
@@ -25,8 +25,6 @@ class Configuration internal constructor(
 
         const val KEY_CELL_ID = "cell_id"
     }
-
-    private val persist get() = steamClient.config.persistenceDriver
 
     var cellId: Int
         get() = persist.getInt(KEY_CELL_ID)

@@ -23,11 +23,10 @@ internal class Sentry(
     }
 
     private fun persistKey(steamId: SteamId) = "sentries.${steamId}"
-
-    private fun sentryFile(steamId: SteamId, fileName: String) = steamClient.storage.storageFor(steamId) / fileName
+    private fun sentryFile(steamId: SteamId, fileName: String) = steamClient.workingDirectory / fileName
 
     private fun sentryFile(steamId: SteamId): Path? {
-        return steamClient.config.persistenceDriver.getString(persistKey(steamId))?.let {
+        return steamClient.persistence.getString(persistKey(steamId))?.let {
             sentryFile(steamId, it)
         }?.takeIf {
             FileSystem.SYSTEM.exists(it)
@@ -46,7 +45,7 @@ internal class Sentry(
             val filename = data.filename.let { if (it.isNullOrEmpty()) "sentry" else it }
             val filepath = sentryFile(currentId, filename)
 
-            steamClient.config.persistenceDriver.set(persistKey(currentId), filename)
+            steamClient.persistence.set(persistKey(currentId), filename)
 
             FileSystem.SYSTEM.write(filepath) {
                 write(

@@ -70,8 +70,7 @@ class KSteamConfiguration {
      *
      * Only change this if you are sure what are you doing.
      */
-    var authPrivateIpLogic: SteamClientConfiguration.AuthPrivateIpLogic =
-        SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp
+    var authPrivateIpLogic: AuthPrivateIpLogic = AuthPrivateIpLogic.UsePrivateIp
 
     /**
      * Supplies persistence implementation for kSteam handlers to use.
@@ -97,7 +96,7 @@ class KSteamConfiguration {
      * After building, call [SteamClient.start] to send/receive packets.
      */
     fun build(): SteamClient {
-        return SteamClient(
+        return SteamClientImpl(
             config = SteamClientConfiguration(
                 rootFolder = rootFolder ?: getDefaultWorkingDirectory()?.toPath(normalize = true) ?: error("Current platform does not support auto-resolving of the working directory. Please, set it manually in the kSteam DSL."),
                 ktorEngineResolver = ktorEngineResolver,

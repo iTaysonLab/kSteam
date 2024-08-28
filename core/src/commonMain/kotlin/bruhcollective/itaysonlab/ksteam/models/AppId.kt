@@ -8,4 +8,6 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class AppId(
     val value: Int
-)
+) {
+    override fun toString() = value.toString()
+}

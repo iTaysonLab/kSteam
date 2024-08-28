@@ -9,15 +9,6 @@ import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
 import bruhcollective.itaysonlab.ksteam.handlers.library.Library
 import bruhcollective.itaysonlab.ksteam.handlers.library.Pics
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
-import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.network.CMClientState
-import bruhcollective.itaysonlab.ksteam.web.WebApi
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 
 /**
  * An object that holds [SteamClient] with an extra handlers that are helpful in building UI applications.
@@ -25,10 +16,10 @@ import kotlinx.coroutines.flow.StateFlow
 class ExtendedSteamClient (
     val enablePics: Boolean,
     val client: SteamClient
-) {
+): SteamClient by client {
     private val database = KSteamRealmDatabase(workingDirectory = client.workingDirectory)
 
-    val grpc: ExtendedSteamGrpcClients = ExtendedSteamGrpcClientsImpl(client)
+    override val grpc: ExtendedSteamGrpcClients = ExtendedSteamGrpcClientsImpl(client)
 
     // Subsystems
     val currentPersona: CurrentPersona = CurrentPersona(this)
@@ -51,28 +42,6 @@ class ExtendedSteamClient (
     private val picsContainer: PicsContainer? = createPicsContainer()
     val pics: Pics get() = picsContainer?.pics ?: throwPicsDisabledException()
     val library: Library get() = picsContainer?.library ?: throwPicsDisabledException()
-
-    // SteamClient subsystems
-    val account: Account get() = client.account
-    val configuration: Configuration get() = client.configuration
-    val logger: Logger get() = client.logger
-    val unifiedMessages: UnifiedMessages get() = client.unifiedMessages
-    val webApi: WebApi get() = client.webApi
-
-    // SteamClient variables pass-through
-    val language: ELanguage get() = client.language
-    val connectionStatus: StateFlow<CMClientState> get() = client.connectionStatus
-    val currentSessionSteamId: SteamId get() = client.currentSessionSteamId
-
-    // SteamClient API pass-through
-    suspend fun start() = client.start()
-    fun stop() = client.stop()
-    fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): Job = client.on(id, consumer)
-    fun onClientState(status: CMClientState, consumer: suspend () -> Unit): Job = client.onClientState(status, consumer)
-    fun onRpc(method: String, consumer: suspend (SteamPacket) -> Unit): Job = client.onRpc(method, consumer)
-    suspend fun execute(packet: SteamPacket): SteamPacket = client.execute(packet)
-    suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> = client.subscribe(packet)
-    suspend fun executeAndForget(packet: SteamPacket) = client.executeAndForget(packet)
 
     //
 

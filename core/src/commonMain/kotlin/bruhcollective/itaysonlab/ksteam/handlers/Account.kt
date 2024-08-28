@@ -1,8 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import bruhcollective.itaysonlab.ksteam.AuthPrivateIpLogic
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.SteamClientConfiguration
+import bruhcollective.itaysonlab.ksteam.handlers.internal.Sentry
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.account.AuthorizationState
@@ -33,6 +34,8 @@ import kotlin.random.Random
 class Account internal constructor(
     private val steamClient: SteamClient
 ) {
+    private val sentry: Sentry = Sentry(steamClient)
+
     private companion object {
         const val TAG = "Account"
     }
@@ -42,7 +45,7 @@ class Account internal constructor(
     }
 
     private val pollScope = CreateSupervisedCoroutineScope("authStatePolling", Dispatchers.Default) { _, _ -> }
-    private val deviceInfo get() = steamClient.config.deviceInfo
+    private val deviceInfo get() = steamClient.deviceInfo
 
     private var pollInfo: PollInfo? = null
     private var authStateWatcher: Job? = null
@@ -261,18 +264,18 @@ class Account internal constructor(
             steamClient.configuration.machineId = Random.nextBytes(64).toByteString().hex()
         }
 
-        val sentryFileHash = steamClient.sentry.sentryHash(steamId)
+        val sentryFileHash = sentry.sentryHash(steamId)
 
-        val currentIp = when (steamClient.config.authPrivateIpLogic) {
-            SteamClientConfiguration.AuthPrivateIpLogic.UsePrivateIp -> {
+        val currentIp = when (steamClient.authPrivateIpLogic) {
+            AuthPrivateIpLogic.UsePrivateIp -> {
                 convertToCmIpV4(getIpv4Address())
             }
 
-            SteamClientConfiguration.AuthPrivateIpLogic.Generate -> {
+            AuthPrivateIpLogic.Generate -> {
                 convertToCmIpV4(generateIpV4Int())
             }
 
-            SteamClientConfiguration.AuthPrivateIpLogic.None -> null
+            AuthPrivateIpLogic.None -> null
         }
 
         logonSteamId = steamId
@@ -281,12 +284,12 @@ class Account internal constructor(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
                 protocol_version = EnvironmentConstants.PROTOCOL_VERSION,
                 client_package_version = 1671236931,
-                client_language = steamClient.config.language.vdfName,
-                client_os_type = steamClient.config.deviceInfo.osType.encoded,
+                client_language = steamClient.language.vdfName,
+                client_os_type = deviceInfo.osType.encoded,
                 should_remember_password = true,
                 qos_level = 2,
                 machine_id = steamClient.configuration.machineId.decodeHex(),
-                machine_name = steamClient.config.deviceInfo.deviceName,
+                machine_name = deviceInfo.deviceName,
                 obfuscated_private_ip = currentIp,
                 deprecated_obfustucated_private_ip = currentIp?.v4,
                 steamguard_dont_remember_computer = false,
