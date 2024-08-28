@@ -1,6 +1,5 @@
 
 import org.gradle.kotlin.dsl.get
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -8,15 +7,21 @@ import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 fun KotlinMultiplatformExtension.multiplatformSetup(
     additionalNativeTargetConfig: KotlinNativeTarget.() -> Unit = {}
 ) {
-    // Setup JVM toolchain to 11
-    jvmToolchain(11)
+    // Setup JVM toolchain to 17
+    jvmToolchain(17)
 
     // Enable JVM support
-    jvm()
+    jvm {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
+    }
 
     // Enable Android support and use JVM 11 target
     androidTarget {
-        jvmToolchain(11)
+        jvmToolchain(17)
 
         publishLibraryVariants("release")
         publishLibraryVariantsGroupedByFlavor = true
@@ -28,24 +33,14 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
         }
     }
 
-    // Enable iOS support
-    //linuxArm64(additionalNativeTargetConfig)
-    //linuxX64(additionalNativeTargetConfig)
-
     // Enable native support for macOS
     macosArm64(additionalNativeTargetConfig)
     macosX64(additionalNativeTargetConfig)
 
-    //mingwX64(additionalNativeTargetConfig)
-
+    // Enable iOS support
     iosX64(additionalNativeTargetConfig)
     iosArm64(additionalNativeTargetConfig)
     iosSimulatorArm64(additionalNativeTargetConfig)
-
-    /*// Enable native support for tvOS
-    tvosX64(additionalNativeTargetConfig)
-    tvosArm64(additionalNativeTargetConfig)
-    tvosSimulatorArm64(additionalNativeTargetConfig)*/
 
     // Allow @ExperimentalObjCName annotation
     sourceSets.all {
