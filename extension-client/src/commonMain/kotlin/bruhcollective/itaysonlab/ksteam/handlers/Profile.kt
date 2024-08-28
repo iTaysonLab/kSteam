@@ -73,8 +73,6 @@ class Profile internal constructor(
         fun List<steam.webui.player.ProfileCustomization>.mapEntriesToAppIds() = this.map { it.slots.mapNotNull { s -> s.appid } }
             .flatten()
 
-        val ownedGames = steamClient.player.getOwnedGames(steamId, includeFreeGames = true).associateBy { it.id }
-
         val customization = steamClient.grpc.player.GetProfileCustomization().executeSteam(
             data = CPlayer_GetProfileCustomization_Request(steamid = steamId.longId, include_inactive_customizations = includeInactive, include_purchased_customizations = includePurchased)
         )
@@ -94,6 +92,17 @@ class Profile internal constructor(
             }
             .mapEntriesToAppIds()
             .let { getTopAchievements(steamId, it, count = 5) to getAchievementsProgress(steamId, it) }
+
+        val ownedGames = if (customization.customizations.any {
+            it.customization_type == EProfileCustomizationType.k_EProfileCustomizationTypeGameCollector.value ||
+            it.customization_type == EProfileCustomizationType.k_EProfileCustomizationTypeFavoriteGame.value
+        }) {
+            runCatching {
+                steamClient.player.getOwnedGames(steamId, includeFreeGames = true).associateBy { it.id }
+            }.getOrNull() ?: emptyMap()
+        } else {
+            emptyMap()
+        }
 
         val widgets = customization.customizations.mapNotNull { protoWidget ->
             when (val enumType = EProfileCustomizationType.fromValue(protoWidget.customization_type ?: 0) ?: EProfileCustomizationType.k_EProfileCustomizationTypeInvalid) {
