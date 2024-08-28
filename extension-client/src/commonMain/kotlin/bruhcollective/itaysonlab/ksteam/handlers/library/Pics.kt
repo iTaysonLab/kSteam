@@ -49,7 +49,7 @@ class Pics internal constructor(
      */
     fun getSteamApplication(id: Int): SteamApplication? {
         return SteamApplication.fromPics(
-            database.realm.query<AppInfo>("appId == $0", id).first().find() ?: return null
+            database.sharedRealm.query<AppInfo>("appId == $0", id).first().find() ?: return null
         )
     }
 
@@ -59,7 +59,7 @@ class Pics internal constructor(
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
     fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
-        return database.realm.query<AppInfo>("appId IN $0", ids).find().map(SteamApplication::fromPics)
+        return database.sharedRealm.query<AppInfo>("appId IN $0", ids).find().map(SteamApplication::fromPics)
     }
 
     /**
@@ -117,7 +117,7 @@ class Pics internal constructor(
                 if (sLicense.package_id != null && sLicense.change_number != null) {
                     val packageId = sLicense.package_id ?: return@filter false
                     val changeNumber = sLicense.change_number ?: return@filter false
-                    val databaseChangeNumber = database.realm.query<PicsPackageChangeNumber>("packageId == $0", packageId).first().find()?.changeNumber
+                    val databaseChangeNumber = database.sharedRealm.query<PicsPackageChangeNumber>("packageId == $0", packageId).first().find()?.changeNumber
 
                     // if null, package was NOT cached
                     databaseChangeNumber == null || changeNumber > databaseChangeNumber
@@ -168,7 +168,7 @@ class Pics internal constructor(
     private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>) {
         // Get ids of app that we actually own
         appIds = licenses.mapNotNull { it.package_id }
-            .let { owningPackages -> database.realm.query<PackageInfo>("packageId IN $0", owningPackages).find() }
+            .let { owningPackages -> database.sharedRealm.query<PackageInfo>("packageId IN $0", owningPackages).find() }
             .flatMap { it.appIds }
             .distinct()
 
@@ -185,7 +185,7 @@ class Pics internal constructor(
             it.appid!! to it.access_token
         }
 
-        if (database.realm.query<AppInfo>().count().find() > 0) {
+        if (database.sharedRealm.query<AppInfo>().count().find() > 0) {
             // Not a new launch, we should check everything
             partiallyRefreshAppIds(tokens)
         } else {
@@ -227,7 +227,7 @@ class Pics internal constructor(
             for (appInfo in metadataChunk) {
                 val appId = appInfo.appid ?: continue
                 val changeNumber = appInfo.change_number ?: continue
-                val databaseChangeNumber = database.realm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
+                val databaseChangeNumber = database.sharedRealm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
 
                 if (databaseChangeNumber == null) {
                     steamClient.logger.logVerbose("Pics:HandleLicenses") {
@@ -288,7 +288,7 @@ class Pics internal constructor(
     ) {
         steamClient.logger.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} packages received!" }
 
-        database.realm.write {
+        database.sharedRealm.write {
             for (packageInfo in chunk) {
                 val changeNumber = packageInfo.change_number ?: continue
                 val buffer = packageInfo.buffer?.toByteArray() ?: continue
@@ -309,7 +309,7 @@ class Pics internal constructor(
     ) {
         steamClient.logger.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} apps received!" }
 
-        database.realm.write {
+        database.sharedRealm.write {
             for (appInfo in chunk) {
                 val changeNumber = appInfo.change_number ?: continue
                 val buffer = appInfo.buffer?.toByteArray() ?: continue

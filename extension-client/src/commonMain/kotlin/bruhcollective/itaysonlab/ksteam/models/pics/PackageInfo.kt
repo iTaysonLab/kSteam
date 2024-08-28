@@ -22,6 +22,9 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable
 internal class PackageInfo: RealmObject {
+    // Fixes https://github.com/realm/realm-kotlin/issues/1567
+    companion object
+
     @PrimaryKey
     @SerialName("packageid")
     var packageId: Int = 0
@@ -46,6 +49,9 @@ internal class PackageInfo: RealmObject {
 
     @Serializable
     internal class InfoExtended: EmbeddedRealmObject {
+        // Fixes https://github.com/realm/realm-kotlin/issues/1567
+        companion object
+
         @SerialName("allowcrossregiontradingandgifting")
         var allowInternationalGifting: Boolean = false
 

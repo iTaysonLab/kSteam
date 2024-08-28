@@ -27,6 +27,9 @@ import kotlinx.serialization.UseSerializers
 
 @Serializable
 internal class AppInfo: RealmObject {
+    // Fixes https://github.com/realm/realm-kotlin/issues/1567
+    companion object
+
     @PrimaryKey
     @SerialName("appid")
     var appId: Int = 0
@@ -44,6 +47,9 @@ internal class AppInfo: RealmObject {
 
     @Serializable
     internal class AppInfoCommon: EmbeddedRealmObject {
+        // Fixes https://github.com/realm/realm-kotlin/issues/1567
+        companion object
+
         @SerialName("name")
         var name: String = ""
 
@@ -165,6 +171,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppSteamDeckCompatibility: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("category")
             var category: Int = 0
 
@@ -178,6 +187,9 @@ internal class AppInfo: RealmObject {
 
             @Serializable
             class AppSteamDeckCompatTestEntry: EmbeddedRealmObject {
+                // Fixes https://github.com/realm/realm-kotlin/issues/1567
+                companion object
+
                 @SerialName("display")
                 var display: Int = 0
 
@@ -188,6 +200,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppAssociation: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("type")
             var type: String = ""
 
@@ -197,6 +212,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppSupportedLanguageMatrix: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("supported")
             var supported: Boolean = false
 
@@ -209,6 +227,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppEula: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("id")
             var id: String = ""
 
@@ -225,6 +246,9 @@ internal class AppInfo: RealmObject {
 
     @Serializable
     class AppInfoExtended: EmbeddedRealmObject {
+        // Fixes https://github.com/realm/realm-kotlin/issues/1567
+        companion object
+
         @SerialName("developer")
         var developer: String = ""
 
@@ -249,6 +273,9 @@ internal class AppInfo: RealmObject {
 
     @Serializable
     class AppInfoAlbumMetadata: EmbeddedRealmObject {
+        // Fixes https://github.com/realm/realm-kotlin/issues/1567
+        companion object
+
         @SerialName("tracks")
         var trackList: RealmList<AppInfoMusicTrack> = realmListOf()
 
@@ -260,6 +287,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppInfoMusicTrack: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("discnumber")
             var discNumber: Int = 0
 
@@ -278,6 +308,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppInfoMusicMetadata: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("artist")
             var artist: RealmDictionary<String> = realmDictionaryOf()
 
@@ -293,6 +326,9 @@ internal class AppInfo: RealmObject {
 
         @Serializable
         class AppInfoMusicCdnAssets: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
             @SerialName("album_cover")
             var albumCoverId: String = ""
         }

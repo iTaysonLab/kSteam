@@ -3,7 +3,6 @@ package bruhcollective.itaysonlab.ksteam.handlers
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
-import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaRelationship
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
@@ -11,7 +10,8 @@ import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
 import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
-import io.realm.kotlin.UpdatePolicy
+import bruhcollective.itaysonlab.ksteam.network.CMClientState
+import bruhcollective.itaysonlab.ksteam.util.RichPresenceFormatter
 import io.realm.kotlin.ext.query
 import io.realm.kotlin.notifications.InitialResults
 import io.realm.kotlin.notifications.PendingObject
@@ -29,19 +29,42 @@ class Persona internal constructor(
     private val steamClient: ExtendedSteamClient,
     private val database: KSteamRealmDatabase
 ) {
+    private val richPresenceFormatter = RichPresenceFormatter(steamClient, database)
+
     private val _currentPersonaData = MutableStateFlow(CurrentPersona.Unknown)
     val currentPersona = _currentPersonaData.asStateFlow()
 
     private val _currentPersonaOnlineStatus = MutableStateFlow(EPersonaState.Offline)
     val currentPersonaOnlineStatus = _currentPersonaOnlineStatus.asStateFlow()
 
-    private suspend fun updatePersonaState(incoming: List<CMsgClientPersonaState_Friend>) {
-        steamClient.logger.logVerbose("Persona") { "realm/persona@new ${incoming.joinToString()}" }
+    private suspend fun updatePersonaState(friend: CMsgClientPersonaState_Friend) {
+        steamClient.logger.logVerbose("Persona") { "realm/persona@update $friend" }
 
-        database.realm.write {
-            incoming.forEach { friend ->
-                copyToRealm(RealmPersona(Persona(friend)), updatePolicy = UpdatePolicy.ALL)
+        val ksPersona = Persona(friend)
+        val ksPersonaStatus = ksPersona.status
+
+        /*val inSteamDisplayText = if (ksPersonaStatus is Persona.Status.InGame) {
+            richPresenceFormatter.formatRichPresenceText(
+                appid = ksPersonaStatus.appId,
+                language = steamClient.language,
+                presence = ksPersonaStatus.richPresence
+            )
+        } else {
+            null
+        }*/
+
+        database.currentUserRealm.write {
+            val existingManagedRealmPersona = query<RealmPersona>("id == $0", ksPersona.id.longId).first().find()
+
+            if (existingManagedRealmPersona != null) {
+                existingManagedRealmPersona.merge(ksPersona)
+            } else {
+                copyToRealm(RealmPersona(ksPersona))
             }
+        }
+
+        if (ksPersona.status is Persona.Status.InGame) {
+            // Dispatch
         }
     }
 
@@ -51,14 +74,14 @@ class Persona internal constructor(
      *
      * This method also can return data for non-friends, but it is not known if updates can be received for them.
      */
-    suspend fun personas(ids: List<SteamId>): Flow<List<Persona>> {
-        return database.realm.query<RealmPersona>(
+    fun personas(ids: List<SteamId>): Flow<List<Persona>> {
+        return database.currentUserRealm.query<RealmPersona>(
             "id IN $0", ids.map(SteamId::longId)
         ).asFlow().onEach { realmChanges ->
             // Hook our InitialResults change result to quickly request for more personas
             if (realmChanges is InitialResults<RealmPersona>) {
                 val missingSteamIds = ids - realmChanges.list.map { it.id.toSteamId() }.toSet()
-                steamClient.logger.logVerbose("Persona") { "realm/mutiple@initial missing: [${missingSteamIds.joinToString()}]" }
+                steamClient.logger.logVerbose("Persona") { "realm/mutiple@pending [${missingSteamIds.joinToString()}]" }
                 requestPersonas(missingSteamIds) // this will give us missing SteamID's
             }
         }.map { it.list.map(RealmPersona::convert) } // and this will give us kSteam Personas
@@ -70,12 +93,12 @@ class Persona internal constructor(
      * If the data is not present in the database yet, the [Flow] will return a placeholder.
      * This method also can return data for non-friends, but it is not known if updates can be received for them.
      */
-    suspend fun persona(id: SteamId): Flow<Persona> {
-        return database.realm.query<RealmPersona>(
+    fun persona(id: SteamId): Flow<Persona> {
+        return database.currentUserRealm.query<RealmPersona>(
             "id == $0", id.longId
         ).first().asFlow().onEach { realmChanges ->
             if (realmChanges is PendingObject<RealmPersona>) {
-                steamClient.logger.logVerbose("Persona") { "realm/single@pending $id" }
+                steamClient.logger.logVerbose("Persona") { "realm/single@pending [$id]" }
                 requestPersonas(listOf(id))
             }
         }.map { it.obj?.convert() ?: Persona.Unknown } // and this will give us kSteam Persona
@@ -111,20 +134,10 @@ class Persona internal constructor(
     fun currentLivePersona(): Flow<Persona> = _currentPersonaData.distinctUntilChangedBy {
         it.id
     }.flatMapLatest { currentPersona ->
-        database.realm.query<RealmPersona>(
+        database.currentUserRealm.query<RealmPersona>(
             "id == $0", currentPersona.id.longId
         ).first().asFlow()
     }.map { it.obj?.convert() ?: Persona.Unknown }
-
-    /**
-     * Returns [SteamId]'s relationship with the current user.
-     */
-    fun personaRelationship(steamId: SteamId): Flow<EFriendRelationship> {
-        return database.realm.query<RealmPersonaRelationship>("id == $0", "${currentPersona.value.id}_${steamId}")
-            .first()
-            .asFlow()
-            .map { it.obj?.convert() ?: EFriendRelationship.None }
-    }
 
     private suspend fun handleFriendListChanges(newList: CMsgClientFriendsList) {
         // 1. Request persona states
@@ -136,10 +149,22 @@ class Persona internal constructor(
         })
 
         // 2. Update friend-list flow
-        database.realm.write {
-            newList.friends.forEach { changedFriend ->
-                steamClient.logger.logVerbose("Persona") { "realm/friends@change ${changedFriend.ulfriendid} -> ${EFriendRelationship.byEncoded(changedFriend.efriendrelationship)}" }
-                copyToRealm(RealmPersonaRelationship(src = currentPersona.value.id, target = changedFriend.ulfriendid.toSteamId(), enum = changedFriend.efriendrelationship ?: 0), updatePolicy = UpdatePolicy.ALL)
+        database.currentUserRealm.write {
+            for (relationship in newList.friends) {
+                steamClient.logger.logVerbose("Persona") {
+                    "realm/friends@updateRelationship ${relationship.ulfriendid} -> ${EFriendRelationship.byEncoded(relationship.efriendrelationship)}"
+                }
+
+                val existingManagedRealmPersona = query<RealmPersona>("id == $0", relationship.ulfriendid).first().find()
+
+                if (existingManagedRealmPersona != null) {
+                    existingManagedRealmPersona.relationship = relationship.efriendrelationship ?: 0
+                } else {
+                    val newRealmPersona = RealmPersona()
+                    newRealmPersona.id = relationship.ulfriendid ?: return@write
+                    newRealmPersona.relationship = relationship.efriendrelationship ?: 0
+                    copyToRealm(newRealmPersona)
+                }
             }
         }
     }
@@ -165,8 +190,18 @@ class Persona internal constructor(
     }
 
     init {
+        steamClient.onClientState(CMClientState.Authorizing) {
+            steamClient.account.getSignAttemptedSteamId().takeIf {
+                it != SteamId.Empty
+            }?.let { id ->
+                database.initializeUserRealm(id)
+            }
+        }
+
         steamClient.on(EMsg.k_EMsgClientPersonaState) { packet ->
-            updatePersonaState(CMsgClientPersonaState.ADAPTER.decode(packet.payload).friends)
+            for (friend in CMsgClientPersonaState.ADAPTER.decode(packet.payload).friends) {
+                updatePersonaState(friend)
+            }
         }
 
         steamClient.on(EMsg.k_EMsgClientClanState) { packet ->
@@ -177,9 +212,11 @@ class Persona internal constructor(
 
         steamClient.on(EMsg.k_EMsgClientAccountInfo) { packet ->
             CMsgClientAccountInfo.ADAPTER.decode(packet.payload).let { obj ->
+                val steamId = SteamId(packet.header.steamId)
+
                 _currentPersonaData.update {
                     it.copy(
-                        id = SteamId(packet.header.steamId),
+                        id = steamId,
                         name = obj.persona_name.orEmpty(),
                         flags = AccountFlags(obj.account_flags ?: 0),
                         country = obj.ip_country ?: "US",

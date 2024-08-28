@@ -14,7 +14,7 @@ import io.realm.kotlin.types.BaseRealmObject
  * Composes a Realm query by Steam Collection filter set.
  */
 internal fun Pics.composeRealmQueryByFilters(filters: DynamicFilters): RealmQuery<AppInfo> {
-    var realmQuery = database.realm.query<AppInfo>()
+    var realmQuery = database.sharedRealm.query<AppInfo>()
 
     // 1. byAppType
     if (filters.byAppType.entries.isNotEmpty()) {

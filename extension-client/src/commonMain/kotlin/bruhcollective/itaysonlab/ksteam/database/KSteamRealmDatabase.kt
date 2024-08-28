@@ -1,9 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.database
 
+import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmRichPresenceDictionary
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
-import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaIngameStatus
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaLastSeen
-import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaRelationship
+import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaStatus
+import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
@@ -15,33 +16,70 @@ import okio.Path
 import kotlin.reflect.KClass
 
 /**
- * Manages Realm database for kSteam Client Extension.
+ * Manages Realm database for kSteam Client Extension. kSteam manages at least two Realm databases: shared and user.
  *
- * kSteam manages its separate realm in a file "ksteam.realm" inside working directory to ensure that the library won't collide with other Realm-using libraries or apps.
+ * **Shared** database (`ks_shared.realm`) contains:
+ * - cached rich presence strings
+ * - PICS metadata
+ *
+ * **User** database (`ks_<SteamID>.realm`) contains:
+ * - cached personas
  */
 internal class KSteamRealmDatabase (
-    workingDirectory: Path
+    private val workingDirectory: Path
 ) {
     private companion object {
-        const val FILE_NAME = "ksteam.realm"
-        const val SCHEMA_VERSION = 1L
+        const val FILE_NAME_SHARED = "ks_shared.realm"
+        const val SHARED_SCHEMA_VERSION = 1L
+        const val USER_SCHEMA_VERSION = 1L
+
+        // ks_<SteamID>.realm
+        fun createUserRealmFileName(id: SteamId) = "ks_$id.realm"
     }
 
-    internal val realm = Realm.open(
-        RealmConfiguration.Builder(createRealmSchema())
-            .directory(workingDirectory.toString())
-            .name(FILE_NAME)
-            .schemaVersion(SCHEMA_VERSION)
-            .build()
+    private var _currentUserRealm: Realm? = null
+
+    internal val sharedRealm: Realm = openSharedRealm()
+    internal val isCurrentUserRealmInitialized get() = _currentUserRealm != null
+    internal val currentUserRealm: Realm get() = _currentUserRealm ?: error("User Realm was not yet initialized.")
+
+    internal fun initializeUserRealm(id: SteamId) {
+        _currentUserRealm?.close()
+        _currentUserRealm = openUserRealm(id)
+    }
+
+    private fun openSharedRealm(): Realm {
+        return Realm.open(
+            RealmConfiguration.Builder(createSharedRealmSchema())
+                .directory(workingDirectory.toString())
+                .name(FILE_NAME_SHARED)
+                .schemaVersion(SHARED_SCHEMA_VERSION)
+                .deleteRealmIfMigrationNeeded() // TODO: remove when this stabilizes!
+                .build()
+        )
+    }
+
+    private fun openUserRealm(id: SteamId): Realm {
+        return Realm.open(
+            RealmConfiguration.Builder(createUserRealmSchema())
+                .directory(workingDirectory.toString())
+                .name(createUserRealmFileName(id))
+                .schemaVersion(USER_SCHEMA_VERSION)
+                .deleteRealmIfMigrationNeeded() // TODO: remove when this stabilizes!
+                .build()
+        )
+    }
+
+    private fun createUserRealmSchema(): Set<KClass<out TypedRealmObject>> = setOf(
+        // Personas
+        RealmPersona::class,
+        RealmPersonaStatus::class,
+        RealmPersonaLastSeen::class,
     )
 
-    private fun createRealmSchema(): Set<KClass<out TypedRealmObject>> = setOf(
-        // Persona
-        RealmPersona::class,
-        RealmPersonaIngameStatus::class,
-        RealmPersonaLastSeen::class,
-        RealmPersonaRelationship::class,
-        // Store
+    private fun createSharedRealmSchema(): Set<KClass<out TypedRealmObject>> = setOf(
+        // Rich Presence
+        RealmRichPresenceDictionary::class,
 
         // PICS
         AppInfo::class,
