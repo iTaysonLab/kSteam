@@ -2,7 +2,19 @@
 
 ---
 
-`WIP`
+- **[breaking change]** `extension-client/guard`: `getActiveSessions` now returns an `ActiveSessions` object that separates current kSteam session and others
+- **[breaking change]** `extension-client`: implemented separate databases, "ks_shared.realm" for PICS and "ks_<ID>.realm" for user-specific items (personas, for example)
+- **[breaking change]** `extension-client`: `Persona` is now rebuilt, featuring built-in relationship indicator and new `Status` interface
+- **[breaking change]** `core`: `trySignInSaved` is now separated into `trySignInSaved(SteamId)` and `trySignInSavedDefault()`
+- `core`, `extension-client/guard`: replaced `while (true)` in flows with `while (currentCoroutineContext().isActive)`
+- `extension-client/guard`: fixed generation of revocation signature
+- `core`: add `Account.getWebCookies` for fetching required cookies to access secured Steam pages in a WebView
+- `extension-client/guard`: make `MobileConfirmationItem.icon` nullable to fix parsing when a confirmation does not have it (phone number changes)д
+- `core-persistence`: add `secureGetSteamIds` and improve `secureContainsIdentity`
+- `core`: implemented support for expired sessions
+- `core`: implemented auto-restoration of autologin
+- `extension-client`: implemented new rich presence formatter that automatically updates the database
+- `extension-client`: provide `SteamRegexes` to help QR scanning implementations 
 
 ## r37
 

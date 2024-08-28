@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab"
-version = "r37"
+version = "r38"
 
 kotlin {
     multiplatformSetup()

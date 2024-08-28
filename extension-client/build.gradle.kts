@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r37"
+version = "r38"
 
 kotlin {
     multiplatformSetup()
@@ -25,12 +25,16 @@ dependencies {
     commonMainApi(project(":core"))
     commonMainApi(project(":proto-common"))
 
+    commonMainImplementation(libs.androidx.collection)
+
     commonMainImplementation(libs.kotlinx.serialization.json)
     commonMainImplementation(libs.kotlinx.serialization.json.okio)
     commonMainImplementation(libs.kotlinx.coroutines.core)
     commonMainImplementation(libs.kotlinx.datetime)
+
     commonMainImplementation(libs.ktor.client)
     commonMainImplementation(libs.realm)
+    commonMainImplementation(libs.cache4k)
 
     commonTestImplementation(kotlin("test"))
 }

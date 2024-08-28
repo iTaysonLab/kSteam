@@ -11,7 +11,7 @@ version = "1.0-SNAPSHOT"
 
 tasks.withType<KotlinCompile> {
     compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -20,7 +20,7 @@ tasks.named<JavaExec>("run") {
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17)
 }
 
 application {
@@ -43,4 +43,6 @@ dependencies {
     implementation("org.slf4j:slf4j-simple:2.0.6")
 
     implementation("org.bouncycastle:bcprov-jdk15to18:1.72")
+
+    implementation(libs.ktor.client.engine.okhttp)
 }

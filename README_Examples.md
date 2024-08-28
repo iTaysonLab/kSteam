@@ -65,7 +65,7 @@ val resultPacket = steamClient.execute(
 
 ---
 
-_The following examples will require to install the `client` extension._
+_The following examples will require to install the `extension-client` extension._
 
 Installation is simple:
 

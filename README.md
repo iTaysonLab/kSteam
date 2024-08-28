@@ -6,7 +6,7 @@ kSteam is a **JVM/Android Kotlin library** which allows you to connect to the Va
 Its usage is mostly based on **Kotlin Coroutines** and **states** to better suit for modern application development.
 
 > This library is in very early state, so expect bugs and incomplete features. Also, releases are mostly not binary compatible between each other due to rapid development process.
-> 
+
 > Please note that this library is **UNOFFICIAL** and not endorsed, sponsored, allowed, developed by Valve Corporation or related to it. Don't report bugs to them!
 ---
 
@@ -17,11 +17,23 @@ Refer to the [examples document](README_Examples.md) for more information how to
 You can also check out [Cobalt](https://github.com/iTaysonLab/Jetisteam/) - an Android replacement for the official Steam client that uses kSteam.
 
 ### Platform Support
-- JVM/Android: highest priority
-- iOS/macOS: experimental
-- WASM: nearly impossible due to possible CORS issues
 
-Android has several special features: Jetpack Compose stability annotations for optimized rendering.
+Supported:
+- jvm
+- android
+
+Experimental:
+- iosX64, iosArm64, iosSimulatorArm64
+- macosX64, macosArm64
+
+Unsupported:
+- androidNativeX64, androidNativeX86
+- linuxX64, linuxArm64
+- watchosDeviceArm64, watchosSimulatorArm64, watchosX64, watchosArm32, watchosArm64
+- tvosX64, tvosSimulatorArm64, tvosArm64
+- mingwX64
+
+Using Android target with Jetpack Compose provides better support for using kSteam models directly in the UI with `@Immutable`/`@Stable` annotations.
 
 ### Features
 - Access to the Steam network by using the modern WebSocket approach
@@ -57,3 +69,6 @@ The `kotlinx-vdf` module is already provided with the modules above, but you can
 - [Ktor](https://github.com/ktorio/ktor) is used as a networking library
 - [Wire](https://github.com/square/wire) is used for protobuf decoding/encoding
 - [Okio](https://github.com/square/okio) is used for cross-platform filesystem access, VDF parsing and byte manipulation
+- [Immutable Collections Library for Kotlin](https://github.com/Kotlin/kotlinx.collections.immutable)
+- [kotlinx-datetime](https://github.com/Kotlin/kotlinx-datetime)
+- [cache4k](https://github.com/ReactiveCircus/cache4k) for synchronized in-memory cache
