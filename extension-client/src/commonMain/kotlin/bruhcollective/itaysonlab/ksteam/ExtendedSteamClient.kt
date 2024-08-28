@@ -68,6 +68,7 @@ class ExtendedSteamClient (
     suspend fun start() = client.start()
     fun stop() = client.stop()
     fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): Job = client.on(id, consumer)
+    fun onClientState(status: CMClientState, consumer: suspend () -> Unit): Job = client.onClientState(status, consumer)
     fun onRpc(method: String, consumer: suspend (SteamPacket) -> Unit): Job = client.onRpc(method, consumer)
     suspend fun execute(packet: SteamPacket): SteamPacket = client.execute(packet)
     suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> = client.subscribe(packet)

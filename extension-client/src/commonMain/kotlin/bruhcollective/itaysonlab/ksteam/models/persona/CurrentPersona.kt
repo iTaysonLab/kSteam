@@ -4,26 +4,30 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 /**
- * Information about the current persona signed into the account.
+ * Information about the current persona signed in to the account.
  */
 @Immutable
-data class CurrentPersona internal constructor(
+data class CurrentPersona (
     /**
      * The [SteamId] of the user.
      */
     val id: SteamId,
+
     /**
      * Username. This is not a Vanity URL, but rather a name that's displayed publicly.
      */
     val name: String,
+
     /**
      * Account flags.
      */
     val flags: AccountFlags,
+
     /**
      * Country code. Used for some requests.
      */
     val country: String,
+
     /**
      * Vanity URL.
      */

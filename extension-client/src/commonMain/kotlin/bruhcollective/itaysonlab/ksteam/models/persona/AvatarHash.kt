@@ -9,11 +9,29 @@ value class AvatarHash internal constructor(internal val hash: String) {
         val Empty = AvatarHash("")
     }
 
-    val hasAvatar get() = hash.isNotEmpty()
+    /**
+     * Returns if the avatar exists.
+     */
+    val hasAvatar: Boolean
+        get() = hash.isNotEmpty()
 
-    val small get() = "${base}.jpg"
-    val medium get() = "${base}_medium.jpg"
-    val full get() = "${base}_full.jpg"
+    /**
+     * Returns the small avatar image.
+     */
+    val small: String
+        get() = "${base}.jpg"
+
+    /**
+     * Returns the medium avatar image.
+     */
+    val medium: String
+        get() = "${base}_medium.jpg"
+
+    /**
+     * Returns the large avatar image.
+     */
+    val full: String
+        get() = "${base}_full.jpg"
 
     private val base get() = "${EnvironmentConstants.AVATAR_CDN_BASE}${hash}"
 }

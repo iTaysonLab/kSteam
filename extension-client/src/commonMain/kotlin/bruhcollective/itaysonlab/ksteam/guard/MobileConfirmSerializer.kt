@@ -6,7 +6,7 @@ import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer
 
 internal object MobileConfirmSerializer: JsonContentPolymorphicSerializer<ConfirmationListState>(ConfirmationListState::class) {
-    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<out ConfirmationListState> {
+    override fun selectDeserializer(element: JsonElement): DeserializationStrategy<ConfirmationListState> {
         return when (val type = element.jsonObject["success"]?.jsonPrimitive?.booleanOrNull) {
             false -> serializer<ConfirmationListState.Error>()
             true -> serializer<ConfirmationListState.Success>()

@@ -7,6 +7,6 @@ enum class SteamInstance (val apiRepresentation: Int) {
     SteamUserWeb(4);
 
     companion object {
-        fun byApiRepresentation(value: Int) = values().firstOrNull { it.apiRepresentation == value } ?: Other
+        fun byApiRepresentation(value: Int) = SteamInstance.entries.firstOrNull { it.apiRepresentation == value } ?: Other
     }
 }
