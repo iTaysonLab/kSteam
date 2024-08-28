@@ -2,6 +2,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
+import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import bruhcollective.itaysonlab.ksteam.util.executeSteamOrNull
 import steam.webui.common.*
@@ -9,24 +10,31 @@ import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
 
 /**
  * Access store data using this interface.
- *
- * All data will be kept inside the in-memory cache.
  */
 class Store internal constructor(
     private val steamClient: ExtendedSteamClient
 ) {
     // TODO: make it "compressable" or store in some kind of LRU cache with on-disk
     private val storeItemsMap = mutableMapOf<StoreItemID, StoreItem>()
-    private val rpLocalizationMap = mutableMapOf<Int, Map<String, String>>()
 
-    suspend fun getRichPresenceLocalization(appId: Int): Map<String, String> {
-        return rpLocalizationMap.getOrPut(appId) {
-            steamClient.grpc.community.GetAppRichPresenceLocalization().executeSteamOrNull(
-                data = CCommunity_GetAppRichPresenceLocalization_Request(
-                    appid = appId, language = steamClient.language.vdfName
-                )
-            )?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() } ?: emptyMap()
-        }
+    /**
+     * Get the latest rich presence localization strings.
+     *
+     * @param appId ID of an application
+     * @param language desired RP language
+     *
+     * @return rich presence localization strings, or null in case nothing was found
+     */
+    suspend fun getRichPresenceLocalization(
+        appId: Int,
+        language: ELanguage = steamClient.language
+    ): Map<String, String>? {
+        return steamClient.grpc.community.GetAppRichPresenceLocalization().executeSteamOrNull(
+            data = CCommunity_GetAppRichPresenceLocalization_Request(
+                appid = appId,
+                language = language.vdfName
+            )
+        )?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() }
     }
 
     suspend fun getAppSummaries(appIds: List<Int>): Map<Int, AppSummary> {
