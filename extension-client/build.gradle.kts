@@ -3,7 +3,6 @@ plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("com.android.library")
-    id("com.squareup.wire")
     id("io.realm.kotlin")
     `maven-publish`
 }
@@ -37,16 +36,4 @@ dependencies {
     commonMainImplementation(libs.cache4k)
 
     commonTestImplementation(kotlin("test"))
-}
-
-wire {
-    kotlin {
-        rpcCallStyle = "suspending"
-        rpcRole = "client"
-        nameSuffix = ""
-    }
-
-    protoPath {
-        srcDir("../proto-common/src/commonMain/proto/")
-    }
 }

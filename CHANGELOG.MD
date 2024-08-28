@@ -1,3 +1,13 @@
+## r39
+
+- **[breaking change]**: `ExtendedSteamClient` now implements the new abstract `SteamClient` interface, while the old `SteamClient` is now internal and named `SteamClientImpl`.  
+- **[breaking change]**: `extension-client/published-files`: all-new `PublishedFile` class that features more mapped variables and improved code style
+- **[breaking change]**: `core`: gRPC client `authenticationClient` renamed to `authentication`
+- `core`: move gRPC clients from `extension-client`'s `ExtendedSteamGrpcClients` to `SteamGrpcClients`
+- `extension-client/published-files`: implemented `getFilesAppList` and `getFiles`
+- `extension-client/published-files`: implemented `EPublishedFileInfoMatchingFileType` and `EWorkshopFileType` enums
+- `proto-common`: merge protobuf files from `core` and `extension-client`
+
 ## r38
 
 ---

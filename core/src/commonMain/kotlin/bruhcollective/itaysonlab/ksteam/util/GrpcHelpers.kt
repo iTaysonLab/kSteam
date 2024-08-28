@@ -3,8 +3,8 @@ package bruhcollective.itaysonlab.ksteam.util
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages.SteamGrpcCall
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import com.squareup.wire.GrpcCall
+import kotlinx.coroutines.CancellationException
 import okio.IOException
-import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * Marks that the following [GrpcCall] should be executed as a non-authenticated one. Only affects [SteamGrpcCall] requests.
@@ -50,13 +50,23 @@ class SteamRpcException(
  * - auto-check for using [SteamGrpcCall]
  * - possibility to set non-authed request without explicitly calling [markAsAnonymous]
  * - API-defined [SteamRpcException] for non-standard results
+ *
+ * @param data raw protobuf message passed as request body
+ * @param anonymous should this request be anonymous (skips authorization checks)
+ * @param web force REST API transport (TwoFactor methods fail on Steam Network)
+ * @throws SteamRpcException if RPC error occurred
+ * @throws IOException if network error occurred
+ * @throws IllegalArgumentException if [GrpcCall] is not [SteamRpcException]
+ * @return response protobuf message
  */
-@Throws(SteamRpcException::class, IOException::class, CancellationException::class)
+@Throws(SteamRpcException::class, IllegalArgumentException::class, IOException::class, CancellationException::class)
 suspend fun <S: Any, R: Any> GrpcCall<S, R>.executeSteam(
     data: S,
     anonymous: Boolean = false,
     web: Boolean = false,
 ): R {
+    require(this is SteamGrpcCall<S, R>) { "executeSteam is only applicable to kSteam gRPC calls!" }
+
     if (web) {
         markAsWeb()
     }

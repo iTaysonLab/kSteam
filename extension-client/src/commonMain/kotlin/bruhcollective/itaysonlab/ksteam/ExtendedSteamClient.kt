@@ -1,8 +1,6 @@
 package bruhcollective.itaysonlab.ksteam
 
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
-import bruhcollective.itaysonlab.ksteam.grpc.ExtendedSteamGrpcClients
-import bruhcollective.itaysonlab.ksteam.grpc.ExtendedSteamGrpcClientsImpl
 import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
@@ -18,8 +16,6 @@ class ExtendedSteamClient (
     val client: SteamClient
 ): SteamClient by client {
     private val database = KSteamRealmDatabase(workingDirectory = client.workingDirectory)
-
-    override val grpc: ExtendedSteamGrpcClients = ExtendedSteamGrpcClientsImpl(client)
 
     // Subsystems
     val currentPersona: CurrentPersona = CurrentPersona(this)

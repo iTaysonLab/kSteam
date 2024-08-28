@@ -53,10 +53,10 @@ class FileProxiedObject <T> (
 
 inline fun <reified T> fileProxiedObject(path: Path, default: T) = FileProxiedObject<T>(fileRef = path, serializer = serializer(), default = default)
 
-inline operator fun <T> FileProxiedObject<T>.getValue(thisObj: Any?, property: KProperty<*>): T {
+operator fun <T> FileProxiedObject<T>.getValue(thisObj: Any?, property: KProperty<*>): T {
     return value
 }
 
-inline operator fun <T> FileProxiedObject<T>.setValue(thisObj: Any?, property: KProperty<*>, value: T) {
+operator fun <T> FileProxiedObject<T>.setValue(thisObj: Any?, property: KProperty<*>, value: T) {
     this.value = value
 }

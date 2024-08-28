@@ -90,7 +90,7 @@ class UserNews internal constructor(
             }.forEach { event ->
                 if (event.clan_announcementid != null && event.steamid_actor != 0L) {
                     totalClanSteamIds.add(event.steamid_actor.toSteamId())
-                    totalClanAnnouncementIds.add(event.clan_announcementid)
+                    totalClanAnnouncementIds.add(event.clan_announcementid!!)
                 } else if (event.steamid_actor != 0L) {
                     event.steamid_actor?.let { totalUserIds.add(it.toSteamId()) }
                 }
@@ -104,9 +104,9 @@ class UserNews internal constructor(
                 }
 
                 if (event.publishedfileid != null && event.publishedfileid != 0L) {
-                    publishedFiles.getOrPut(event.gameid.toInt()) {
+                    publishedFiles.getOrPut(event.gameid!!.toInt()) {
                         mutableListOf()
-                    }.add(event.publishedfileid)
+                    }.add(event.publishedfileid!!)
                 }
             }
         }

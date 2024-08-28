@@ -37,7 +37,7 @@ class GuardManagement(
      * Returns the list of sign-in session IDs that are awaiting to be confirmed.
      */
     suspend fun getIncomingSessionIdQueue(): List<Long> {
-        return steamClient.grpc.authenticationClient.GetAuthSessionsForAccount().executeSteam(
+        return steamClient.grpc.authentication.GetAuthSessionsForAccount().executeSteam(
             data = CAuthentication_GetAuthSessionsForAccount_Request()
         ).client_ids
     }
@@ -46,7 +46,7 @@ class GuardManagement(
      * Returns currently approved sessions for the account.
      */
     suspend fun getActiveSessions(): ActiveSessions {
-        return steamClient.grpc.authenticationClient.EnumerateTokens().executeSteam(
+        return steamClient.grpc.authentication.EnumerateTokens().executeSteam(
             data = CAuthentication_RefreshToken_Enumerate_Request()
         ).let { response ->
             response.refresh_tokens.partition { refreshToken -> refreshToken.token_id == response.requesting_token }.let { parted ->
@@ -63,7 +63,7 @@ class GuardManagement(
      */
     suspend fun getIncomingSessionInfo(id: Long): IncomingSession? {
         return runCatching {
-            steamClient.grpc.authenticationClient.GetAuthSessionInfo().executeSteam(
+            steamClient.grpc.authentication.GetAuthSessionInfo().executeSteam(
                 data = CAuthentication_GetAuthSessionInfo_Request(client_id = id)
             ).let { IncomingSession(id, it) }
         }.getOrNull()
@@ -73,7 +73,7 @@ class GuardManagement(
      * Revokes a specific session. Requires Steam Guard to be initialized in this kSteam instance.
      */
     suspend fun revokeSession(id: Long) {
-        steamClient.grpc.authenticationClient.RevokeRefreshToken().executeSteam(
+        steamClient.grpc.authentication.RevokeRefreshToken().executeSteam(
             web = true,
             data = CAuthentication_RefreshToken_Revoke_Request(
                 token_id = id,
@@ -88,7 +88,7 @@ class GuardManagement(
      * Revokes this session. Unlike [revokeSession], does not require Steam Guard data.
      */
     suspend fun revokeCurrentSession() {
-        steamClient.grpc.authenticationClient.RevokeRefreshToken().executeSteam(
+        steamClient.grpc.authentication.RevokeRefreshToken().executeSteam(
             web = true,
             data = CAuthentication_RefreshToken_Revoke_Request(
                 revoke_action = EAuthTokenRevokeAction.k_EAuthTokenRevokeLogout.ordinal
@@ -109,7 +109,7 @@ class GuardManagement(
             ESessionPersistence.k_ESessionPersistence_Ephemeral
         }
 
-        steamClient.grpc.authenticationClient.UpdateAuthSessionWithMobileConfirmation().executeSteam(
+        steamClient.grpc.authentication.UpdateAuthSessionWithMobileConfirmation().executeSteam(
             data = CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request(
                 version = session.version,
                 client_id = session.id,
@@ -127,7 +127,7 @@ class GuardManagement(
      * @param session an incoming session
      */
     suspend fun rejectIncomingSession(session: IncomingSession) {
-        steamClient.grpc.authenticationClient.UpdateAuthSessionWithMobileConfirmation().executeSteam(
+        steamClient.grpc.authentication.UpdateAuthSessionWithMobileConfirmation().executeSteam(
             data = CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request(
                 version = session.version,
                 client_id = session.id,

@@ -65,7 +65,7 @@ class Account internal constructor(
      */
     suspend fun getSignInQrCode(): QrCodeData? {
         val qrData = try {
-            steamClient.grpc.authenticationClient.BeginAuthSessionViaQR().executeSteam(
+            steamClient.grpc.authentication.BeginAuthSessionViaQR().executeSteam(
                 CAuthentication_BeginAuthSessionViaQR_Request(
                     device_friendly_name = deviceInfo.deviceName,
                     device_details = deviceInfo.toAuthDetails(),
@@ -101,7 +101,7 @@ class Account internal constructor(
         password: String,
         rememberSession: Boolean = true,
     ): AuthorizationResult {
-        val rsaData = steamClient.grpc.authenticationClient.GetPasswordRSAPublicKey().executeSteam(
+        val rsaData = steamClient.grpc.authentication.GetPasswordRSAPublicKey().executeSteam(
             CAuthentication_GetPasswordRSAPublicKey_Request(account_name = username),
             anonymous = true
         )
@@ -111,7 +111,7 @@ class Account internal constructor(
                 .toByteString().base64().dropLast(1)
 
         val signInResult = try {
-            steamClient.grpc.authenticationClient.BeginAuthSessionViaCredentials().executeSteam(
+            steamClient.grpc.authentication.BeginAuthSessionViaCredentials().executeSteam(
                 CAuthentication_BeginAuthSessionViaCredentials_Request(
                     device_friendly_name = deviceInfo.deviceName,
                     device_details = deviceInfo.toAuthDetails(),
@@ -181,7 +181,7 @@ class Account internal constructor(
         require(clientAuthState.value is AuthorizationState.AwaitingTwoFactor) { "Current session does not want to receive 2FA codes" }
 
         (clientAuthState.value as AuthorizationState.AwaitingTwoFactor).let { authState ->
-            steamClient.grpc.authenticationClient.UpdateAuthSessionWithSteamGuardCode().executeSteam(
+            steamClient.grpc.authentication.UpdateAuthSessionWithSteamGuardCode().executeSteam(
                 CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request(
                     client_id = pollInfo!!.clientId,
                     steamid = authState.steamId.longId,
@@ -325,7 +325,7 @@ class Account internal constructor(
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
         require(pollInfo != null) { "pollInfo should not be null" }
 
-        return steamClient.grpc.authenticationClient.PollAuthSessionStatus().executeSteam(
+        return steamClient.grpc.authentication.PollAuthSessionStatus().executeSteam(
             CAuthentication_PollAuthSessionStatus_Request(
                 client_id = pollInfo!!.clientId,
                 request_id = pollInfo!!.requestId
@@ -356,7 +356,7 @@ class Account internal constructor(
             steamClient.logger.logVerbose(TAG) { "[poller] successfully logged in -> $pollAnswer" }
 
             val steamId = try {
-                SteamId(json.decodeFromString<JwtToken>(pollAnswer.refresh_token.split(".")[1].decodeBase64String()).sub.toULong())
+                SteamId(json.decodeFromString<JwtToken>(pollAnswer.refresh_token!!.split(".")[1].decodeBase64String()).sub.toULong())
             } catch (e: Exception) {
                 e.printStackTrace()
                 (clientAuthState.value as? AuthorizationState.AwaitingTwoFactor)?.steamId
@@ -369,13 +369,13 @@ class Account internal constructor(
 
             steamClient.configuration.autologinSteamId = steamId
             steamClient.configuration.updateSecureAccount(steamId, SteamAccountAuthorization(
-                accessToken = pollAnswer.access_token,
-                refreshToken = pollAnswer.refresh_token,
+                accessToken = pollAnswer.access_token!!,
+                refreshToken = pollAnswer.refresh_token!!,
                 accountName = pollAnswer.account_name.orEmpty()
             ))
 
             sendClientLogon(
-                token = pollAnswer.refresh_token,
+                token = pollAnswer.refresh_token!!,
                 steamId = steamId
             )
 
@@ -450,7 +450,7 @@ class Account internal constructor(
     suspend fun updateAccessToken() {
         try {
             getCurrentAccount()?.let { account ->
-                steamClient.grpc.authenticationClient.GenerateAccessTokenForApp().executeSteam(
+                    steamClient.grpc.authentication.GenerateAccessTokenForApp().executeSteam(
                     CAuthentication_AccessToken_GenerateForApp_Request(
                         refresh_token = account.refreshToken,
                         steamid = steamClient.currentSessionSteamId.longId

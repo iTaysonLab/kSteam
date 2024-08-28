@@ -17,8 +17,14 @@ wire {
     protoLibrary = true
 
     kotlin {
-
+        rpcCallStyle = "suspending"
+        rpcRole = "client"
+        nameSuffix = "Service"
     }
+}
+
+dependencies {
+    commonMainApi(libs.wire.grpc)
 }
 
 androidLibrary("bruhcollective.itaysonlab.ksteam.proto")
