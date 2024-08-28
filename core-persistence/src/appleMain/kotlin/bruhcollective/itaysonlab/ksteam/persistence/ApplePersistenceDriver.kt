@@ -58,6 +58,10 @@ class ApplePersistenceDriver (
         uploadIdentity(id)
     }
 
+    override fun secureGetSteamIds(): List<SteamId> {
+        TODO()
+    }
+
     override fun secureContainsIdentity(id: SteamId): Boolean = getIdentity(id).isNotEmpty()
 
     override fun secureContainsKey(id: SteamId, key: String): Boolean {
@@ -73,15 +77,24 @@ class ApplePersistenceDriver (
     }
 
     private fun uploadIdentity(id: SteamId) {
-        Keychain.upsertItem(
-            query = createKeychainQuery(id, withDescription = true),
-            data = Json.encodeToString<Map<String, String>>(getIdentity(id))
-        )
+        val identity = getIdentity(id)
+
+        if (identity.isNotEmpty()) {
+            Keychain.upsertItem(
+                query = createKeychainQuery(id, withDescription = true),
+                data = Json.encodeToString<Map<String, String>>(getIdentity(id))
+            )
+        } else {
+            Keychain.deleteItem(
+                query = createKeychainQuery(id),
+            )
+        }
     }
 
     private fun createKeychainQuery(id: SteamId, withDescription: Boolean = false) = Keychain.Query.GenericPassword(
         accountName = id.toString(),
         serviceName = serviceName,
-        description = if (withDescription) "kSteam identity data for SteamID $id" else null
+        description = if (withDescription) "kSteam identity data for SteamID $id" else null,
+        allowIcloudSynchronization = allowIdentitySynchronization
     )
 }

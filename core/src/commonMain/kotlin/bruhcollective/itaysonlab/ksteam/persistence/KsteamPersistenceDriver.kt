@@ -54,6 +54,13 @@ interface KsteamPersistenceDriver {
     fun delete(vararg key: String)
 
     /**
+     * Securely returns the list of registered SteamIDs.
+     *
+     * Not always secure - this is defined by implementation.
+     */
+    fun secureGetSteamIds(): List<SteamId>
+
+    /**
      * Securely accesses account information K/V for a specific SteamID.
      *
      * Example: `secureGet(SteamId(0u), "access_token")`
@@ -94,7 +101,7 @@ interface KsteamPersistenceDriver {
      *
      * Example: `secureContainsIdentity(SteamId(0u))`
      */
-    fun secureContainsIdentity(id: SteamId): Boolean
+    fun secureContainsIdentity(id: SteamId): Boolean = secureGetSteamIds().contains(id)
 
     /**
      * Checks if key exists in secure storage for a specific SteamID.
@@ -121,11 +128,10 @@ object MemoryPersistenceDriver: KsteamPersistenceDriver {
     override fun containsKey(key: String): Boolean = map.containsKey(key)
     override fun delete(vararg key: String) { key.forEach(map::remove) }
 
-    override fun secureGet(id: SteamId, key: String): String? = getString("${id}.$key")
-    override fun secureSet(id: SteamId, key: String, value: String) { set("${id}.$key", value) }
-    override fun secureSet(id: SteamId, vararg pairs: Pair<String, String>) { map.putAll(pairs.map { "${id}.${it.first}" to it.second }) }
-    override fun secureDelete(id: SteamId, vararg key: String) { key.map { "${id}.$key" }.forEach(map::remove) }
-
-    override fun secureContainsKey(id: SteamId, key: String): Boolean = containsKey("${id}.$key")
-    override fun secureContainsIdentity(id: SteamId): Boolean = containsKey("${id}.account_name")
+    override fun secureGetSteamIds(): List<SteamId> = map.keys.mapNotNull { it.split(".").getOrNull(1)?.toULongOrNull()?.let(::SteamId) }.distinct()
+    override fun secureGet(id: SteamId, key: String): String? = getString("secure.${id}.$key")
+    override fun secureSet(id: SteamId, key: String, value: String) { set("secure.${id}.$key", value) }
+    override fun secureSet(id: SteamId, vararg pairs: Pair<String, String>) { map.putAll(pairs.map { "secure.${id}.${it.first}" to it.second }) }
+    override fun secureDelete(id: SteamId, vararg key: String) { key.map { "secure.${id}.$key" }.forEach(map::remove) }
+    override fun secureContainsKey(id: SteamId, key: String): Boolean = containsKey("secure.${id}.$key")
 }

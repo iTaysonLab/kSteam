@@ -20,6 +20,8 @@ class Configuration internal constructor(
         const val KEY_SECURE_NAME = "account_name"
         const val KEY_SECURE_ACCESS_TOKEN = "access_token"
         const val KEY_SECURE_REFRESH_TOKEN = "refresh_token"
+        const val KEY_SECURE_DISPLAY_NAME = "display_name"
+        const val KEY_SECURE_AVATAR_URL = "avatar_url"
 
         const val KEY_CELL_ID = "cell_id"
     }
@@ -51,15 +53,23 @@ class Configuration internal constructor(
     }
 
     fun containsSecureAccount(id: SteamId): Boolean {
-        return id != SteamId.Empty && persist.secureContainsIdentity(id)
+        return id != SteamId.Empty && persist.secureContainsIdentity(id) && persist.secureContainsKey(id, KEY_SECURE_ACCESS_TOKEN) && persist.secureContainsKey(id, KEY_SECURE_REFRESH_TOKEN)
+    }
+
+    fun getValidSecureAccountIds(): List<SteamId> {
+        return persist.secureGetSteamIds().filter { id ->
+            persist.secureContainsKey(id, KEY_SECURE_ACCESS_TOKEN) && persist.secureContainsKey(id, KEY_SECURE_REFRESH_TOKEN)
+        }
     }
 
     fun getSecureAccount(id: SteamId): SteamAccountAuthorization? {
-        return if (persist.secureContainsIdentity(id)) {
+        return if (id == SteamId.Empty) {
+            null
+        } else if (persist.secureContainsIdentity(id)) {
             SteamAccountAuthorization(
                 accountName = persist.secureGet(id, KEY_SECURE_NAME).orEmpty(),
-                accessToken = persist.secureGet(id, KEY_SECURE_ACCESS_TOKEN).orEmpty(),
-                refreshToken = persist.secureGet(id, KEY_SECURE_REFRESH_TOKEN).orEmpty(),
+                accessToken = persist.secureGet(id, KEY_SECURE_ACCESS_TOKEN).orEmpty().ifEmpty { return null },
+                refreshToken = persist.secureGet(id, KEY_SECURE_REFRESH_TOKEN).orEmpty().ifEmpty { return null },
             )
         } else {
             null
@@ -73,5 +83,9 @@ class Configuration internal constructor(
             KEY_SECURE_ACCESS_TOKEN to obj.accessToken,
             KEY_SECURE_REFRESH_TOKEN to obj.refreshToken
         )
+    }
+
+    fun deleteSecureAccount(id: SteamId) {
+        persist.secureDelete(id, KEY_SECURE_NAME, KEY_SECURE_ACCESS_TOKEN, KEY_SECURE_REFRESH_TOKEN)
     }
 }

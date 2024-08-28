@@ -59,19 +59,22 @@ class FilePersistenceDriver (
         writeJson()
     }
 
+    override fun secureGetSteamIds(): List<SteamId> {
+        return futureJsonObject.keys.mapNotNull {
+            it.split(".").getOrNull(1)?.toULongOrNull()?.let(::SteamId)
+        }.distinct()
+    }
+
     override fun secureGet(id: SteamId, key: String): String? {
         return futureJsonObject[secureIdKey(id, key)]?.jsonPrimitive?.contentOrNull
     }
 
     override fun secureSet(id: SteamId, key: String, value: String) {
-        futureJsonObject[secureIdKey(id, "_persist")] = JsonPrimitive(true)
         futureJsonObject[secureIdKey(id, key)] = JsonPrimitive(value)
         writeJson()
     }
 
     override fun secureSet(id: SteamId, vararg pairs: Pair<String, String>) {
-        futureJsonObject[secureIdKey(id, "_persist")] = JsonPrimitive(true)
-
         pairs.forEach { pair ->
             futureJsonObject[secureIdKey(id, pair.first)] = JsonPrimitive(pair.second)
         }
@@ -82,10 +85,6 @@ class FilePersistenceDriver (
     override fun secureDelete(id: SteamId, vararg key: String) {
         key.map { secureIdKey(id, it) }.forEach(futureJsonObject::remove)
         writeJson()
-    }
-
-    override fun secureContainsIdentity(id: SteamId): Boolean {
-        return secureContainsKey(id, "_persist")
     }
 
     override fun secureContainsKey(id: SteamId, key: String): Boolean {

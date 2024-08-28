@@ -55,6 +55,10 @@ class AndroidPersistenceDriver(
         defaultSharedPreferences.edit().putInt(key, value).apply()
     }
 
+    override fun secureGetSteamIds(): List<SteamId> {
+        return secureSharedPreferences.all.keys.mapNotNull { it.split(".").firstOrNull()?.toULongOrNull()?.let(::SteamId) }.distinct()
+    }
+
     override fun containsKey(key: String): Boolean = defaultSharedPreferences.contains(key)
     override fun delete(vararg key: String) {
         defaultSharedPreferences.edit().apply { key.forEach(::remove) }.apply()
@@ -63,7 +67,6 @@ class AndroidPersistenceDriver(
     override fun secureGet(id: SteamId, key: String): String? = secureSharedPreferences.getString(idKey(id, key), null)
     override fun secureSet(id: SteamId, key: String, value: String) {
         secureSharedPreferences.edit().apply {
-            putBoolean(idKey(id, "_persist"), true)
             putString(idKey(id, key), value)
         }.apply()
     }
@@ -72,8 +75,6 @@ class AndroidPersistenceDriver(
 
     override fun secureSet(id: SteamId, vararg pairs: Pair<String, String>) {
         secureSharedPreferences.edit().apply {
-            putBoolean(idKey(id, "_persist"), true)
-
             pairs.forEach { pair ->
                 putString(idKey(id, pair.first), pair.second)
             }
@@ -83,9 +84,6 @@ class AndroidPersistenceDriver(
     override fun secureDelete(id: SteamId, vararg key: String) {
         secureSharedPreferences.edit().apply { key.map { idKey(id, it) }.forEach(::remove) }.apply()
     }
-
-    override fun secureContainsIdentity(id: SteamId): Boolean =
-        secureSharedPreferences.getBoolean(idKey(id, "_persist"), false)
 
     private fun idKey(id: SteamId, key: String) = "${id}.$key"
 
