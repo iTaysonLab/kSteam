@@ -51,6 +51,10 @@ class Account internal constructor(
 
     internal var tokenRequested = MutableStateFlow(false)
 
+    private var logonSteamId: SteamId = SteamId.Empty
+
+    fun getSignAttemptedSteamId(): SteamId = logonSteamId
+
     /**
      * Gets all necessary data to generate a sign-in QR code which can be scanned from the mobile app or other kSteam instance.
      *
@@ -207,21 +211,48 @@ class Account internal constructor(
 
     /**
      * Tries to sign in using saved session data from [Configuration]. Requires `core-persistence` module connected.
-     * You can specify your own SteamID to sign in a particular account. If this parameter is omitted, the "default" SteamID will be selected.
      *
      * @return if there is an account available
      */
-    suspend fun trySignInSaved(
-        steamId: SteamId = steamClient.configuration.autologinSteamId
-    ): Boolean {
-        val accountToSignIn = steamClient.configuration.getSecureAccount(steamId)
+    suspend fun trySignInSaved(steamId: SteamId): Boolean {
+        val autoSteamAuthorization = steamClient.configuration.getSecureAccount(steamId)
 
-        return if (accountToSignIn != null) {
-            sendClientLogon(steamId = steamId, token = accountToSignIn.refreshToken)
-            true
+        if (autoSteamAuthorization != null) {
+            sendClientLogon(steamId = steamId, token = autoSteamAuthorization.refreshToken)
+            return true
+        } else {
+            steamClient.logger.logWarning(TAG) { "[autologin] ID $steamId requested but was not found, skipping..." }
+            return false
+        }
+    }
+
+    /**
+     * Tries to sign in using saved session data from [Configuration]. Requires `core-persistence` module connected.
+     * Unlike [trySignInSaved], this will use the default SteamID specified in settings, or the first available one.
+     *
+     * @return if there is an account available
+     */
+    suspend fun trySignInSavedDefault(): Boolean {
+        val autoSteamAuthorization = steamClient.configuration.getSecureAccount(steamClient.configuration.autologinSteamId)
+
+        val accountToUse = if (autoSteamAuthorization != null) {
+            // Default SteamID selected
+            autoSteamAuthorization
+        } else {
+            // Default SteamID was not found - trying next one...
+            steamClient.logger.logDebug(TAG) { "[autologin] default steamid was not found, trying the first available..." }
+
+            val nextSteamId = steamClient.configuration.getValidSecureAccountIds().firstOrNull() ?: SteamId.Empty
+            steamClient.configuration.autologinSteamId = nextSteamId
+            steamClient.configuration.getSecureAccount(nextSteamId)
+        }
+
+        if (accountToUse != null) {
+            sendClientLogon(steamId = steamClient.configuration.autologinSteamId, token = accountToUse.refreshToken)
+            return true
         } else {
             steamClient.logger.logWarning(TAG) { "[autologin] no saved accounts in kSteam persistence, skipping..." }
-            false
+            return false
         }
     }
 
@@ -243,6 +274,8 @@ class Account internal constructor(
 
             SteamClientConfiguration.AuthPrivateIpLogic.None -> null
         }
+
+        logonSteamId = steamId
 
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
@@ -283,7 +316,7 @@ class Account internal constructor(
     suspend fun awaitSignIn() = clientAuthState.first { it is AuthorizationState.Success }
 
     fun hasSavedDataForAtLeastOneAccount(): Boolean {
-        return steamClient.configuration.containsSecureAccount(steamClient.configuration.autologinSteamId)
+        return steamClient.configuration.getValidSecureAccountIds().isNotEmpty()
     }
 
     private suspend fun pollAuthStatus(): CAuthentication_PollAuthSessionStatus_Response {
@@ -351,7 +384,7 @@ class Account internal constructor(
 
     init {
         steamClient.onClientState(CMClientState.AwaitingAuthorization) {
-            trySignInSaved()
+            trySignInSavedDefault()
         }
 
         steamClient.on(EMsg.k_EMsgClientLogOnResponse) { packet ->
@@ -359,7 +392,12 @@ class Account internal constructor(
                 CMsgClientLogonResponse.ADAPTER.decode(packet.payload).also { response ->
                     steamClient.logger.logVerbose(TAG) { "Logon Response: $response" }
 
-                    if (response.eresult != EResult.OK.encoded) {
+                    if (response.eresult == EResult.Expired.encoded) {
+                        // This authorization session is gone - we can wipe the regarding data
+                        steamClient.configuration.deleteSecureAccount(logonSteamId)
+                        steamClient.configuration.autologinSteamId = steamClient.configuration.getValidSecureAccountIds().firstOrNull() ?: SteamId.Empty
+                        return@on
+                    } else if (response.eresult != EResult.OK.encoded) {
                         return@on
                     }
 

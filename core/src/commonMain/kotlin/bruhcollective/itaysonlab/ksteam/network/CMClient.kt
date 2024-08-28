@@ -119,8 +119,6 @@ internal class CMClient(
 
         logger.logDebug("CMClient:Start") { "Connecting to WSS [url = ${selectedServer?.endpoint}]" }
         httpClient.wss(urlString = "wss://" + (selectedServer?.endpoint ?: return) + "/cmsocket/") {
-            call.request.attributes
-
             logger.logDebug("CMClient:WsConnection") { "Connected to Steam3 network" }
 
             outgoingPacketsQueue.send(
@@ -190,7 +188,9 @@ internal class CMClient(
     private fun handleClientLogOn(checkedPacket: SteamPacket) {
         if (checkedPacket.success) {
             CMsgClientLogonResponse.ADAPTER.decode(checkedPacket.payload).also { payloadResult ->
-                if (payloadResult.eresult != EResult.OK.encoded) {
+                if (payloadResult.eresult == EResult.Expired.encoded) {
+                    return // Expired session
+                } else if (payloadResult.eresult != EResult.OK.encoded) {
                     return // Failed sign-in
                 }
 

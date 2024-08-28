@@ -125,6 +125,8 @@ class SteamClient internal constructor(
     /**
      * Subscribes to incoming messages of the specific type. This will only process "jobless" messages (messages that are not a response to something).
      *
+     * Note that [consumer] will be called in kSteam Events scope without suspending the subscription.
+     *
      * @param id a [EMsg] that needs to be received
      * @param consumer a receiver for incoming messages
      * @return a [Job] to cancel the execution if needed
@@ -139,6 +141,8 @@ class SteamClient internal constructor(
 
     /**
      * Subscribes to incoming RPC messages of the specific type. This will only process "jobless" messages (messages that are not a response to something).
+     *
+     * Note that [consumer] will be called in kSteam Events scope without suspending the subscription.
      *
      * @param method a RPC definition like "Service.Message"
      * @param consumer a receiver for incoming messages
