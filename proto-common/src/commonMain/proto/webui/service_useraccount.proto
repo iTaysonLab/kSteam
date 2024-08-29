@@ -1,7 +1,4 @@
-option optimize_for = SPEED;
 option java_package = "steam.webui.useraccount";
-option java_generic_services = true;
-option java_multiple_files = true;
 
 message CUserAccount_CancelLicenseForApp_Request {
 	optional uint32 appid = 1;

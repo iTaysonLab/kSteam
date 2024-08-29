@@ -1,10 +1,7 @@
 import "webui/common_base.proto";
 import "webui/common.proto";
 
-option optimize_for = SPEED;
 option java_package = "steam.webui.community";
-option java_generic_services = true;
-option java_multiple_files = true;
 
 message CAppPriority {
 	optional uint32 priority = 1;

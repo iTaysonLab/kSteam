@@ -1,9 +1,6 @@
 import "google/protobuf/descriptor.proto";
 
-option optimize_for = SPEED;
 option java_package = "steam.webui";
-option java_generic_services = true;
-option java_multiple_files = true;
 
 extend .google.protobuf.FieldOptions {
 	optional string description = 50000;

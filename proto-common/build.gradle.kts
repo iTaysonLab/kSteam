@@ -14,8 +14,6 @@ kotlin {
 }
 
 wire {
-    protoLibrary = true
-
     kotlin {
         rpcCallStyle = "suspending"
         rpcRole = "client"

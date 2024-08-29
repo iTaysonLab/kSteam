@@ -1,0 +1,40 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.mobiledevice";
+
+message CMobileDevice_DeregisterMobileDevice_Notification {
+	optional string deviceid = 1;
+}
+
+message CMobileDevice_HasMobileDevice_Request {
+	optional int32 app_type = 1 [(.description) = "enum"];
+	optional bool push_enabled_only = 2;
+	optional string minimum_version = 3;
+}
+
+message CMobileDevice_HasMobileDevice_Response {
+	optional bool found_device = 1;
+	optional bool up_to_date = 2;
+}
+
+message CMobileDevice_RegisterMobileDevice_Request {
+	optional string deviceid = 1;
+	optional string language = 2;
+	optional bool push_enabled = 3;
+	optional string app_version = 4;
+	optional string os_version = 5;
+	optional string device_model = 6;
+	optional string twofactor_device_identifier = 7;
+	optional int32 mobile_app = 8 [(.description) = "enum"];
+}
+
+message CMobileDevice_RegisterMobileDevice_Response {
+	optional uint32 unique_deviceid = 2;
+}
+
+service MobileDevice {
+	rpc DeregisterMobileDevice (.CMobileDevice_DeregisterMobileDevice_Notification) returns (.NoResponse);
+	rpc HasMobileDevice (.CMobileDevice_HasMobileDevice_Request) returns (.CMobileDevice_HasMobileDevice_Response);
+	rpc RegisterMobileDevice (.CMobileDevice_RegisterMobileDevice_Request) returns (.CMobileDevice_RegisterMobileDevice_Response);
+}
+

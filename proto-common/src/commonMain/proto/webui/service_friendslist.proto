@@ -1,9 +1,6 @@
 import "webui/common_base.proto";
 
-option optimize_for = SPEED;
 option java_package = "steam.webui.friendslist";
-option java_generic_services = true;
-option java_multiple_files = true;
 
 message CFriendsList_FavoritesChanged_Notification {
 	repeated .CFriendsListFavoriteEntry favorites = 1;
