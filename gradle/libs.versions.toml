@@ -6,7 +6,7 @@ agp = "8.2.2"
 ktorClientVersion = "2.3.12"
 okio = "3.9.0"
 realm = "2.1.0"
-wire = "5.0.0-alpha01"
+wire = "5.0.0"
 dokka = "1.9.20"
 cache4k = "0.13.0"
 
