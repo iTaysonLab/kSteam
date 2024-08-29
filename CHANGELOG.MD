@@ -7,6 +7,10 @@
 - `extension-client/published-files`: implemented `getFilesAppList` and `getFiles`
 - `extension-client/published-files`: implemented `EPublishedFileInfoMatchingFileType` and `EWorkshopFileType` enums
 - `proto-common`: merge protobuf files from `core` and `extension-client`
+- `extension-client`: implemented `ClientCommunication` for remote operations
+- `core`: add `ClientCommService`, `FamilyGroupsService`, `GameNotesService`, `StoreService`, `MobileDeviceService`, `UserGameNotesService` to `SteamGrpcClients`
+- `proto-common`: update to latest protobufs
+- `proto-common`: don't embed .proto files in JAR
 
 ## r38
 
