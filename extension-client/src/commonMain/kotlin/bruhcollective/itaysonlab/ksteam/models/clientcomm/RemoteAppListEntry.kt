@@ -7,7 +7,7 @@ import bruhcollective.itaysonlab.ksteam.platform.Immutable
  * Describes the entry in the application list.
  */
 @Immutable
-data class DeviceAppListEntry (
+data class RemoteAppListEntry (
     /**
      * Application ID.
      */
@@ -74,7 +74,7 @@ data class DeviceAppListEntry (
             val bytesStaged: Long,
 
             /**
-             * Amount of bytes that is left to be staged (written on disk).
+             * Amount of bytes that will be staged (written on disk).
              *
              * Due to Steam downloads being compressed, this will be larger than download byte count.
              */
@@ -83,22 +83,22 @@ data class DeviceAppListEntry (
             /**
              * Network byte transfer rate, in bytes per second (?).
              */
-            val byteTransferRate: Long,
+            val byteDownloadRate: Int,
 
             /**
              * Seconds ETA reported by the remote client
              */
-            val estimatedSecondsLeft: Long,
+            val estimatedSecondsLeft: Int,
 
             /**
              * Source build ID. Can be used to determine if the app is updating (if app was installed, this will be non-zero).
              */
-            val sourceBuildId: Long,
+            val sourceBuildId: Int,
 
             /**
              * Target build ID.
              */
-            val targetBuildId: Long,
+            val targetBuildId: Int,
 
             /**
              * Position in queue, where 0 means top of the list.
@@ -106,7 +106,7 @@ data class DeviceAppListEntry (
             val queuePosition: Int,
         ): State {
             val isUpdate: Boolean
-                get() = sourceBuildId != 0L
+                get() = sourceBuildId != 0
         }
 
         /**
@@ -130,7 +130,7 @@ data class DeviceAppListEntry (
          * Application is unavailable due to lack of storage space.
          */
         @Immutable
-        data class RequiresMoreStorageSpace (
+        data class InsufficientStorageSpace (
             /**
              * Reported application size, in bytes
              */

@@ -1,4 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.models.clientcomm
 
-class RemoteDeviceId {
-}
+import kotlin.jvm.JvmInline
+
+@JvmInline
+value class RemoteDeviceId (
+    val id: Long
+)

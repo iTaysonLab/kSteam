@@ -27,6 +27,7 @@ class ExtendedSteamClient (
     val publishedFiles: PublishedFiles = PublishedFiles(this)
     val store: Store = Store(this)
     val userNews: UserNews = UserNews(this)
+    val clientCommunication = ClientCommunication(this)
     internal val cloudConfiguration: CloudConfiguration = CloudConfiguration(this)
 
     // Subsystems (Guard)
