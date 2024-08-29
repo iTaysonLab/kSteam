@@ -91,9 +91,9 @@ sealed interface Notification {
     }
 
     /**
-     * A promotion message.
+     * A general message.
      */
-    class Promotion internal constructor(
+    class General internal constructor(
         override val timestamp: Int,
         override val unread: Boolean,
         override val hidden: Boolean,

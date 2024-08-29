@@ -8,7 +8,7 @@ import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
-import steam.enums.SteamNotificationType
+import steam.enums.ESteamNotificationType
 import steam.webui.steamnotification.CSteamNotification_GetSteamNotifications_Request
 
 /**
@@ -42,7 +42,7 @@ class Notifications internal constructor(
         _confirmationCount.value = rawNotifications.confirmation_count ?: 0
 
         val parsedNotifications = rawNotifications.notifications
-            .partition { SteamNotificationType.fromValue(it.notification_type ?: 0) == SteamNotificationType.Item }
+            .partition { ESteamNotificationType.fromValue(it.notification_type ?: 0) == ESteamNotificationType.k_ESteamNotificationType_Item }
             .let { itemsAndOthers ->
                 val itemWithExtras = if (itemsAndOthers.first.isNotEmpty()) {
                     itemsAndOthers.first.maxBy {
@@ -66,14 +66,14 @@ class Notifications internal constructor(
                 val not = notificationAndExtrasPair.first
                 val rawJson = not.body_data ?: "{}"
 
-                when (SteamNotificationType.fromValue(not.notification_type ?: 0)) {
-                    SteamNotificationType.Wishlist -> {
+                when (ESteamNotificationType.fromValue(not.notification_type ?: 0)) {
+                    ESteamNotificationType.k_ESteamNotificationType_Wishlist -> {
                         val appId = json.decodeFromString<Notification.WishlistSale.Body>(rawJson).appId
 
                         Notification.WishlistSale(
                             timestamp = not.timestamp ?: 0,
-                            unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false,
+                            unread = not.read?.not() == true,
+                            hidden = not.hidden == true,
                             appSummary = if (appId != 0) {
                                 steamClient.store.getAppSummaries(listOf(appId)).values.first()
                             } else {
@@ -82,11 +82,11 @@ class Notifications internal constructor(
                         )
                     }
 
-                    SteamNotificationType.Item -> {
+                    ESteamNotificationType.k_ESteamNotificationType_Item -> {
                         Notification.Item(
                             timestamp = not.timestamp ?: 0,
-                            unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false,
+                            unread = not.read?.not() == true,
+                            hidden = not.hidden == true,
                             item = bruhcollective.itaysonlab.ksteam.models.econ.EconItemReference(
                                 json.decodeFromString<Notification.Item.Body>(
                                     rawJson
@@ -96,11 +96,11 @@ class Notifications internal constructor(
                         )
                     }
 
-                    SteamNotificationType.FriendInvite -> {
+                    ESteamNotificationType.k_ESteamNotificationType_FriendInvite -> {
                         Notification.FriendRequest(
                             timestamp = not.timestamp ?: 0,
-                            unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false,
+                            unread = not.read?.not() == true,
+                            hidden = not.hidden == true,
                             requestor = steamClient.persona.persona(
                                 SteamId.fromAccountId(
                                     id = json.decodeFromString<Notification.FriendRequest.Body>(rawJson).accountId
@@ -109,11 +109,11 @@ class Notifications internal constructor(
                         )
                     }
 
-                    SteamNotificationType.Gift -> {
+                    ESteamNotificationType.k_ESteamNotificationType_Gift -> {
                         Notification.Gift(
                             timestamp = not.timestamp ?: 0,
-                            unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false,
+                            unread = not.read?.not() == true,
+                            hidden = not.hidden == true,
                             gifter = steamClient.persona.persona(
                                 SteamId.fromAccountId(
                                     id = json.decodeFromString<Notification.Gift.Body>(rawJson).accountId
@@ -122,13 +122,13 @@ class Notifications internal constructor(
                         )
                     }
 
-                    SteamNotificationType.Promotion -> {
-                        val body = json.decodeFromString<Notification.Promotion.Body>(rawJson)
+                    ESteamNotificationType.k_ESteamNotificationType_General -> {
+                        val body = json.decodeFromString<Notification.General.Body>(rawJson)
 
-                        Notification.Promotion(
+                        Notification.General(
                             timestamp = not.timestamp ?: 0,
-                            unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false,
+                            unread = not.read?.not() == true,
+                            hidden = not.hidden == true,
                             title = body.title,
                             description = body.body,
                             iconUrl = body.image,
@@ -139,8 +139,8 @@ class Notifications internal constructor(
                     else -> {
                         Notification.Unknown(
                             timestamp = not.timestamp ?: 0,
-                            unread = not.read?.not() ?: false,
-                            hidden = not.hidden ?: false,
+                            unread = not.read?.not() == true,
+                            hidden = not.hidden == true,
                             rawJsonData = rawJson
                         )
                     }
