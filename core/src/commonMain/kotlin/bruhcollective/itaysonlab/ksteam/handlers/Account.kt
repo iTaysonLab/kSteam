@@ -55,6 +55,7 @@ class Account internal constructor(
     internal var tokenRequested = MutableStateFlow(false)
 
     private var logonSteamId: SteamId = SteamId.Empty
+    private var onLogonAttemptCallbacks = mutableListOf<LogonAttemptListener>()
 
     fun getSignAttemptedSteamId(): SteamId = logonSteamId
 
@@ -260,6 +261,9 @@ class Account internal constructor(
     }
 
     private suspend fun sendClientLogon(token: String, steamId: SteamId) {
+        logonSteamId = steamId
+        onLogonAttemptCallbacks.forEach { it.onAttempt(steamId) }
+
         if (steamClient.configuration.machineId.isEmpty()) {
             steamClient.configuration.machineId = Random.nextBytes(64).toByteString().hex()
         }
@@ -277,8 +281,6 @@ class Account internal constructor(
 
             AuthPrivateIpLogic.None -> null
         }
-
-        logonSteamId = steamId
 
         steamClient.executeAndForget(SteamPacket.newProto(
             EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
@@ -493,4 +495,16 @@ class Account internal constructor(
     class JwtToken (
         val sub: String
     )
+
+    fun registerLogonAttemptListener(listener: LogonAttemptListener) {
+        onLogonAttemptCallbacks.add(listener)
+    }
+
+    fun unregisterLogonAttemptListener(listener: LogonAttemptListener) {
+        onLogonAttemptCallbacks.remove(listener)
+    }
+
+    fun interface LogonAttemptListener {
+        fun onAttempt(id: SteamId)
+    }
 }

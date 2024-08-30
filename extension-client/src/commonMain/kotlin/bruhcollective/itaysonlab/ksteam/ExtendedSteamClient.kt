@@ -40,6 +40,12 @@ class ExtendedSteamClient (
     val pics: Pics get() = picsContainer?.pics ?: throwPicsDisabledException()
     val library: Library get() = picsContainer?.library ?: throwPicsDisabledException()
 
+    init {
+        account.registerLogonAttemptListener { id ->
+            database.initializeUserRealm(id)
+        }
+    }
+
     //
 
     class PicsContainer (

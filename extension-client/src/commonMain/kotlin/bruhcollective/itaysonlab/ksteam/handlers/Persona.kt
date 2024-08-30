@@ -10,7 +10,6 @@ import bruhcollective.itaysonlab.ksteam.models.persona.AccountFlags
 import bruhcollective.itaysonlab.ksteam.models.persona.CurrentPersona
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
-import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.util.RichPresenceFormatter
 import io.realm.kotlin.ext.query
 import io.realm.kotlin.notifications.InitialResults
@@ -190,14 +189,6 @@ class Persona internal constructor(
     }
 
     init {
-        steamClient.onClientState(CMClientState.Authorizing) {
-            steamClient.account.getSignAttemptedSteamId().takeIf {
-                it != SteamId.Empty
-            }?.let { id ->
-                database.initializeUserRealm(id)
-            }
-        }
-
         steamClient.on(EMsg.k_EMsgClientPersonaState) { packet ->
             for (friend in CMsgClientPersonaState.ADAPTER.decode(packet.payload).friends) {
                 updatePersonaState(friend)
