@@ -55,10 +55,11 @@ class Guard(
                 )
             )
 
-            SgCreationResult.SmsSent(
+            SgCreationResult.AwaitingConfirmation(
                 hint = response.phone_number_hint.orEmpty(),
                 moving = false,
-                guardConfiguration = response.toConfig()
+                guardConfiguration = response.toConfig(),
+                isEmail = response.confirm_type != 0
             )
         } catch (sre: SteamRpcException) {
             if (sre.result == EResult.DuplicateRequest) {
@@ -77,7 +78,7 @@ class Guard(
     suspend fun initializeSgMoving(): SgCreationResult {
         return try {
             steamClient.grpc.twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(data = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request(), web = true)
-            SgCreationResult.SmsSent(moving = true)
+            SgCreationResult.AwaitingConfirmation(moving = true)
         } catch (sre: SteamRpcException) {
             SgCreationResult.Error(sre.result)
         }
@@ -87,7 +88,7 @@ class Guard(
      * This will confirm a move request by a code from the SMS.
      *
      * @param code the SMS code for confirming the action
-     * @param structure the [GuardStructure] obtained from [SgCreationResult.SmsSent]
+     * @param structure the [GuardStructure] obtained from [SgCreationResult.AwaitingConfirmation]
      *
      * @return if guard was successfully set up
      */

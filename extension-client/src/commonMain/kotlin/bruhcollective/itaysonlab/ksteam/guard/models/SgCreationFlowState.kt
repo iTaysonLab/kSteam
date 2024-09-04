@@ -14,14 +14,15 @@ sealed interface SgCreationResult {
     data object AlreadyHasGuard : SgCreationResult
 
     /**
-     * This means an SMS was sent and a code must be provided to finish move/addition.
+     * This means an SMS or an email was sent and a code must be provided to finish move/addition.
      *
      * The [guardConfiguration] field is an intermediate structure that is used when creating Steam Guard for the first time.
      */
-    data class SmsSent(
+    data class AwaitingConfirmation(
         val hint: String = "",
         val moving: Boolean = false,
-        val guardConfiguration: GuardStructure? = null
+        val guardConfiguration: GuardStructure? = null,
+        val isEmail: Boolean = false,
     ): SgCreationResult
 
     /**
