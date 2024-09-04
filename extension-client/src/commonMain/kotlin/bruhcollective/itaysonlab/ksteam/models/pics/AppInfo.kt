@@ -76,6 +76,15 @@ internal class AppInfo: RealmObject {
         @SerialName("logo")
         var logoId: String = ""
 
+        @SerialName("logo_small")
+        var logoSmallId: String = ""
+
+        @SerialName("clienticon")
+        var clientIconId: String = ""
+
+        @SerialName("clienttga")
+        var clientTgaId: String = ""
+
         // Integers
 
         @SerialName("review_score")
@@ -104,6 +113,9 @@ internal class AppInfo: RealmObject {
 
         @SerialName("primary_genre")
         var primaryGenre: Int = 0
+
+        @SerialName("dlcforappid")
+        var dlcForAppId: Int = 0
 
         // Lists
 
@@ -167,7 +179,37 @@ internal class AppInfo: RealmObject {
         @SerialName("steam_deck_compatibility")
         var steamDeckCompat: AppSteamDeckCompatibility? = null
 
+        @SerialName("library_assets_full")
+        var libraryFullAssets: AppInfoLibraryFullAssets? = null
+
         // Sub-classes
+
+        @Serializable
+        class AppInfoLibraryFullAssets: EmbeddedRealmObject {
+            // Fixes https://github.com/realm/realm-kotlin/issues/1567
+            companion object
+
+            @SerialName("library_capsule")
+            var libraryCapsule: AppInfoLibraryFullAssetDefinition? = null
+
+            @SerialName("library_hero")
+            var libraryHero: AppInfoLibraryFullAssetDefinition? = null
+
+            @SerialName("library_logo")
+            var libraryLogo: AppInfoLibraryFullAssetDefinition? = null
+
+            @Serializable
+            class AppInfoLibraryFullAssetDefinition: EmbeddedRealmObject {
+                // Fixes https://github.com/realm/realm-kotlin/issues/1567
+                companion object
+
+                @SerialName("image")
+                var image: RealmDictionary<String> = realmDictionaryOf()
+
+                @SerialName("image2x")
+                var image2x: RealmDictionary<String> = realmDictionaryOf()
+            }
+        }
 
         @Serializable
         class AppSteamDeckCompatibility: EmbeddedRealmObject {
@@ -263,6 +305,9 @@ internal class AppInfo: RealmObject {
 
         @SerialName("musicalbumforappid")
         var musicAlbumForApp: Int = 0
+
+        @SerialName("listofdlc")
+        var listOfDlc: String = ""
 
         @SerialName("dlcavailableonstore")
         var dlcAvailableOnStore: Boolean = false

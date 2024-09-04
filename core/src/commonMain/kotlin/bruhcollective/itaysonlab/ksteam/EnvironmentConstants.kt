@@ -11,8 +11,12 @@ object EnvironmentConstants {
     const val CDN_BASE_CLOUDFLARE = "https://cdn.cloudflare.steamstatic.com"
     const val CDN_BASE_AKAMAI = "https://cdn.akamai.steamstatic.com"
 
+    const val CDN_SHARED_CLOUDFLARE = "https://shared.cloudflare.steamstatic.com"
+    const val CDN_SHARED_AKAMAI = "https://shared.akamai.steamstatic.com"
+
     // IDK about what CDN they prefer to use
     const val CDN_BASE = CDN_BASE_CLOUDFLARE
+    const val CDN_SHARED = CDN_SHARED_CLOUDFLARE
 
     fun formatStaticAppImageUrl(appId: Int, filename: String): String
         = "$CDN_BASE/steam/apps/${appId}/${filename}"
@@ -22,4 +26,8 @@ object EnvironmentConstants {
 
     fun formatCommunityPublicAssetUrl(path: String): String
         = "$CDN_BASE/steamcommunity/public/images/$path"
+
+    // https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/292030/library_600x900_russian.jpg
+    fun formatSharedStoreAssetUrl(appId: Int, filename: String): String
+        = "$CDN_SHARED/store_item_assets/steam/apps/${appId}/${filename}"
 }

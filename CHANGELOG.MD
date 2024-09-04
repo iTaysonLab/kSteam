@@ -1,3 +1,8 @@
+## r40
+
+- **kSteam Library Queries!** This all-new system interops with Steam Library Collections (while adding new filters), allowing to fetch user's game library with play time and license support.
+- **Multi-license support!** Now kSteam understands package licenses and can apply them to app queries - you can easily get information about multiple copies and who own them.
+
 ## r39
 
 - **[breaking change]**: `ExtendedSteamClient` now implements the new abstract `SteamClient` interface, while the old `SteamClient` is now internal and named `SteamClientImpl`.  

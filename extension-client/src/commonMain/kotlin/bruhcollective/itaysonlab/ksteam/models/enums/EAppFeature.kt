@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.enums
 
 enum class EAppFeature {
+    Ignored,
     FullControllerSupport,
     PartialControllerSupport,
     VRSupport,
@@ -15,9 +16,17 @@ enum class EAppFeature {
     SteamDeckVerified,
     SteamDeckPlayable,
     SteamDeckUnknown,
-    SteamDeckUnsupported;
+    SteamDeckUnsupported,
+    PS4ControllerSupport,
+    PS4ControllerBTSupport,
+    PS5ControllerSupport,
+    PS5ControllerBTSupport,
+    SteamInputAPI,
+    GamepadPreferred,
+    HDR,
+    FamilySharing;
 
     companion object {
-        fun byIndex(index: Int) = entries.getOrNull(index - 1)
+        fun byIndex(index: Int) = entries.getOrNull(index)
     }
 }

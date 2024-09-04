@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.database
 
+import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmPackageLicenses
 import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmRichPresenceDictionary
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersonaLastSeen
@@ -75,6 +76,10 @@ internal class KSteamRealmDatabase (
         RealmPersona::class,
         RealmPersonaStatus::class,
         RealmPersonaLastSeen::class,
+
+        // PICS
+        RealmPackageLicenses::class,
+        RealmPackageLicenses.RealmPackageLicense::class
     )
 
     private fun createSharedRealmSchema(): Set<KClass<out TypedRealmObject>> = setOf(
@@ -89,6 +94,8 @@ internal class KSteamRealmDatabase (
         AppInfo.AppInfoCommon.AppAssociation::class,
         AppInfo.AppInfoCommon.AppSteamDeckCompatibility::class,
         AppInfo.AppInfoCommon.AppSteamDeckCompatibility.AppSteamDeckCompatTestEntry::class,
+        AppInfo.AppInfoCommon.AppInfoLibraryFullAssets::class,
+        AppInfo.AppInfoCommon.AppInfoLibraryFullAssets.AppInfoLibraryFullAssetDefinition::class,
         AppInfo.AppInfoExtended::class,
         AppInfo.AppInfoAlbumMetadata::class,
         AppInfo.AppInfoAlbumMetadata.AppInfoMusicTrack::class,

@@ -145,8 +145,8 @@ class Account internal constructor(
         val mappedConfirmations = signInResult.allowed_confirmations.mapNotNull { EAuthSessionGuardType.fromValue(it.confirmation_type ?: 0) }
 
         if (mappedConfirmations.let {
-                it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation) || it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation)
-            }) {
+            it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_DeviceConfirmation) || it.contains(EAuthSessionGuardType.k_EAuthSessionGuardType_EmailConfirmation)
+        }) {
             createWatcherFlow(signInResult.interval ?: 5f)
         }
 
@@ -311,6 +311,14 @@ class Account internal constructor(
             this.sessionId = 0
             this.steamId = steamId.id
         })
+    }
+
+    /**
+     * Cancels sign in attempt. Reset states and cancels polling.
+     */
+    fun cancelSignInAttempt() {
+        authState.value = AuthorizationState.Unauthorized
+        cancelPolling()
     }
 
     /**

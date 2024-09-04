@@ -2,10 +2,12 @@ package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
+import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmPackageLicenses
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationLicense
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
@@ -14,9 +16,9 @@ import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
 import io.realm.kotlin.UpdatePolicy
+import io.realm.kotlin.delete
 import io.realm.kotlin.ext.query
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -58,40 +60,29 @@ class Pics internal constructor(
      *
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
-    fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
-        return database.sharedRealm.query<AppInfo>("appId IN $0", ids).find().map(SteamApplication::fromPics)
-    }
+    fun getSteamApplications(vararg ids: Int): List<SteamApplication> = getSteamApplications(ids.toList())
 
     /**
      * Queries multiple applications in PICS subsystem, returning [SteamApplication]s if any apps are found.
      *
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
-    fun getSteamApplications(vararg ids: Int): List<SteamApplication> = getSteamApplications(ids.toList())
-
-    /**
-     * Queries an application list in PICS subsystem, returning [SteamApplication]s filtered by filters.
-     *
-     * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
-     */
-    fun querySteamApplicationsByFilter(filters: DynamicFilters): List<SteamApplication> {
-        return composeRealmQueryByFilters(filters).find().map(SteamApplication::fromPics)
+    fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
+        return database.sharedRealm.query<AppInfo>("appId IN $0", ids).find().map(SteamApplication::fromPics)
     }
 
     /**
-     * Queries an application list in PICS subsystem, returning [SteamApplication]s filtered by filters. Returns a [Flow] that dynamically updates based on library changes.
-     *
-     * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
+     * Finds application licenses for the current account.
      */
-    fun flowSteamApplicationsByFilter(filters: DynamicFilters): Flow<List<SteamApplication>> {
-        return composeRealmQueryByFilters(filters).asFlow().map {
-            it.list.map(SteamApplication::fromPics)
-        }
+    fun findLicensesForCurrentUser(appId: AppId): List<SteamApplicationLicense> {
+        // Find the packages ID and map them to licenses
+        return database.sharedRealm.query<PackageInfo>("$0 IN ANY appIds", appId.value).find().mapNotNull { packageInfo ->
+            database.currentUserRealm.query<RealmPackageLicenses>("packageId == $0", packageInfo.packageId).first().find()
+        }.flatMap(RealmPackageLicenses::convert)
     }
 
     // region Internal stuff
 
-    // private var processedLicenses = mutableListOf<CMsgClientLicenseList_License>()
     internal var appIds: List<Int> = emptyList()
         private set
 
@@ -127,9 +118,10 @@ class Pics internal constructor(
             }
         }
 
-        withContext(Dispatchers.IO) {
+        withContext(Dispatchers.Default) {
             updatePackagesMetadata(requiresUpdate)
             checkAppsIntegrity(licenses)
+            writeAccountSpecificLicenseInformation(licenses)
         }
 
         steamClient.logger.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
@@ -321,6 +313,29 @@ class Pics internal constructor(
                 }, updatePolicy = UpdatePolicy.ALL)
 
                 copyToRealm(parsedAppInfo, updatePolicy = UpdatePolicy.ALL)
+            }
+        }
+    }
+
+    // endregion
+
+    // region Account-specific license information
+
+    private suspend fun writeAccountSpecificLicenseInformation(licenses: List<CMsgClientLicenseList_License>) {
+        database.currentUserRealm.write {
+            delete<RealmPackageLicenses>()
+
+            for (license in licenses) {
+                val mutableInformation = query<RealmPackageLicenses>("packageId == $0", license.package_id).first().find()
+
+                if (mutableInformation != null) {
+                    mutableInformation.licenses.add(RealmPackageLicenses.RealmPackageLicense(license))
+                } else {
+                    val newInformation = RealmPackageLicenses()
+                    newInformation.packageId = license.package_id ?: 0
+                    newInformation.licenses.add(RealmPackageLicenses.RealmPackageLicense(license))
+                    copyToRealm(newInformation)
+                }
             }
         }
     }
