@@ -3,6 +3,7 @@ plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("com.android.library")
+    id("org.jetbrains.kotlinx.atomicfu")
     `maven-publish`
 }
 
@@ -23,6 +24,7 @@ dependencies {
     commonMainApi(project(":kotlinx-vdf"))
     commonMainApi(project(":proto-common"))
 
+    commonMainImplementation(libs.androidx.collection)
     commonMainImplementation(libs.ktor.serialization)
     commonMainImplementation(libs.ktor.client)
     commonMainImplementation(libs.ktor.client.websockets)
@@ -33,10 +35,11 @@ dependencies {
     commonMainImplementation(libs.kotlinx.immutables)
     commonMainImplementation(libs.kotlinx.serialization.json.okio)
     commonMainImplementation(libs.kotlinx.datetime)
-
     commonMainImplementation(libs.kotlinx.coroutines.core)
 
     commonMainImplementation(libs.okio)
+
+    commonMainImplementation("co.touchlab:stately-concurrent-collections:2.1.0")
 
     commonMainApi(libs.wire)
     commonMainApi(libs.wire.grpc)

@@ -15,7 +15,7 @@ class ExtendedSteamClient (
     val enablePics: Boolean,
     val client: SteamClient
 ): SteamClient by client {
-    internal val database = KSteamRealmDatabase(workingDirectory = client.workingDirectory)
+    internal val database = KSteamRealmDatabase(client)
 
     // Subsystems
     val currentPersona: CurrentPersona = CurrentPersona(this)

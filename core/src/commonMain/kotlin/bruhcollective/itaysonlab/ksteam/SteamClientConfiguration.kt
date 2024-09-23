@@ -67,7 +67,9 @@ class SteamClientConfiguration(
     }
 
     internal val networkClient = ktorEngineResolver().config {
-        install(WebSockets)
+        install(WebSockets) {
+            this.contentConverter
+        }
     }
 
     internal val apiClient = ktorEngineResolver().config {

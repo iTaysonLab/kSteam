@@ -10,6 +10,8 @@ import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
 import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import steam.webui.usernews.CUserNews_GetUserNews_Request
 import kotlin.time.measureTimedValue
 
@@ -115,145 +117,157 @@ class UserNews internal constructor(
 
         val totalSteamIds = (totalUserIds + totalClanSteamIds).distinctBy(SteamId::id)
 
-        val summariesMap = measure("getUserNews:getAppSummaries") {
-            steamClient.store.getAppSummaries(totalAppIds)
-        }
-
-        val userMap = measure("getUserNews:getProfileSummaries") {
-            steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
-        }
-
-        val publishedFileMap = measure("getUserNews:getPublishedFiles") {
-            publishedFiles.entries.flatMap { entry ->
-                steamClient.publishedFiles.getDetails(entry.key, entry.value)
-            }.associateBy(PublishedFile::id)
-        }
-
-        // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
-
-        val entries = mutableListOf<ActivityFeedEntry>()
-
-        val totalEventSize = newsProto.news.size
-        val totalEventSizeLastIndex = newsProto.news.lastIndex
-
-        val stringDuplicateStack = DuplicateStack<String>()
-        val intDuplicateStack = DuplicateStack<Int>()
-        val longDuplicateStack = DuplicateStack<Long>()
-
-        for (i in 0..<totalEventSize) {
-            val event = newsProto.news[i]
-            val eventNext = newsProto.news.getOrNull(i + 1)
-
-            val eventType = EUserNewsType.byApiEnum(event.eventtype ?: 0) ?: continue
-            val actorSteamId = SteamId(event.steamid_actor?.toULong() ?: continue)
-            val eventDate = event.eventtime ?: continue
-            val actorPersona = userMap[actorSteamId] ?: SummaryPersona.Unknown
-
-            when (eventType) {
-                EUserNewsType.AchievementUnlocked -> {
-                    if (ActivityFeedEntry.NewAchievements.canMergeWith(event, eventNext)) {
-                        stringDuplicateStack += event.achievement_names
-                        continue
-                    }
-
-                    val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
-                    val achievements = stringDuplicateStack.use { saved -> event.achievement_names + saved }.mapNotNull(achievementMap::get)
-
-                    ActivityFeedEntry.NewAchievements(
-                        date = eventDate,
-                        app = appSummary,
-                        persona = actorPersona,
-                        achievements = achievements
-                    )
+        coroutineScope {
+            val summariesMapRequest = async {
+                measure("getUserNews:getAppSummaries") {
+                    steamClient.store.getAppSummaries(totalAppIds)
                 }
+            }
 
-                EUserNewsType.PlayedGameFirstTime -> {
-                    val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
-
-                    ActivityFeedEntry.PlayedForFirstTime(
-                        date = eventDate,
-                        persona = actorPersona,
-                        app = appSummary
-                    )
+            val userMapRequest = async {
+                measure("getUserNews:getProfileSummaries") {
+                    steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
                 }
+            }
 
-                EUserNewsType.ReceivedNewGame -> {
-                    if (ActivityFeedEntry.ReceivedNewGame.canMergeWith(event, eventNext)) {
-                        intDuplicateStack += event.appids
-                        continue
-                    }
-
-                    val apps = intDuplicateStack.use { saved -> event.appids + saved }
-                        .mapNotNull { summariesMap[it] }
-
-                    ActivityFeedEntry.ReceivedNewGame(
-                        date = eventDate,
-                        persona = actorPersona,
-                        apps = apps,
-                        packages = emptyList()
-                    )
+            val publishedFileMapRequest = async {
+                measure("getUserNews:getPublishedFiles") {
+                    publishedFiles.entries.flatMap { entry ->
+                        steamClient.publishedFiles.getDetails(entry.key, entry.value)
+                    }.associateBy(PublishedFile::id)
                 }
+            }
 
-                EUserNewsType.AddedGameToWishlist -> {
-                    if (ActivityFeedEntry.AddedToWishlist.canMergeWith(event, eventNext)) {
-                        intDuplicateStack += event.gameid?.toInt() ?: continue
-                        continue
-                    }
+            val summariesMap = summariesMapRequest.await()
+            val userMap = userMapRequest.await()
+            val publishedFileMap = publishedFileMapRequest.await()
 
-                    val apps = intDuplicateStack.use { saved ->
-                        listOf(
-                            event.gameid?.toInt() ?: 0
-                        ) + saved
-                    }.mapNotNull { summariesMap[it] }
+            // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
 
-                    ActivityFeedEntry.AddedToWishlist(
-                        date = eventDate,
-                        persona = actorPersona,
-                        apps = apps
-                    )
-                }
+            val entries = mutableListOf<ActivityFeedEntry>()
 
-                EUserNewsType.FilePublished_Screenshot -> {
-                    if (ActivityFeedEntry.ScreenshotPosted.canMergeWith(event, eventNext)) {
-                        longDuplicateStack += event.publishedfileid ?: continue
-                        continue
-                    }
+            val totalEventSize = newsProto.news.size
+            val totalEventSizeLastIndex = newsProto.news.lastIndex
 
-                    val screenshots = longDuplicateStack.use { saved -> listOf(event.publishedfileid) + saved }.mapNotNull { publishedFileMap[it] }.filterIsInstance<PublishedFile.Screenshot>()
-                    val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
+            val stringDuplicateStack = DuplicateStack<String>()
+            val intDuplicateStack = DuplicateStack<Int>()
+            val longDuplicateStack = DuplicateStack<Long>()
 
-                    if (screenshots.size == 1) {
-                        ActivityFeedEntry.ScreenshotPosted(
+            for (i in 0..<totalEventSize) {
+                val event = newsProto.news[i]
+                val eventNext = newsProto.news.getOrNull(i + 1)
+
+                val eventType = EUserNewsType.byApiEnum(event.eventtype ?: 0) ?: continue
+                val actorSteamId = SteamId(event.steamid_actor?.toULong() ?: continue)
+                val eventDate = event.eventtime ?: continue
+                val actorPersona = userMap[actorSteamId] ?: SummaryPersona.Unknown
+
+                when (eventType) {
+                    EUserNewsType.AchievementUnlocked -> {
+                        if (ActivityFeedEntry.NewAchievements.canMergeWith(event, eventNext)) {
+                            stringDuplicateStack += event.achievement_names
+                            continue
+                        }
+
+                        val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
+                        val achievements = stringDuplicateStack.use { saved -> event.achievement_names + saved }.mapNotNull(achievementMap::get)
+
+                        ActivityFeedEntry.NewAchievements(
                             date = eventDate,
-                            persona = actorPersona,
                             app = appSummary,
-                            screenshot = screenshots.first()
-                        )
-                    } else {
-                        ActivityFeedEntry.ScreenshotsPosted(
-                            date = eventDate,
                             persona = actorPersona,
-                            app = appSummary,
-                            screenshots = screenshots
+                            achievements = achievements
                         )
                     }
-                }
 
-                else -> {
-                    steamClient.logger.logDebug("News:GetUserNews") { "Unknown event received, enum type: $eventType - dumping proto data below" }
-                    steamClient.logger.logDebug("News:GetUserNews") { event.toString() }
+                    EUserNewsType.PlayedGameFirstTime -> {
+                        val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
 
-                    ActivityFeedEntry.UnknownEvent(
-                        date = eventDate,
-                        type = eventType,
-                        persona = actorPersona,
-                        proto = event
-                    )
-                }
-            }.let(entries::add)
+                        ActivityFeedEntry.PlayedForFirstTime(
+                            date = eventDate,
+                            persona = actorPersona,
+                            app = appSummary
+                        )
+                    }
+
+                    EUserNewsType.ReceivedNewGame -> {
+                        if (ActivityFeedEntry.ReceivedNewGame.canMergeWith(event, eventNext)) {
+                            intDuplicateStack += event.appids
+                            continue
+                        }
+
+                        val apps = intDuplicateStack.use { saved -> event.appids + saved }
+                            .mapNotNull { summariesMap[it] }
+
+                        ActivityFeedEntry.ReceivedNewGame(
+                            date = eventDate,
+                            persona = actorPersona,
+                            apps = apps,
+                            packages = emptyList()
+                        )
+                    }
+
+                    EUserNewsType.AddedGameToWishlist -> {
+                        if (ActivityFeedEntry.AddedToWishlist.canMergeWith(event, eventNext)) {
+                            intDuplicateStack += event.gameid?.toInt() ?: continue
+                            continue
+                        }
+
+                        val apps = intDuplicateStack.use { saved ->
+                            listOf(
+                                event.gameid?.toInt() ?: 0
+                            ) + saved
+                        }.mapNotNull { summariesMap[it] }
+
+                        ActivityFeedEntry.AddedToWishlist(
+                            date = eventDate,
+                            persona = actorPersona,
+                            apps = apps
+                        )
+                    }
+
+                    EUserNewsType.FilePublished_Screenshot -> {
+                        if (ActivityFeedEntry.ScreenshotPosted.canMergeWith(event, eventNext)) {
+                            longDuplicateStack += event.publishedfileid ?: continue
+                            continue
+                        }
+
+                        val screenshots = longDuplicateStack.use { saved -> listOf(event.publishedfileid) + saved }.mapNotNull { publishedFileMap[it] }.filterIsInstance<PublishedFile.Screenshot>()
+                        val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
+
+                        if (screenshots.size == 1) {
+                            ActivityFeedEntry.ScreenshotPosted(
+                                date = eventDate,
+                                persona = actorPersona,
+                                app = appSummary,
+                                screenshot = screenshots.first()
+                            )
+                        } else {
+                            ActivityFeedEntry.ScreenshotsPosted(
+                                date = eventDate,
+                                persona = actorPersona,
+                                app = appSummary,
+                                screenshots = screenshots
+                            )
+                        }
+                    }
+
+                    else -> {
+                        steamClient.logger.logDebug("News:GetUserNews") { "Unknown event received, enum type: $eventType - dumping proto data below" }
+                        steamClient.logger.logDebug("News:GetUserNews") { event.toString() }
+
+                        ActivityFeedEntry.UnknownEvent(
+                            date = eventDate,
+                            type = eventType,
+                            persona = actorPersona,
+                            proto = event
+                        )
+                    }
+                }.let(entries::add)
+            }
+
+            return@coroutineScope entries
         }
-
-        return entries
     }
 
     /**

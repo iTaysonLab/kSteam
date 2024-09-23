@@ -82,35 +82,24 @@ class Library internal constructor(
     val playtime = _playtime.asStateFlow()
 
     /**
-     * Queries eligible apps in a collection by its [id].
+     * Queries apps from a collection by its [id].
      *
-     * @return a [Flow] of [AppInfo] which is changed by collection editing
+     * @return a [Flow] of [OwnedSteamApplication] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<OwnedSteamApplication>> = userCollections.mapNotNull { collections ->
-        getAppsInCollection(collections[id] ?: return@mapNotNull null, limit)
+    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<OwnedSteamApplication>> {
+        val collectionFlow = when (id) {
+            FavoriteCollection -> favoriteCollection
+            HiddenCollection -> hiddenCollection
+            else -> getCollection(id)
+        }
+
+        return collectionFlow.map { collection ->
+            getAppsInCollection(collection, limit)
+        }
     }
 
     fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<OwnedSteamApplication>> = collectionFlow.map { collection ->
         getAppsInCollection(collection, limit)
-    }
-
-    /**
-     * Queries eligible owned apps in a collection by its [id].
-     *
-     * Recommended to use in UI apps because of automatically updating Flow based on both collection info and owned games metadata
-     *
-     * @param id collection ID
-     * @param limit how many items to show, default is 0 which means "everything"
-     * @return a [Flow] of [OwnedGame] which is changed by collection editing
-     */
-    fun getOwnedAppsInCollection(id: String, limit: Int = 0): Flow<List<OwnedGame>> {
-        val collectionFlow = getCollection(id)
-
-        return collectionFlow.combine(ownedGames) { collection, ownedMap ->
-            getAppsInCollection(collection, limit).mapNotNull { summary ->
-                ownedMap[summary.application.id.value]
-            }.toList()
-        }
     }
 
     /**
@@ -146,7 +135,7 @@ class Library internal constructor(
             }
 
             is LibraryCollection.Dynamic -> {
-                execute(collection.toKsLibraryQuery())
+                execute(collection.toKsLibraryQuery().newBuilder().withLimit(limit).build())
             }
         }
     }
@@ -354,15 +343,13 @@ class Library internal constructor(
             userPlayTimesCollector?.cancel()
         }
 
-        steamClient.onRpc("PlayerClient.NotifyLastPlayedTimes#1") { packet ->
-            CPlayer_LastPlayedTimes_Notification.ADAPTER.decode(packet.payload).let { notification ->
-                steamClient.logger.logDebug(LOG_TAG) { "Received last played times notification: $notification" }
+        steamClient.onTypedRpc("PlayerClient.NotifyLastPlayedTimes#1", CPlayer_LastPlayedTimes_Notification.ADAPTER) { notification ->
+            steamClient.logger.logDebug(LOG_TAG) { "Received last played times notification: $notification" }
 
-                _playtime.update {
-                    it.toMutableMap().apply {
-                        notification.games.forEach { lastPlayedGame ->
-                            this[lastPlayedGame.appid ?: return@forEach] = lastPlayedGame
-                        }
+            _playtime.update {
+                it.toMutableMap().apply {
+                    notification.games.forEach { lastPlayedGame ->
+                        this[lastPlayedGame.appid ?: return@forEach] = lastPlayedGame
                     }
                 }
             }
@@ -415,9 +402,6 @@ class Library internal constructor(
      * Executes [KsLibraryQuery] in a separate thread and returns a list of OwnedSteamApplication.
      */
     suspend fun execute(query: KsLibraryQuery): List<OwnedSteamApplication> = withContext(Dispatchers.Default) {
-        // Pre-Requisites
-        val playTime = _playtime.value
-
         // Initial Query Building
         var initialQuery = steamClient.database.sharedRealm.query<AppInfo>()
 

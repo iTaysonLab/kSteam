@@ -11,6 +11,7 @@ import bruhcollective.itaysonlab.ksteam.models.account.SteamAccountAuthorization
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
 import bruhcollective.itaysonlab.ksteam.platform.encryptWithRsa
 import bruhcollective.itaysonlab.ksteam.platform.getIpv4Address
 import bruhcollective.itaysonlab.ksteam.util.*
@@ -78,7 +79,7 @@ class Account internal constructor(
                     }
                 ), anonymous = true
             )
-        } catch (e: SteamRpcException) {
+        } catch (e: CMJobRemoteException) {
             return null
         }
 
@@ -129,7 +130,7 @@ class Account internal constructor(
                     encryption_timestamp = rsaData.timestamp,
                 ), anonymous = true
             )
-        } catch (e: SteamRpcException) {
+        } catch (e: CMJobRemoteException) {
             return if (e.result == EResult.InvalidPassword) {
                 AuthorizationResult.InvalidPassword
             } else {
@@ -282,8 +283,8 @@ class Account internal constructor(
             AuthPrivateIpLogic.None -> null
         }
 
-        steamClient.executeAndForget(SteamPacket.newProto(
-            EMsg.k_EMsgClientLogon, CMsgClientLogon.ADAPTER, CMsgClientLogon(
+        steamClient.execute(SteamPacket.newProto(
+            EMsg.k_EMsgClientLogon, CMsgClientLogon(
                 protocol_version = EnvironmentConstants.PROTOCOL_VERSION,
                 client_package_version = 1671236931,
                 client_language = steamClient.language.vdfName,
@@ -471,7 +472,7 @@ class Account internal constructor(
                     ))
                 }
             }
-        } catch (e: SteamRpcException) {
+        } catch (e: CMJobRemoteException) {
             //
         }
     }

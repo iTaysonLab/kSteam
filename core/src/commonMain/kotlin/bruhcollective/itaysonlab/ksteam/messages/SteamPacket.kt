@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.messages
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.util.EnumCache
+import com.squareup.wire.Message
 import com.squareup.wire.ProtoAdapter
 import okio.Buffer
 import okio.BufferedSink
@@ -79,11 +80,30 @@ class SteamPacket (
          * @param adapter wire protobuf adapter for the payload
          * @param payload a payload - object which will be encoded in the packet
          */
+        @Deprecated(
+            message = "Wire now provides adapters inside message classes, specifying ProtoAdapter separately is no longer required.",
+            replaceWith = ReplaceWith("newProto(messageId, payload)")
+        )
         fun <T> newProto(messageId: EMsg, adapter: ProtoAdapter<T>, payload: T): SteamPacket {
             return SteamPacket(
                 messageId = messageId,
                 header = SteamPacketHeader.Protobuf(),
                 payload = adapter.encode(payload)
+            )
+        }
+
+        /**
+         * Creates a new [SteamPacket] with a protobuf content
+         *
+         * @param messageId message ID of the packet
+         * @param adapter wire protobuf adapter for the payload
+         * @param payload a payload - object which will be encoded in the packet
+         */
+        fun <T: Message<T, *>> newProto(messageId: EMsg, payload: T): SteamPacket {
+            return SteamPacket(
+                messageId = messageId,
+                header = SteamPacketHeader.Protobuf(),
+                payload = payload.adapter.encode(payload)
             )
         }
     }

@@ -51,12 +51,10 @@ internal class CloudConfiguration(
     }
 
     init {
-        steamClient.onRpc("CloudConfigStoreClient.NotifyChange#1") { packet ->
-            CCloudConfigStore_Change_Notification.ADAPTER.decode(packet.payload).let { notification ->
-                notification.versions.forEach { updatedNamespace ->
-                    steamClient.logger.logDebug("CloudConfig:Rpc") { "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}" }
-                    downloadAndSet(updatedNamespace.enamespace ?: return@forEach)
-                }
+        steamClient.onTypedRpc("CloudConfigStoreClient.NotifyChange#1", CCloudConfigStore_Change_Notification.ADAPTER) { notification ->
+            notification.versions.forEach { updatedNamespace ->
+                steamClient.logger.logDebug("CloudConfig:Rpc") { "Namespace ${updatedNamespace.enamespace} will be updated to version ${updatedNamespace.version}" }
+                downloadAndSet(updatedNamespace.enamespace ?: return@forEach)
             }
         }
     }

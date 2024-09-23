@@ -7,13 +7,13 @@ import steam.enums.EProfileCustomizationType
 @Immutable
 sealed interface ProfileWidget {
     @Immutable
-    data class FavoriteGame internal constructor(
+    data class FavoriteGame (
         val app: AppSummary,
         val achievementProgress: AchievementProgress,
         val playedSeconds: Int
     ): ProfileWidget {
         @Immutable
-        data class AchievementProgress internal constructor(
+        data class AchievementProgress (
             val totalAchievements: Int,
             val currentAchievements: Int,
             val topPictures: List<String>
@@ -21,7 +21,7 @@ sealed interface ProfileWidget {
     }
 
     @Immutable
-    data class GameCollector internal constructor(
+    data class GameCollector (
         val featuredApps: List<AppSummary>,
         val ownedGamesCount: Int
     ): ProfileWidget
@@ -30,7 +30,7 @@ sealed interface ProfileWidget {
      * Unknown to kSteam widget
      */
     @Immutable
-    data class Unknown internal constructor(
+    data class Unknown (
         val type: EProfileCustomizationType
     ): ProfileWidget
 }

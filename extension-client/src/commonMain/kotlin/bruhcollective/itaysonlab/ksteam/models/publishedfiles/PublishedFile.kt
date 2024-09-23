@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.publishedfiles
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
+import kotlinx.serialization.Serializable
 import steam.webui.publishedfile.PublishedFileDetails
 
 @Immutable
@@ -20,7 +21,13 @@ sealed interface PublishedFile {
     /**
      * Shared information that is common for every file type.
      */
+    @Serializable
     data class SharedInformation (
+        /**
+         * File description.
+         */
+        val description: String,
+
         /**
          * "File" web URL. Can be empty.
          */
@@ -74,7 +81,22 @@ sealed interface PublishedFile {
         /**
          * The amount of likes (thumbs up icon) on the file.
          */
-        val likes: Int,
+        val votesUp: Int,
+
+        /**
+         * The amount of dislikes (thumbs down icon) on the file.
+         */
+        val votesDown: Int,
+
+        /**
+         * The calculated score based on votes.
+         */
+        val voteScore: Float,
+
+        /**
+         * The amount of "add to favorites" on the file.
+         */
+        val favorites: Int,
 
         /**
          * The total amount of comments posted.
@@ -106,13 +128,25 @@ sealed interface PublishedFile {
          *
          * For example, CS:GO screenshots always have a "location" tag containing the map's name (de_mirage, de_cache)
          */
-        val tags: Map<String, String>,
+        val kvTags: Map<String, String>,
+
+        /**
+         * Workshop tags. For example, an "English" tag is included in every guide that is marked as English.
+         */
+        val tags: List<WorkshopTag>,
 
         /**
          * Reactions that were applied to this file.
          */
         val reactions: List<ReactionCount>
     ) {
+        @Serializable
+        data class WorkshopTag (
+            val tag: String,
+            val displayName: String,
+        )
+
+        @Serializable
         data class ReactionCount (
             /**
              * ID of the reaction.
@@ -129,6 +163,7 @@ sealed interface PublishedFile {
     /**
      * A screenshot that is posted on Steam.
      */
+    @Serializable
     data class Screenshot (
         override val id: Long,
         override val info: SharedInformation,

@@ -4,16 +4,19 @@ import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
 import bruhcollective.itaysonlab.ksteam.debug.PacketDumper
 import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
+import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.network.event.IncomingPacketManager
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobTimeoutException
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
-import bruhcollective.itaysonlab.ksteam.web.models.CMServerEntry
+import com.squareup.wire.ProtoAdapter
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import okio.Buffer
 import okio.Source
@@ -23,6 +26,8 @@ import steam.messages.clientserver_login.CMsgClientHello
 import steam.webui.common.CMsgClientHeartBeat
 import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.common.CMsgMulti
+import kotlin.coroutines.coroutineContext
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * This class manages connection to the CM network on Steam.
@@ -34,34 +39,29 @@ internal class CMClient(
     private val httpClient: HttpClient,
     dispatcher: CoroutineDispatcher
 ) {
-    // A scope used to hold WSS connection
-    private val internalScope = CreateSupervisedCoroutineScope("cmClient", dispatcher) { _, throwable ->
-        throwable.printStackTrace()
-        mutableClientState.value = CMClientState.Offline
-        launchConnectionCoroutine(reconnect = true)
-    }
-
-    private var selectedServer: CMServerEntry? = null
+    /**
+     * A scope used to hold WSS connection.
+     */
+    private val internalScope = CreateSupervisedCoroutineScope("CMClient", dispatcher)
 
     /**
-     * A counter used to set sourceJobID field in the Steam packets.
+     * A job manager for CM clients.
      */
-    private var jobIdCounter = 0L
+    private val jobManager = CMJobManager(logger)
+
+    /**
+     * Incoming packet manager that automatically notifies typed listeners about incoming events.
+     */
+    internal val incomingPacketManager = IncomingPacketManager(logger)
+
+    /**
+     * Reference of the current WebSocket session.
+     */
+    private val wsSessionReference = atomic<WebSocketSession?>(null)
 
     private var cellId = 0
     internal var clientSessionId = 0
     internal var clientSteamId = SteamId.Empty
-
-    /**
-     * A queue for outgoing packets. These will be collected in the WebSocket loop and sent to the server.
-     */
-    private val outgoingPacketsQueue = Channel<SteamPacket>(capacity = Channel.UNLIMITED)
-
-    /**
-     * A queue for incoming packets, which are processed by consumers
-     */
-    private val mutableIncomingPacketsQueue = MutableSharedFlow<SteamPacket>(extraBufferCapacity = Channel.UNLIMITED)
-    val incomingPacketsQueue = mutableIncomingPacketsQueue.asSharedFlow()
 
     /**
      * CMClient state
@@ -87,6 +87,12 @@ internal class CMClient(
         internalScope.cancel()
     }
 
+    private suspend fun awaitConnectionOrThrow(authRequired: Boolean) {
+        withTimeoutOrNull(15.seconds) {
+            awaitConnection(authRequired)
+        } ?: throw CMJobTimeoutException(id = -1)
+    }
+
     private suspend fun awaitConnection(authRequired: Boolean = true) {
         clientState.first {
             if (authRequired) {
@@ -97,111 +103,108 @@ internal class CMClient(
         }
     }
 
-    private fun launchConnectionCoroutine(reconnect: Boolean = false) {
+    private fun launchConnectionCoroutine() {
         if (clientState.value != CMClientState.Offline) return
 
         internalScope.launch {
-            if (reconnect) {
-                mutableClientState.value = CMClientState.Reconnecting
-                delay(1000L) // don't spam the server
-            } else {
-                mutableClientState.value = CMClientState.Connecting
-            }
-
             connect()
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun connect() {
-        logger.logDebug("CMClient:Start") { "Fetching CMList" }
-        selectedServer = serverList.getBestServer()
+        val selectedServerEndpoint = serverList.getEndpoint()
 
-        logger.logDebug("CMClient:Start") { "Connecting to WSS [url = ${selectedServer?.endpoint}]" }
-        httpClient.wss(urlString = "wss://" + (selectedServer?.endpoint ?: return) + "/cmsocket/") {
+        try {
+            connect(selectedServerEndpoint)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            wsSessionReference.getAndSet(null)
+
+            jobManager.dropAllJobs()
+
+            if (coroutineContext.isActive) {
+                delay(1000L)
+                connect()
+            }
+        } finally {
+            wsSessionReference.getAndSet(null)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private suspend fun connect(endpoint: String) {
+        mutableClientState.value = CMClientState.Connecting
+        logger.logDebug("CMClient:Start") { "Connecting to WSS [url = ${endpoint}]" }
+
+        httpClient.wss(urlString = "wss://$endpoint/cmsocket/") {
             logger.logDebug("CMClient:WsConnection") { "Connected to Steam3 network" }
 
-            outgoingPacketsQueue.send(
+            wsSessionReference.getAndSet(this)
+
+            send(
                 SteamPacket.newProto(
                     messageId = EMsg.k_EMsgClientHello,
-                    adapter = CMsgClientHello.ADAPTER,
                     payload = CMsgClientHello(protocol_version = EnvironmentConstants.PROTOCOL_VERSION)
-                )
+                ).encode()
             )
 
             mutableClientState.value = CMClientState.AwaitingAuthorization
 
             while (currentCoroutineContext().isActive) {
-                // Check if a message from server is present
-                if (incoming.isEmpty.not()) {
-                    val packetToReceive = incoming.receive()
-                    if (packetToReceive is Frame.Binary) {
-                        // Parse message out from this and add to queue
+                val packetToReceive = incoming.receive()
 
-                        val steamPacket = runCatching {
-                            SteamPacket.ofNetworkPacket(packetToReceive.data)
-                        }
+                if (packetToReceive is Frame.Binary) {
+                    // Parse message out from this and add to queue
 
-                        if (steamPacket.isSuccess) {
-                            steamPacket.getOrNull()?.let { checkedPacket ->
-                                if (checkedPacket.messageId == EMsg.k_EMsgMulti) {
-                                    handleMultiPacket(checkedPacket)
-                                } else {
-                                    dumper.onPacket(checkedPacket, false)
+                    val steamPacket = runCatching {
+                        SteamPacket.ofNetworkPacket(packetToReceive.data)
+                    }
 
-                                    if (checkedPacket.messageId == EMsg.k_EMsgClientLogOnResponse) {
-                                        handleClientLogOn(checkedPacket)
-                                    }
+                    if (steamPacket.isSuccess) {
+                        steamPacket.getOrNull()?.let { checkedPacket ->
+                            if (checkedPacket.messageId == EMsg.k_EMsgMulti) {
+                                handleMultiPacket(checkedPacket)
+                            } else {
+                                dumper.onPacket(checkedPacket, false)
 
-                                    mutableIncomingPacketsQueue.emit(checkedPacket)
+                                if (checkedPacket.messageId == EMsg.k_EMsgClientLogOnResponse) {
+                                    handleClientLogOn(checkedPacket)
                                 }
-                            }
-                        } else {
-                            logger.logError("CMClient:WsConnection") {
-                                "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}"
+
+                                handleIncomingPacket(checkedPacket)
                             }
                         }
                     } else {
-                        logger.logDebug("CMClient:WsConnection") {
-                            "Received non-binary message (type: ${packetToReceive.frameType.name})"
+                        logger.logError("CMClient:WsConnection") {
+                            "Error when receiving binary message: ${steamPacket.exceptionOrNull()?.message ?: "No exception provided"}"
                         }
                     }
-                }
-
-                // Check if outgoing messages are in queue
-                if (outgoingPacketsQueue.isEmpty.not()) {
-                    val packetToSend = outgoingPacketsQueue.receive()
-
-                    if (packetToSend.messageId == EMsg.k_EMsgClientLogon) {
-                        mutableClientState.value = CMClientState.Authorizing
+                } else {
+                    logger.logDebug("CMClient:WsConnection") {
+                        "Received non-binary message (type: ${packetToReceive.frameType.name})"
                     }
-
-                    logger.logVerbose("CMClient:WsConnection") { "Sending packet: ${packetToSend.messageId.name}" }
-                    logger.logVerbose("CMClient:WsConnection") { "> [header] ${packetToSend.header}" }
-                    dumper.onPacket(packetToSend, true)
-                    send(packetToSend.encode())
                 }
             }
         }
     }
 
     private fun handleClientLogOn(checkedPacket: SteamPacket) {
-        if (checkedPacket.success) {
-            CMsgClientLogonResponse.ADAPTER.decode(checkedPacket.payload).also { payloadResult ->
-                if (payloadResult.eresult == EResult.Expired.encoded) {
-                    return // Expired session
-                } else if (payloadResult.eresult != EResult.OK.encoded) {
-                    return // Failed sign-in
-                }
+        if (checkedPacket.error) return
 
-                cellId = payloadResult.cell_id ?: 0
-                clientSteamId = SteamId(payloadResult.client_supplied_steamid?.toULong() ?: 0u)
-                internalScope.startHeartbeat(intervalMs = (payloadResult.heartbeat_seconds ?: 9) * 1000L)
+        CMsgClientLogonResponse.ADAPTER.decode(checkedPacket.payload).also { payloadResult ->
+            if (payloadResult.eresult == EResult.Expired.encoded) {
+                return // Expired session
+            } else if (payloadResult.eresult != EResult.OK.encoded) {
+                return // Failed sign-in
             }
 
-            clientSessionId = checkedPacket.header.sessionId
-            mutableClientState.value = CMClientState.Connected
+            cellId = payloadResult.cell_id ?: 0
+            clientSteamId = SteamId(payloadResult.client_supplied_steamid?.toULong() ?: 0u)
+            internalScope.startHeartbeat(intervalMs = (payloadResult.heartbeat_seconds ?: 9) * 1000L)
         }
+
+        clientSessionId = checkedPacket.header.sessionId
+        mutableClientState.value = CMClientState.Connected
     }
 
     /**
@@ -242,50 +245,85 @@ internal class CMClient(
                 handleClientLogOn(packetParsed)
             }
 
-            mutableIncomingPacketsQueue.emit(packetParsed)
+            handleIncomingPacket(packetParsed)
         } while (payloadBuffer.exhausted().not())
     }
 
     /**
-     * Add a packet to an outgoing queue and then awaits for a response with the attached job ID.
-     *
-     * @param packet the packet which needs to be queued for sending
+     * Sends a [SteamPacket] without expecting a response.
      */
-    suspend fun execute(packet: SteamPacket): SteamPacket {
-        return subscribe(packet).first()
-    }
-
-    /**
-     * Add a packet to an outgoing queue and then awaits for a (multiple) responses with the attached job ID.
-     *
-     * @param packet the packet which needs to be queued for sending
-     * @return a [Flow] of [SteamPacket]s related to this packet
-     */
-    suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> {
-        awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
-
-        val processedSourcePacket = packet.enrichWithClientData().apply {
-            header.sourceJobId = ++jobIdCounter
-        }
-
-        return incomingPacketsQueue.onSubscription {
-            outgoingPacketsQueue.send(processedSourcePacket)
-        }.filter { incomingPacket ->
-            incomingPacket.header.targetJobId == processedSourcePacket.header.sourceJobId
+    suspend fun execute(
+        packet: SteamPacket
+    ) {
+        wsSessionReference.value?.let { wsSession ->
+            dumper.onPacket(packet, true)
+            wsSession.send(packet.addClientData().encode())
         }
     }
 
     /**
-     * Add a packet to an outgoing queue and forget about it (no job IDs and awaits)
-     *
-     * @param packet the packet which needs to be queued for sending
+     * Sends a [SteamPacket] and awaits a single [SteamPacket].
      */
-    suspend fun executeAndForget(packet: SteamPacket) {
-        awaitConnection(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
-        outgoingPacketsQueue.send(packet.enrichWithClientData())
+    suspend fun executeSingle(
+        packet: SteamPacket
+    ): SteamPacket {
+        awaitConnectionOrThrow(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
+        return postJob(packet, CMJob.Single(jobManager.createJobId())).await()
     }
 
-    private fun SteamPacket.enrichWithClientData() = apply {
+    /**
+     * Sends a [SteamPacket] and awaits a single protobuf message.
+     */
+    suspend fun <T> executeSingleProtobuf(
+        packet: SteamPacket,
+        adapter: ProtoAdapter<T>
+    ): T {
+        awaitConnectionOrThrow(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
+        return postJob(packet, CMJob.SingleProtobuf(jobManager.createJobId(), adapter)).await()
+    }
+
+    /**
+     * Sends a [SteamPacket] and awaits multiple protobuf messages.
+     */
+    suspend fun <T> executeMultipleProtobuf(
+        packet: SteamPacket,
+        adapter: ProtoAdapter<T>,
+        stopIf: (T) -> Boolean
+    ): List<T> {
+        awaitConnectionOrThrow(authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
+        return postJob(packet, CMJob.MultipleProtobuf(jobManager.createJobId(), adapter, stopIf)).await()
+    }
+
+    private fun handleIncomingPacket(packet: SteamPacket) {
+        val isPacketAttachedToAJob = jobManager.completeJob(packet)
+        if (isPacketAttachedToAJob) return
+
+        incomingPacketManager.handleIncomingPacket(packet)
+    }
+
+    private suspend fun <T> postJob(packet: SteamPacket, job: CMJob<T>): Deferred<T> {
+        val wsSession = wsSessionReference.value
+
+        packet.addClientData().also {
+            it.header.sourceJobId = job.id
+        }
+
+        if (wsSession != null) {
+            if (packet.messageId == EMsg.k_EMsgClientLogon) mutableClientState.value = CMClientState.Authorizing
+            dumper.onPacket(packet, true)
+
+            logger.logVerbose("CMClient") { "=> Posting job ${job.id} of type ${packet.messageId} with name ${(packet.header as? SteamPacketHeader.Protobuf)?.targetJobName}" }
+
+            jobManager.postJob(job)
+            wsSession.send(packet.encode())
+        } else {
+            job.failDropped()
+        }
+
+        return job.deferred
+    }
+
+    private fun SteamPacket.addClientData() = apply {
         header.sessionId = clientSessionId
 
         if (header.steamId == SteamId.Empty.id && clientSteamId.id != SteamId.Empty.id) {
@@ -300,12 +338,11 @@ internal class CMClient(
             while (currentCoroutineContext().isActive) {
                 logger.logVerbose("CMClient:Heartbeat") { "Adding heartbeat packet to queue" }
 
-                executeAndForget(
+                wsSessionReference.value?.send(
                     SteamPacket.newProto(
                         messageId = EMsg.k_EMsgClientHeartBeat,
-                        adapter = CMsgClientHeartBeat.ADAPTER,
                         payload = CMsgClientHeartBeat()
-                    )
+                    ).encode()
                 )
 
                 delay(intervalMs)

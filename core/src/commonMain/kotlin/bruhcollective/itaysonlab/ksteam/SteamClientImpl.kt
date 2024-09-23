@@ -8,20 +8,23 @@ import bruhcollective.itaysonlab.ksteam.handlers.Configuration
 import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.network.CMClient
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.CMList
+import bruhcollective.itaysonlab.ksteam.network.event.PacketListener
+import bruhcollective.itaysonlab.ksteam.network.event.TypedProtobufPacketListener
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.web.WebApi
+import com.squareup.wire.Message
+import com.squareup.wire.ProtoAdapter
 import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.plugin
 import io.ktor.client.request.*
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -37,7 +40,7 @@ internal class SteamClientImpl internal constructor(
     override val webApi = WebApi(apiClient = config.apiClient, configuration = configuration)
     override val dumper = PacketDumper(saveRootFolder = config.rootFolder, logger = logger)
 
-    private val serverList = CMList(webApi)
+    private val serverList = CMList(webApi = webApi, logger = logger)
 
     private val cmClient = CMClient(
         serverList = serverList,
@@ -63,9 +66,13 @@ internal class SteamClientImpl internal constructor(
 
     init {
         config.apiClient.plugin(HttpSend).intercept { request ->
+            logger.logVerbose("SteamClientImpl") { "Check for secure HTTP, pass on ${request.url.pathSegments.isEmpty()} or ${request.url.pathSegments[request.url.pathSegments.lastIndex - 1] == "GetCMListForConnect"} (${request.url.pathSegments[request.url.pathSegments.lastIndex]} + ${request.url.pathSegments[request.url.pathSegments.lastIndex - 1]})" }
+
             if (request.url.pathSegments.isEmpty() || request.url.pathSegments[request.url.pathSegments.lastIndex - 1] == "GetCMListForConnect") {
+                logger.logVerbose("SteamClientImpl") { "Passthrough HTTP request" }
                 execute(request)
             } else {
+                logger.logVerbose("SteamClientImpl") { "Write secure HTTP request" }
                 execute(request.writeSteamData()).let { response ->
                     if (response.response.status == HttpStatusCode.Unauthorized) {
                         account.updateAccessToken()
@@ -79,7 +86,15 @@ internal class SteamClientImpl internal constructor(
     }
 
     override suspend fun start() {
+        logger.logVerbose("SteamClientImpl") { "[start]" }
+
         if (cmNetworkEnabled()) {
+            if (serverList.isEmpty()) {
+                logger.logVerbose("SteamClientImpl") { "-> refreshServerList" }
+                serverList.refreshServerList()
+            }
+
+            logger.logVerbose("SteamClientImpl") { "-> tryConnect" }
             cmClient.tryConnect()
         }
     }
@@ -101,36 +116,61 @@ internal class SteamClientImpl internal constructor(
         }.launchIn(eventsScope)
     }
 
-    override fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): Job {
-        return cmClient.incomingPacketsQueue.filter { packet ->
-            packet.header.targetJobId == 0L && packet.messageId == id
-        }.onEach { packet ->
-            eventsScope.launch { consumer(packet) }
-        }.launchIn(eventsScope)
+    override fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): DisposableHandle {
+        val listener = PacketListener { packet -> eventsScope.launch { consumer(packet) } }
+        cmClient.incomingPacketManager.registerPacketListener(id, listener)
+        return DisposableHandle { cmClient.incomingPacketManager.unregisterPacketListener(id, listener) }
     }
 
-    override fun onRpc(method: String, consumer: suspend (SteamPacket) -> Unit): Job {
-        return cmClient.incomingPacketsQueue.filter { packet ->
-            packet.header.targetJobId == 0L && packet.messageId == EMsg.k_EMsgServiceMethod
-        }.onEach { packet ->
-            if ((packet.header as SteamPacketHeader.Protobuf).targetJobName == method) {
-                eventsScope.launch {
-                    consumer(packet)
-                }
-            }
-        }.launchIn(eventsScope)
+    override fun <T: Message<T, *>> onTyped(
+        id: EMsg,
+        adapter: ProtoAdapter<T>,
+        consumer: suspend (T) -> Unit
+    ): DisposableHandle {
+        val listener = TypedProtobufPacketListener<T> { payload -> eventsScope.launch { consumer(payload) } }
+        cmClient.incomingPacketManager.registerTypedPacketListener(id, adapter, listener)
+        return DisposableHandle { cmClient.incomingPacketManager.unregisterTypedPacketListener(id, listener) }
     }
 
-    override suspend fun execute(packet: SteamPacket): SteamPacket = requireCmTransport {
+    override fun <T: Message<T, *>> onTypedRpc(
+        method: String,
+        adapter: ProtoAdapter<T>,
+        consumer: suspend (T) -> Unit
+    ): DisposableHandle {
+        val listener = TypedProtobufPacketListener<T> { payload -> eventsScope.launch { consumer(payload) } }
+        cmClient.incomingPacketManager.registerTypedRpcListener(method, adapter, listener)
+        return DisposableHandle { cmClient.incomingPacketManager.unregisterTypedRpcListener(method, listener) }
+    }
+
+    override fun resume() {
+        TODO("Not yet implemented")
+    }
+
+    override fun pause() {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun execute(packet: SteamPacket) {
         cmClient.execute(packet)
     }
 
-    override suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket> = requireCmTransport {
-        cmClient.subscribe(packet)
+    override suspend fun awaitPacket(packet: SteamPacket): SteamPacket {
+        return requireCmTransport { cmClient.executeSingle(packet) }
     }
 
-    override suspend fun executeAndForget(packet: SteamPacket) = requireCmTransport {
-        cmClient.executeAndForget(packet)
+    override suspend fun <T> awaitProto(
+        packet: SteamPacket,
+        adapter: ProtoAdapter<T>
+    ): T {
+        return requireCmTransport { cmClient.executeSingleProtobuf(packet, adapter) }
+    }
+
+    override suspend fun <T> awaitMultipleProto(
+        packet: SteamPacket,
+        adapter: ProtoAdapter<T>,
+        stopIf: (T) -> Boolean
+    ): List<T> {
+        return requireCmTransport { cmClient.executeMultipleProtobuf(packet, adapter, stopIf) }
     }
 
     override fun cmNetworkEnabled(): Boolean {

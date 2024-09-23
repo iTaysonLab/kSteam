@@ -52,9 +52,9 @@ sealed interface SteamPacketHeader {
         }
     }
 
-    class Protobuf : SteamPacketHeader {
-        private var protoHeader = CMsgProtoBufHeader()
-
+    class Protobuf (
+        private var protoHeader: CMsgProtoBufHeader = CMsgProtoBufHeader()
+    ) : SteamPacketHeader {
         override var targetJobId: Long
             get() = protoHeader.jobid_target ?: 0L
             set(value) {

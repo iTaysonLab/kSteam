@@ -15,7 +15,7 @@ import steam.webui.authentication.CAuthentication_RefreshToken_Enumerate_Respons
  */
 @Immutable
 @Serializable
-data class ActiveSession internal constructor(
+data class ActiveSession (
     val id: Long,
     val deviceName: String,
     val timeUpdated: Int,
@@ -31,7 +31,7 @@ data class ActiveSession internal constructor(
 ) {
     @Immutable
     @Serializable
-    data class UsageData internal constructor(
+    data class UsageData (
         val time: Int,
         val ip: String,
         val locale: String,

@@ -8,7 +8,7 @@ import bruhcollective.itaysonlab.ksteam.platform.Immutable
  * A persona is a user in the Steam network.
  */
 @Immutable
-data class SummaryPersona internal constructor(
+data class SummaryPersona (
     /**
      * The [SteamId] of the user.
      */

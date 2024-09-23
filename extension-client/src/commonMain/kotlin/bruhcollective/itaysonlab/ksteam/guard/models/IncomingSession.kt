@@ -12,7 +12,7 @@ import steam.webui.authentication.CAuthentication_GetAuthSessionInfo_Response
  */
 @Immutable
 @Serializable
-data class IncomingSession internal constructor(
+data class IncomingSession (
     val id: Long,
     val ip: String,
     val geoloc: String,

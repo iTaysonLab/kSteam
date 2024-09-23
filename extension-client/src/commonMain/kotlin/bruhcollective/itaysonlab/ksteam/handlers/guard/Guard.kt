@@ -9,7 +9,7 @@ import bruhcollective.itaysonlab.ksteam.guard.models.SgDeletionResult
 import bruhcollective.itaysonlab.ksteam.guard.models.toConfig
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import steam.webui.twofactor.*
 
@@ -61,7 +61,7 @@ class Guard(
                 guardConfiguration = response.toConfig(),
                 isEmail = response.confirm_type != 0
             )
-        } catch (sre: SteamRpcException) {
+        } catch (sre: CMJobRemoteException) {
             if (sre.result == EResult.DuplicateRequest) {
                 SgCreationResult.AlreadyHasGuard
             } else {
@@ -79,7 +79,7 @@ class Guard(
         return try {
             steamClient.grpc.twoFactor.RemoveAuthenticatorViaChallengeStart().executeSteam(data = CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request(), web = true)
             SgCreationResult.AwaitingConfirmation(moving = true)
-        } catch (sre: SteamRpcException) {
+        } catch (sre: CMJobRemoteException) {
             SgCreationResult.Error(sre.result)
         }
     }
@@ -189,7 +189,7 @@ class Guard(
                     remove_all_steamguard_cookies = removeSgCookies
                 )
             )
-        } catch (e: SteamRpcException) {
+        } catch (e: CMJobRemoteException) {
             return SgDeletionResult.Error(e.result)
         }
 

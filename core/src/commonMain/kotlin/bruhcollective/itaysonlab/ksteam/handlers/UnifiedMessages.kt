@@ -4,7 +4,9 @@ import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobTimeoutException
 import com.squareup.wire.*
 import io.ktor.client.call.*
 import kotlinx.coroutines.runBlocking
@@ -28,7 +30,8 @@ class UnifiedMessages internal constructor(
      * @param responseAdapter Wire adapter for response body
      * @param requestData request body
      */
-    @Throws(SteamRpcException::class, CancellationException::class)
+    @Suppress("DEPRECATION")
+    @Throws(CMJobDroppedException::class, CMJobTimeoutException::class, CMJobRemoteException::class, CancellationException::class)
     suspend fun <Request: Any, Response: Any> execute(
         signed: Boolean = true,
         methodName: String,
@@ -48,13 +51,7 @@ class UnifiedMessages internal constructor(
             (this as SteamPacketHeader.Protobuf).targetJobName = "$methodName#1"
         }
 
-        val result = steamClient.execute(packet)
-
-        if (result.success) {
-            return responseAdapter.decode(result.payload)
-        } else {
-            throw SteamRpcException(method = methodName, result = result.result)
-        }
+        return steamClient.awaitProto(packet, responseAdapter)
     }
 
     // Wire gPRC notes

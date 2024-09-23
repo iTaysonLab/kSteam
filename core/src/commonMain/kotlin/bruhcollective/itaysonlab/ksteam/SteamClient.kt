@@ -11,11 +11,17 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.network.CMClientState
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobTimeoutException
 import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import bruhcollective.itaysonlab.ksteam.web.WebApi
+import com.squareup.wire.Message
+import com.squareup.wire.ProtoAdapter
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import okio.Path
 
@@ -130,9 +136,21 @@ interface SteamClient {
      *
      * @param id a [EMsg] that needs to be received
      * @param consumer a receiver for incoming messages
-     * @return a [Job] to cancel the execution if needed
+     * @return a [DisposableHandle] to cancel the execution if needed
      */
-    fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): Job
+    fun on(id: EMsg, consumer: suspend (SteamPacket) -> Unit): DisposableHandle
+
+    /**
+     * Subscribes to incoming messages of the specific type. This will only process "jobless" messages (messages that are not a response to something).
+     *
+     * Note that [consumer] will be called in kSteam Events scope without suspending the subscription.
+     *
+     * @param id a [EMsg] that needs to be received
+     * @param adapter a protobuf adapter that will be used to parse messages
+     * @param consumer a receiver for incoming messages
+     * @return a [DisposableHandle] to cancel the execution if needed
+     */
+    fun <T: Message<T, *>> onTyped(id: EMsg, adapter: ProtoAdapter<T>, consumer: suspend (T) -> Unit): DisposableHandle
 
     /**
      * Subscribes to incoming RPC messages of the specific type. This will only process "jobless" messages (messages that are not a response to something).
@@ -140,25 +158,54 @@ interface SteamClient {
      * Note that [consumer] will be called in kSteam Events scope without suspending the subscription.
      *
      * @param method a RPC definition like "Service.Message"
+     * @param adapter a protobuf adapter that will be used to parse messages
      * @param consumer a receiver for incoming messages
-     * @return a [Job] to cancel the execution if needed
+     * @return a [DisposableHandle] to cancel the execution if needed
      */
-    fun onRpc(method: String, consumer: suspend (SteamPacket) -> Unit): Job
+    fun <T: Message<T, *>> onTypedRpc(method: String, adapter: ProtoAdapter<T>, consumer: suspend (T) -> Unit): DisposableHandle
 
     /**
-     * Execute a [SteamPacket] and await for a response.
+     * Execute a [SteamPacket] and awaits a [SteamPacket] with a payload.
      */
-    suspend fun execute(packet: SteamPacket): SteamPacket
+    @Throws(CMJobDroppedException::class, CMJobTimeoutException::class, CMJobRemoteException::class, CancellationException::class)
+    suspend fun awaitPacket(packet: SteamPacket): SteamPacket
 
     /**
-     * Execute a [SteamPacket] and subscribe for a set of responses. It is the caller responsibility to close the [Flow].
+     * Execute a [SteamPacket] and awaits a protobuf payload.
      */
-    suspend fun subscribe(packet: SteamPacket): Flow<SteamPacket>
+    @Throws(CMJobDroppedException::class, CMJobTimeoutException::class, CMJobRemoteException::class, CancellationException::class)
+    suspend fun <T> awaitProto(packet: SteamPacket, adapter: ProtoAdapter<T>): T
+
+    /**
+     * Execute a [SteamPacket] and awaits multiple protobuf payloads.
+     */
+    @Throws(CMJobDroppedException::class, CMJobTimeoutException::class, CMJobRemoteException::class, CancellationException::class)
+    suspend fun <T> awaitMultipleProto(packet: SteamPacket, adapter: ProtoAdapter<T>, stopIf: (T) -> Boolean): List<T>
 
     /**
      * Execute a [SteamPacket] without waiting for a response.
      */
-    suspend fun executeAndForget(packet: SteamPacket)
+    suspend fun execute(packet: SteamPacket)
+
+    /**
+     * Pauses the client instance. This is used for mobile applications.
+     *
+     * When this is called:
+     * - Steam Network connection will be finished after completing all pending jobs
+     * - new jobs from [async], [asyncProto] and [asyncMultipleProto] calls will immediately result in [bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException]
+     * - new [execute] calls will be ignored
+     */
+    fun pause()
+
+    /**
+     * Resumes the client instance. This is used for mobile applications.
+     *
+     * When this is called:
+     * - Steam Network connection will be attempted
+     * - new jobs from [async], [asyncProto] and [asyncMultipleProto] calls will execute as usual
+     * - new [execute] calls will execute as usual
+     */
+    fun resume()
 
     /**
      * Returns if the client allows the use of CM sockets.

@@ -9,7 +9,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
 /**
  * Builds a [KsLibraryQuery] that can be used in [bruhcollective.itaysonlab.ksteam.handlers.library.Library].
  */
-class KsLibraryQueryBuilder {
+class KsLibraryQueryBuilder constructor() {
     private var appType: MutableList<EAppType> = mutableListOf()
     private var playState: EPlayState? = null
     private var storeCategories: MutableList<List<EStoreCategory>> = mutableListOf()
@@ -22,6 +22,21 @@ class KsLibraryQueryBuilder {
     private var steamDeckMinimumSupport: ESteamDeckSupport = ESteamDeckSupport.Unknown
     private var sortBy: KsLibraryQuerySortBy = KsLibraryQuerySortBy.Name
     private var sortByDirection: KsLibraryQuerySortByDirection = KsLibraryQuerySortByDirection.Ascending
+
+    internal constructor(existing: KsLibraryQuery): this() {
+        appType = existing.appType.toMutableList()
+        playState = existing.playState
+        storeCategories = existing.storeCategories.toMutableList()
+        controllerSupport = existing.controllerSupport
+        searchQuery = existing.searchQuery
+        limit = existing.limit
+        ownerTypeFilter = existing.ownerTypeFilter
+        masterSubPackageId = existing.masterSubPackageId
+        storeTags = existing.storeTags.toMutableList()
+        steamDeckMinimumSupport = existing.steamDeckMinimumSupport
+        sortBy = existing.sortBy
+        sortByDirection = existing.sortByDirection
+    }
 
     /**
      * Adds [EAppType] filter.

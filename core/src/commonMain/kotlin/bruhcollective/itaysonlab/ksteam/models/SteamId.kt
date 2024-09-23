@@ -2,6 +2,8 @@ package bruhcollective.itaysonlab.ksteam.models
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EAccountType
 import bruhcollective.itaysonlab.ksteam.models.enums.EUniverse
+import bruhcollective.itaysonlab.ksteam.serialization.SteamIdSerializer
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
@@ -12,6 +14,7 @@ import kotlin.jvm.JvmInline
  * kSteam provides a SteamID64 implementation.
  */
 @JvmInline
+@Serializable(with = SteamIdSerializer::class)
 value class SteamId(val id: ULong) {
     companion object {
         val Empty = SteamId(0u)
@@ -44,6 +47,7 @@ value class SteamId(val id: ULong) {
 
     val isUser get() = accountType == EAccountType.Individual
     val isClan get() = accountType == EAccountType.Clan
+    val isEmpty get() = id == Empty.id
 
     fun equalsTo(other: SteamId) = other.id == id
 

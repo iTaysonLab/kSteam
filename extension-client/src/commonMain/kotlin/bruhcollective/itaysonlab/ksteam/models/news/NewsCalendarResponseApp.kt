@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class NewsCalendarResponseApp internal constructor(
+internal data class NewsCalendarResponseApp (
     val source: Int,
     @SerialName("appid") val appId: Int,
     @SerialName("last_played") val lastPlayed: Int = 0,

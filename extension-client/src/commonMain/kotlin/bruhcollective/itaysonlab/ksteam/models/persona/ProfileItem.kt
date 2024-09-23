@@ -4,7 +4,7 @@ import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityPubl
 import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 @Immutable
-data class ProfileItem internal constructor(
+data class ProfileItem (
     val imageSmall: String?,
     val imageLarge: String?,
     val name: String,

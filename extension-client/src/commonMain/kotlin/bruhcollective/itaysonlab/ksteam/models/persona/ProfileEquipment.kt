@@ -4,7 +4,7 @@ import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.player.CPlayer_GetProfileItemsEquipped_Response
 
 @Immutable
-data class ProfileEquipment internal constructor(
+data class ProfileEquipment (
     val background: ProfileItem? = null,
     val miniBackground: ProfileItem? = null,
     val avatarFrame: ProfileItem? = null,

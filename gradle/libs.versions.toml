@@ -1,11 +1,12 @@
 [versions]
-kotlin = "2.0.0"
-kotlinx-coroutines = "1.8.0"
-kotlinx-json = "1.7.1"
+kotlin = "2.0.20"
+kotlinx-coroutines = "1.8.1"
+kotlinx-json = "1.7.2"
+kotlinx-atomicfu = "0.25.0"
 agp = "8.2.2"
 ktorClientVersion = "2.3.12"
 okio = "3.9.0"
-realm = "2.1.0"
+realm = "2.3.0"
 wire = "5.0.0"
 dokka = "1.9.20"
 cache4k = "0.13.0"
@@ -14,7 +15,7 @@ cache4k = "0.13.0"
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
+kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "kotlinx-atomicfu" }
 
 android-library = { id = "com.android.library", version.ref = "agp" }
 realm = { id = "io.realm.kotlin", version.ref = "realm" }
@@ -24,7 +25,7 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 [libraries]
 androidx-security-crypto = { module = "androidx.security:security-crypto", version = "1.1.0-alpha06" }
 androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version = "1.1.0-alpha06" }
-androidx-collection = { module = "androidx.collection:collection", version = "1.4.3" }
+androidx-collection = { module = "androidx.collection:collection", version = "1.4.4" }
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinx-json" }

@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.database
 
+import bruhcollective.itaysonlab.ksteam.SteamClient
 import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmPackageLicenses
 import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmRichPresenceDictionary
 import bruhcollective.itaysonlab.ksteam.database.models.persona.RealmPersona
@@ -13,7 +14,6 @@ import bruhcollective.itaysonlab.ksteam.models.pics.PicsPackageChangeNumber
 import io.realm.kotlin.Realm
 import io.realm.kotlin.RealmConfiguration
 import io.realm.kotlin.types.TypedRealmObject
-import okio.Path
 import kotlin.reflect.KClass
 
 /**
@@ -27,7 +27,7 @@ import kotlin.reflect.KClass
  * - cached personas
  */
 internal class KSteamRealmDatabase (
-    private val workingDirectory: Path
+    private val steamClient: SteamClient
 ) {
     private companion object {
         const val FILE_NAME_SHARED = "ks_shared.realm"
@@ -38,21 +38,31 @@ internal class KSteamRealmDatabase (
         fun createUserRealmFileName(id: SteamId) = "ks_$id.realm"
     }
 
-    private var _currentUserRealm: Realm? = null
+    private var _currentUserRealmId: SteamId = steamClient.configuration.autologinSteamId
+    private var _currentUserRealm: Realm? = openAutologinRealm()
 
     internal val sharedRealm: Realm = openSharedRealm()
     internal val isCurrentUserRealmInitialized get() = _currentUserRealm != null
     internal val currentUserRealm: Realm get() = _currentUserRealm ?: error("User Realm was not yet initialized.")
 
     internal fun initializeUserRealm(id: SteamId) {
-        _currentUserRealm?.close()
-        _currentUserRealm = openUserRealm(id)
+        if (_currentUserRealmId != id) {
+            _currentUserRealmId = id
+            _currentUserRealm?.close()
+            _currentUserRealm = openUserRealm(id)
+        }
+    }
+
+    private fun openAutologinRealm(): Realm? {
+        return steamClient.configuration.autologinSteamId.takeIf { it.isEmpty.not() }?.let { steamId ->
+            openUserRealm(steamId)
+        }
     }
 
     private fun openSharedRealm(): Realm {
         return Realm.open(
             RealmConfiguration.Builder(createSharedRealmSchema())
-                .directory(workingDirectory.toString())
+                .directory(steamClient.workingDirectory.toString())
                 .name(FILE_NAME_SHARED)
                 .schemaVersion(SHARED_SCHEMA_VERSION)
                 .deleteRealmIfMigrationNeeded() // TODO: remove when this stabilizes!
@@ -63,7 +73,7 @@ internal class KSteamRealmDatabase (
     private fun openUserRealm(id: SteamId): Realm {
         return Realm.open(
             RealmConfiguration.Builder(createUserRealmSchema())
-                .directory(workingDirectory.toString())
+                .directory(steamClient.workingDirectory.toString())
                 .name(createUserRealmFileName(id))
                 .schemaVersion(USER_SCHEMA_VERSION)
                 .deleteRealmIfMigrationNeeded() // TODO: remove when this stabilizes!

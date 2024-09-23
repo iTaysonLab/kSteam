@@ -55,9 +55,8 @@ internal class Sentry(
                 )
             }
 
-            steamClient.executeAndForget(SteamPacket.newProto(
+            steamClient.execute(SteamPacket.newProto(
                 EMsg.k_EMsgClientUpdateMachineAuthResponse,
-                CMsgClientUpdateMachineAuthResponse.ADAPTER,
                 CMsgClientUpdateMachineAuthResponse(
                     filename = filename,
                     eresult = EResult.OK.encoded,

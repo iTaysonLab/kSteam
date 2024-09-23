@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ClanSummary internal constructor(
+data class ClanSummary (
     val success: Int = 0,
     @SerialName("clanAccountID") val accountId: Int = 0,
     @SerialName("clanSteamIDString") val steamId: String = "",

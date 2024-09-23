@@ -6,7 +6,7 @@ import steam.enums.EProfileCustomizationStyle
 import steam.enums.EProfileCustomizationType
 
 @Immutable
-data class ProfileCustomization internal constructor(
+data class ProfileCustomization (
     val profileWidgets: List<ProfileWidget> = emptyList(),
     val slotsAvailable: Int = 0,
     val profileTheme: ProfileTheme? = null,
@@ -18,7 +18,7 @@ data class ProfileCustomization internal constructor(
 }
 
 @Immutable
-data class ProfileCustomizationEntry internal constructor(
+data class ProfileCustomizationEntry (
     val customizationType: EProfileCustomizationType,
     val level: Int,
     val active: Boolean,
@@ -37,7 +37,7 @@ data class ProfileCustomizationEntry internal constructor(
 }
 
 @Immutable
-data class ProfileCustomizationSlot internal constructor(
+data class ProfileCustomizationSlot (
     val appId: Int,
     val publishedFileId: Long,
     val itemAssetId: Long,
@@ -68,7 +68,7 @@ data class ProfileCustomizationSlot internal constructor(
 }
 
 @Immutable
-data class ProfileTheme internal constructor(
+data class ProfileTheme (
     val themeId: String,
     val title: String
 ) {
@@ -79,7 +79,7 @@ data class ProfileTheme internal constructor(
 }
 
 @Immutable
-data class ProfilePreferences internal constructor(
+data class ProfilePreferences (
     val hideProfileAwards: Boolean
 ) {
     internal constructor(proto: steam.webui.player.ProfilePreferences): this(

@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam.debug
 import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
+import kotlinx.atomicfu.atomic
 import kotlinx.datetime.Clock
 import okio.FileSystem
 import okio.Path
@@ -15,8 +16,8 @@ class PacketDumper internal constructor(
     saveRootFolder: Path,
     private val logger: Logger
 ) {
-    private val sessionFolder = saveRootFolder / "dumps" / Clock.System.now().epochSeconds.toString()
-    private var loggedPacketIndex: Int = 0
+    private val sessionFolder = saveRootFolder / "dumps" / Clock.System.now().toEpochMilliseconds().toString()
+    private val loggedPacketIndex = atomic(0)
 
     var mode: DumpMode = DumpMode.Disable
 
@@ -44,12 +45,10 @@ class PacketDumper internal constructor(
         FileSystem.SYSTEM.apply {
             createDirectories(sessionFolder, mustCreate = false)
 
-            write(file = sessionFolder / "${loggedPacketIndex}_${direction}_${packet.messageId.name.removePrefix("k_")}.bin", mustCreate = true) {
+            write(file = sessionFolder / "${loggedPacketIndex.getAndIncrement()}_${direction}_${packet.messageId.name.removePrefix("k_")}.bin", mustCreate = true) {
                 write(packet.encode())
             }
         }
-
-        loggedPacketIndex++
     }
 
     /**

@@ -5,7 +5,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckSupport
 import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
 
-data class KsLibraryQuery internal constructor(
+data class KsLibraryQuery (
     val appType: List<EAppType>,
     val playState: EPlayState?,
     val storeCategories: List<List<EStoreCategory>>,
@@ -18,5 +18,9 @@ data class KsLibraryQuery internal constructor(
     val steamDeckMinimumSupport: ESteamDeckSupport,
     val sortBy: KsLibraryQuerySortBy,
     val sortByDirection: KsLibraryQuerySortByDirection
-)
+) {
+    fun newBuilder(): KsLibraryQueryBuilder {
+        return KsLibraryQueryBuilder(this)
+    }
+}
 

@@ -153,7 +153,9 @@ class Pics internal constructor(
                     )
                 }
             ), selector = CMsgClientPICSProductInfoResponse::packages
-        ).collect(::writePicsPackageChunk)
+        ).also {
+            writePicsPackageChunk(it)
+        }
     }
 
     // This is trying to mimic Steam client behavior
@@ -165,13 +167,12 @@ class Pics internal constructor(
             .distinct()
 
         // We request app tokens to access any metadata at all
-        val tokens = steamClient.execute(
+        val tokens = steamClient.awaitProto(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
-                adapter = CMsgClientPICSAccessTokenRequest.ADAPTER,
                 payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
-            )
-        ).payload.let(CMsgClientPICSAccessTokenResponse.ADAPTER::decode).app_access_tokens.filter { token ->
+            ), adapter = CMsgClientPICSAccessTokenResponse.ADAPTER
+        ).app_access_tokens.filter { token ->
             token.appid != null
         }.associate {
             it.appid!! to it.access_token
@@ -199,7 +200,9 @@ class Pics internal constructor(
                     CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
                 }
             ), selector = CMsgClientPICSProductInfoResponse::apps
-        ).collect(::writePicsAppChunk)
+        ).also {
+            writePicsAppChunk(it)
+        }
     }
 
     private suspend fun partiallyRefreshAppIds(tokens: Map<Int, Long?>) {
@@ -214,7 +217,7 @@ class Pics internal constructor(
                     CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
                 }
             ), selector = CMsgClientPICSProductInfoResponse::apps
-        ).collect { metadataChunk ->
+        ).also { metadataChunk ->
             // Here, we diff the change numbers and note what apps we are missing in the DB
             for (appInfo in metadataChunk) {
                 val appId = appInfo.appid ?: continue
@@ -254,25 +257,23 @@ class Pics internal constructor(
                     CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = tokens[appId])
                 }
             ), selector = CMsgClientPICSProductInfoResponse::apps
-        ).collect(::writePicsAppChunk)
+        ).also {
+            writePicsAppChunk(it)
+        }
     }
 
     private suspend fun <T> picsFlow(
         request: CMsgClientPICSProductInfoRequest,
         selector: (CMsgClientPICSProductInfoResponse) -> List<T>
-    ): Flow<List<T>> {
-        return steamClient.subscribe(
-            SteamPacket.newProto(
+    ): List<T> {
+        return steamClient.awaitMultipleProto(
+            packet = SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
-                adapter = CMsgClientPICSProductInfoRequest.ADAPTER,
                 payload = request
-            )
-        ).transformWhile { packet ->
-            CMsgClientPICSProductInfoResponse.ADAPTER.decode(packet.payload).let { response ->
-                emit(selector(response))
-                response.response_pending ?: false
+            ), adapter = CMsgClientPICSProductInfoResponse.ADAPTER, stopIf = { response ->
+                response.response_pending == null || response.response_pending == false
             }
-        }
+        ).flatMap(transform = selector)
     }
 
     private suspend fun writePicsPackageChunk(

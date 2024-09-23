@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-class NewsJsonData internal constructor(
+internal class NewsJsonData (
     @SerialName("localized_subtitle")
     val subtitles: List<String?> = emptyList(),
     @SerialName("localized_summary")

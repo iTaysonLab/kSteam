@@ -4,14 +4,19 @@ import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EPublishedFileInfoMatchingFileType
+import bruhcollective.itaysonlab.ksteam.models.enums.EPublishedFileQueryType
 import bruhcollective.itaysonlab.ksteam.models.enums.EWorkshopFileType
 import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
+import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFileApplication
+import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFilesContainer
+import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFilesQueryContainer
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
-import bruhcollective.itaysonlab.ksteam.util.SteamRpcException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import okio.IOException
 import steam.webui.publishedfile.CPublishedFile_GetDetails_Request
 import steam.webui.publishedfile.CPublishedFile_GetUserFiles_Request
+import steam.webui.publishedfile.CPublishedFile_QueryFiles_Request
 import steam.webui.publishedfile.PublishedFileDetails
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -23,51 +28,41 @@ class PublishedFiles internal constructor(
 ) {
     /**
      * Queries all public files of a specific [AppId].
-     */
-    @Throws(SteamRpcException::class, IOException::class, CancellationException::class)
-    suspend fun queryFiles() {
-        TODO()
-    }
-
-    /**
-     * Queries the list of apps for which [SteamId] have files.
      *
-     * @param steamId Steam ID of a person
-     * @param fileType type of files to filter
-     * @param browseFilter browsing filter - created or added to favorites
-     *
-     * @return the list of apps
+     * @param appId [AppId] of a requested app
+     * @param fileType file type that should be returned
+     * @param count how many items to return, limit is 1000
+     * @param queryType search cursor, default is '*' and represents first page
+     * @param cursor search cursor, default is '*' and represents first page
+     * @param
      */
-    @Throws(SteamRpcException::class, IOException::class, CancellationException::class)
-    suspend fun getFilesAppList(
-        steamId: SteamId,
+    @Throws(CMJobRemoteException::class, IOException::class, CancellationException::class)
+    suspend fun queryFiles(
+        appId: AppId,
         fileType: EPublishedFileInfoMatchingFileType,
-        browseFilter: PersonalBrowseFilter = PersonalBrowseFilter.Created
-    ): List<PublishedFileApplication> {
-        val type = when (browseFilter) {
-            PersonalBrowseFilter.Created -> "myfiles"
-            PersonalBrowseFilter.Favorites -> "myfavorites"
-        }
-
-        return steamClient.grpc.publishedFile.GetUserFiles().executeSteam(
-            data = CPublishedFile_GetUserFiles_Request(
-                steamid = steamId.longId,
-                appid = 0,
-                filetype = fileType.ordinal,
-                numperpage = 1,
-                type = type,
-                sortmethod = "lastupdated",
-                return_kv_tags = false,
-                return_metadata = false,
-                return_previews = false,
-                return_apps = true,
-                return_short_description = false,
-                return_tags = false,
-                return_reactions = false
+        count: Int,
+        queryType: EPublishedFileQueryType = EPublishedFileQueryType.RankedByTrend,
+        cursor: String = "*",
+        searchText: String? = null,
+    ): PublishedFilesQueryContainer {
+        val response = steamClient.grpc.publishedFile.QueryFiles().executeSteam(
+            data = CPublishedFile_QueryFiles_Request(
+                appid = appId.value,
+                query_type = queryType.ordinal,
+                cursor = cursor,
+                filetype = EPublishedFileInfoMatchingFileType.WebGuides.ordinal,
+                return_kv_tags = true,
+                return_details = true,
+                return_metadata = true,
+                return_previews = true,
+                return_reactions = true,
+                return_short_description = true,
+                return_vote_data = true,
+                numperpage = 20
             )
-        ).apps.mapNotNull { app ->
-            PublishedFileApplication(id = AppId(app.appid ?: return@mapNotNull null), name = app.name ?: return@mapNotNull null)
-        }
+        )
+
+        return TODO()
     }
 
     /**
@@ -81,10 +76,11 @@ class PublishedFiles internal constructor(
      * @param sortOrder sorting order
      * @param privacyFilter file visibility filter
      * @param browseFilter browsing filter - created or added to favorites
+     * @param returnApps return application information
      *
-     * @return the list of files
+     * @return the object with total list of apps, published files related to them and total amount of queried files
      */
-    @Throws(SteamRpcException::class, IOException::class, CancellationException::class)
+    @Throws(CMJobRemoteException::class, IOException::class, CancellationException::class)
     suspend fun getFiles(
         steamId: SteamId,
         fileType: EPublishedFileInfoMatchingFileType,
@@ -94,7 +90,8 @@ class PublishedFiles internal constructor(
         sortOrder: PersonalSortOrder = PersonalSortOrder.LastUpdated,
         privacyFilter: PersonalPrivacyFilter = PersonalPrivacyFilter.Everything,
         browseFilter: PersonalBrowseFilter = PersonalBrowseFilter.Created,
-    ): List<PublishedFile> {
+        returnApps: Boolean = true,
+    ): PublishedFilesContainer {
         val sort = when (sortOrder) {
             PersonalSortOrder.MostPopular -> "score"
             PersonalSortOrder.NewestFirst -> "newestfirst"
@@ -115,7 +112,7 @@ class PublishedFiles internal constructor(
             PersonalBrowseFilter.Favorites -> "myfavorites"
         }
 
-        return steamClient.grpc.publishedFile.GetUserFiles().executeSteam(
+        val response = steamClient.grpc.publishedFile.GetUserFiles().executeSteam(
             data = CPublishedFile_GetUserFiles_Request(
                 steamid = steamId.longId,
                 appid = appId?.value ?: 0,
@@ -127,12 +124,20 @@ class PublishedFiles internal constructor(
                 return_kv_tags = true,
                 return_metadata = true,
                 return_previews = true,
-                return_apps = false,
-                return_short_description = true,
+                return_apps = returnApps,
                 return_tags = true,
                 return_reactions = true
             )
-        ).publishedfiledetails.map(::mapProtoToKs)
+        )
+
+        return PublishedFilesContainer(
+            apps = response.apps.mapNotNull { app ->
+                PublishedFileApplication(id = AppId(app.appid ?: return@mapNotNull null), name = app.name ?: return@mapNotNull null)
+            },
+            files = response.publishedfiledetails.map(::mapProtoToKs),
+            total = response.total ?: 0,
+            startIndex = response.startindex ?: 0
+        )
     }
 
     /**
@@ -143,7 +148,7 @@ class PublishedFiles internal constructor(
      *
      * @return a list of resolved files
      */
-    @Throws(SteamRpcException::class, IOException::class, CancellationException::class)
+    @Throws(CMJobRemoteException::class, IOException::class, CancellationException::class)
     suspend fun getDetails(
         appId: Int,
         fileIds: List<Long>
@@ -169,14 +174,19 @@ class PublishedFiles internal constructor(
             fileName = file.filename.orEmpty(),
             appId = AppId(file.consumer_appid ?: 0),
             appName = file.app_name.orEmpty(),
-            likes = file.favorited ?: 0,
+            favorites = file.favorited ?: 0,
+            votesUp = file.vote_data?.votes_up ?: 0,
+            votesDown = file.vote_data?.votes_down ?: 0,
+            voteScore = file.vote_data?.score ?: 0f,
             comments = file.num_comments_public ?: 0,
             views = file.views ?: 0,
             fileSize = file.file_size ?: 0L,
             previewFileSize = file.preview_file_size ?: 0L,
             markedAsSpoiler = file.spoiler_tag == true,
             canBeDeleted = file.can_be_deleted == true,
-            tags = file.kvtags.associate { it.key.orEmpty() to it.value_.orEmpty() },
+            kvTags = file.kvtags.associate { it.key.orEmpty() to it.value_.orEmpty() },
+            tags = file.tags.map { PublishedFile.SharedInformation.WorkshopTag(tag = it.tag.orEmpty(), displayName = it.display_name.orEmpty()) },
+            description = file.file_description ?: file.short_description.orEmpty(),
             reactions = file.reactions.mapNotNull { reaction ->
                 PublishedFile.SharedInformation.ReactionCount(
                     id = reaction.reactionid ?: return@mapNotNull null,
@@ -205,11 +215,6 @@ class PublishedFiles internal constructor(
             }
         }
     }
-
-    data class PublishedFileApplication(
-        val id: AppId,
-        val name: String
-    )
 
     enum class PersonalSortOrder {
         MostPopular,

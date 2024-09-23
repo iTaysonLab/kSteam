@@ -1,7 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.util
 
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages.SteamGrpcCall
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobTimeoutException
 import com.squareup.wire.GrpcCall
 import kotlinx.coroutines.CancellationException
 import okio.IOException
@@ -36,14 +38,6 @@ private fun <S: Any, R: Any> GrpcCall<S, R>.markAsWeb() = apply {
 }
 
 /**
- * This exception is thrown if [SteamGrpcCall]'s execute method returns unsuccessful result.
- */
-class SteamRpcException(
-    val method: String,
-    val result: EResult
-): Exception("Steam RPC method $method failed: $result")
-
-/**
  * Executes this [GrpcCall] as a Steam call.
  *
  * Differences from an arbitrary execution:
@@ -59,7 +53,7 @@ class SteamRpcException(
  * @throws IllegalArgumentException if [GrpcCall] is not [SteamRpcException]
  * @return response protobuf message
  */
-@Throws(SteamRpcException::class, IllegalArgumentException::class, IOException::class, CancellationException::class)
+@Throws(CMJobDroppedException::class, CMJobTimeoutException::class, CMJobRemoteException::class, IllegalArgumentException::class, IOException::class, CancellationException::class)
 suspend fun <S: Any, R: Any> GrpcCall<S, R>.executeSteam(
     data: S,
     anonymous: Boolean = false,

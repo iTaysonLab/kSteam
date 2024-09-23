@@ -112,10 +112,10 @@ class Persona internal constructor(
         if (_currentPersonaOnlineStatus.value == mode) return
 
         _currentPersonaOnlineStatus.value = mode
-        steamClient.executeAndForget(
+
+        steamClient.execute(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientChangeStatus,
-                adapter = CMsgClientChangeStatus.ADAPTER,
                 payload = CMsgClientChangeStatus(
                     persona_state = mode.ordinal,
                     persona_state_flags = stateFlags
@@ -178,9 +178,8 @@ class Persona internal constructor(
             "Requesting persona states for: ${ids.joinToString { it.id.toString() }}"
         }
 
-        steamClient.executeAndForget(SteamPacket.newProto(
+        steamClient.execute(SteamPacket.newProto(
             messageId = EMsg.k_EMsgClientRequestFriendData,
-            adapter = CMsgClientRequestFriendData.ADAPTER,
             payload = CMsgClientRequestFriendData(
                 persona_state_requested = EClientPersonaStateFlag.Default,
                 friends = ids.map { it.id.toLong() }

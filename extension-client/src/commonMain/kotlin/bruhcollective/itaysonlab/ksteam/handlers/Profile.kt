@@ -184,10 +184,8 @@ class Profile internal constructor(
             requestMyEquipment()
         }
 
-        steamClient.onRpc("PlayerClient.NotifyFriendEquippedProfileItemsChanged#1") { packet ->
-            val accountIdContainer = CPlayer_FriendEquippedProfileItemsChanged_Notification.ADAPTER.decode(packet.payload)
-
-            steamClient.logger.logDebug("Profile:RpcEvent") { "Received NotifyFriendEquippedProfileItemsChanged, target account id: ${accountIdContainer?.accountid} [current account id: ${steamClient.currentSessionSteamId.accountId}]" }
+        steamClient.onTypedRpc("PlayerClient.NotifyFriendEquippedProfileItemsChanged#1", CPlayer_FriendEquippedProfileItemsChanged_Notification.ADAPTER) { accountIdContainer ->
+            steamClient.logger.logDebug("Profile:RpcEvent") { "Received NotifyFriendEquippedProfileItemsChanged, target account id: ${accountIdContainer.accountid} [current account id: ${steamClient.currentSessionSteamId.accountId}]" }
 
             if (accountIdContainer.accountid == steamClient.currentSessionSteamId.accountId) {
                 requestMyEquipment()
