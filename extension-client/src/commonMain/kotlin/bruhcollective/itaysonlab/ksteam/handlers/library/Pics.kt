@@ -118,13 +118,18 @@ class Pics internal constructor(
             }
         }
 
-        withContext(Dispatchers.Default) {
-            updatePackagesMetadata(requiresUpdate)
-            checkAppsIntegrity(licenses)
-            writeAccountSpecificLicenseInformation(licenses)
+        runCatching {
+            withContext(Dispatchers.Default) {
+                updatePackagesMetadata(requiresUpdate)
+                checkAppsIntegrity(licenses)
+                writeAccountSpecificLicenseInformation(licenses)
+            }
+        }.onFailure { e ->
+            steamClient.logger.logError("Pics:HandleLicenses") { "There was an error while initializing the PICS subsystem: ${e.message}. Already cached data is available." }
+            e.printStackTrace()
+        }.onSuccess {
+            steamClient.logger.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
         }
-
-        steamClient.logger.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
 
         _isPicsAvailable.value = PicsState.Ready
     }
