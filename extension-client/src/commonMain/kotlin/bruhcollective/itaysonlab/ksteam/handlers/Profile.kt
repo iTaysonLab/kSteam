@@ -174,8 +174,10 @@ class Profile internal constructor(
     suspend fun getProfileSummary(steamId: SteamId) = getProfileSummaries(listOf(steamId)).first()
 
     private suspend fun requestMyEquipment() {
-        _currentProfileEquipment.update {
-            getEquipment(steamClient.currentSessionSteamId)
+        runCatching {
+            _currentProfileEquipment.update {
+                getEquipment(steamClient.currentSessionSteamId)
+            }
         }
     }
 
