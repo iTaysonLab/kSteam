@@ -271,16 +271,18 @@ class Account internal constructor(
 
         val sentryFileHash = sentry.sentryHash(steamId)
 
-        val currentIp = when (steamClient.authPrivateIpLogic) {
-            AuthPrivateIpLogic.UsePrivateIp -> {
-                convertToCmIpV4(getIpv4Address())
-            }
+        val currentIp = withContext(Dispatchers.IO) {
+            when (steamClient.authPrivateIpLogic) {
+                AuthPrivateIpLogic.UsePrivateIp -> {
+                    convertToCmIpV4(getIpv4Address())
+                }
 
-            AuthPrivateIpLogic.Generate -> {
-                convertToCmIpV4(generateIpV4Int())
-            }
+                AuthPrivateIpLogic.Generate -> {
+                    convertToCmIpV4(generateIpV4Int())
+                }
 
-            AuthPrivateIpLogic.None -> null
+                AuthPrivateIpLogic.None -> null
+            }
         }
 
         steamClient.execute(SteamPacket.newProto(
