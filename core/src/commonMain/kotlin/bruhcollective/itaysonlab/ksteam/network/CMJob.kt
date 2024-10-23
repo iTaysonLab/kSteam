@@ -12,28 +12,29 @@ import kotlinx.coroutines.CompletableDeferred
  * A "job" describes a Steam Network request.
  */
 internal sealed interface CMJob <T> {
-    val id: CMJobId
+    val information: CMJobInformation
+
     val deferred: CompletableDeferred<T>
 
     fun accept(packet: SteamPacket): Boolean
 
     fun failRemote(result: EResult) {
-        deferred.completeExceptionally(CMJobRemoteException(id, result))
+        deferred.completeExceptionally(CMJobRemoteException(information, result))
     }
 
     fun failTimeout() {
-        deferred.completeExceptionally(CMJobTimeoutException(id))
+        deferred.completeExceptionally(CMJobTimeoutException(information))
     }
 
-    fun failDropped() {
-        deferred.completeExceptionally(CMJobDroppedException(id))
+    fun failDropped(reason: CMJobDroppedException.Reason) {
+        deferred.completeExceptionally(CMJobDroppedException(information, reason))
     }
 
     /**
      * A single job instance that consumes a [ByteArray].
      */
     data class Single (
-        override val id: CMJobId
+        override val information: CMJobInformation
     ): CMJob<SteamPacket> {
         override val deferred = CompletableDeferred<SteamPacket>()
 
@@ -47,7 +48,7 @@ internal sealed interface CMJob <T> {
      * A single job instance that consumes a protobuf message.
      */
     data class SingleProtobuf <T> (
-        override val id: CMJobId,
+        override val information: CMJobInformation,
         val adapter: ProtoAdapter<T>
     ): CMJob<T> {
         override val deferred: CompletableDeferred<T> = CompletableDeferred()
@@ -62,7 +63,7 @@ internal sealed interface CMJob <T> {
      * A multiple job instance that consumes a protobuf message.
      */
     data class MultipleProtobuf <T> (
-        override val id: CMJobId,
+        override val information: CMJobInformation,
         val adapter: ProtoAdapter<T>,
         val stopIf: (T) -> Boolean
     ): CMJob<List<T>> {

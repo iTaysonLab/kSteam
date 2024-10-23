@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.network.exception
 
-import bruhcollective.itaysonlab.ksteam.network.CMJobId
+import bruhcollective.itaysonlab.ksteam.network.CMJobInformation
 
 /**
  * The CM job was dropped.
@@ -11,11 +11,12 @@ import bruhcollective.itaysonlab.ksteam.network.CMJobId
  * - if CMClient loses connection with Steam servers
  */
 class CMJobDroppedException(
-    val id: CMJobId
-): IllegalStateException("The job $id was dropped.") {
+    info: CMJobInformation,
+    reason: Reason,
+): IllegalStateException("dropped $info [reason = ${reason.name}]") {
     enum class Reason {
         NetworkPaused,
-        ConnectionLost,
-        
+        WsSessionUnavailable,
+        WsConnectionDropped,
     }
 }

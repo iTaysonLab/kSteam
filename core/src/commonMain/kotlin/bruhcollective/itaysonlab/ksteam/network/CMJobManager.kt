@@ -2,8 +2,8 @@ package bruhcollective.itaysonlab.ksteam.network
 
 import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
+import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
 import io.ktor.util.collections.ConcurrentMap
 import kotlinx.atomicfu.atomic
 
@@ -29,8 +29,7 @@ internal class CMJobManager (
      * Adds a job into a job manager.
      */
     fun postJob(job: CMJob<*>) {
-        logger.logVerbose("CMJobManager") { "Posting job ${job.id}" }
-        currentJobs.put(job.id, job)
+        currentJobs.put(job.information.id, job)
     }
 
     /**
@@ -43,7 +42,7 @@ internal class CMJobManager (
         val jobId = packet.header.targetJobId
         val job = currentJobs[jobId] ?: return false
 
-        logger.logVerbose("CMJobManager") { "Completing job ${job.id} [result = ${packet.result} | jobName = ${(packet.header as? SteamPacketHeader.Protobuf)?.targetJobName}]" }
+        logger.logVerbose("CMJobManager") { "completing ${job.information} [result = ${packet.result}]" }
 
         if (packet.result == EResult.OK || packet.result == EResult.Invalid) {
             runCatching {
@@ -54,7 +53,6 @@ internal class CMJobManager (
                 currentJobs.remove(jobId)
             }
         } else {
-            logger.logVerbose("CMJobManager") { packet.payload.toHexString() }
             job.failRemote(packet.result)
             currentJobs.remove(jobId)
         }
@@ -62,8 +60,8 @@ internal class CMJobManager (
         return true
     }
 
-    fun dropAllJobs() {
-        currentJobs.values.onEach(CMJob<*>::failDropped)
+    fun dropAllJobs(reason: CMJobDroppedException.Reason) {
+        currentJobs.values.onEach { it.failDropped(reason) }
         currentJobs.clear()
     }
 }

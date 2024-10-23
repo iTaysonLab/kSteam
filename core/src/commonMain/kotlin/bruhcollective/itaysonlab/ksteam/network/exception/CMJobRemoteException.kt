@@ -1,12 +1,12 @@
 package bruhcollective.itaysonlab.ksteam.network.exception
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.network.CMJobId
+import bruhcollective.itaysonlab.ksteam.network.CMJobInformation
 
 /**
  * The server returned an error for the CM job.
  */
 class CMJobRemoteException (
-    val id: CMJobId,
+    info: CMJobInformation,
     val result: EResult
-): IllegalStateException("The job $id failed with a result: $result")
+): IllegalStateException("remote $info [result = ${result.name}]")
