@@ -42,7 +42,7 @@ class Persona internal constructor(
         val ksPersona = Persona(friend)
         val ksPersonaStatus = ksPersona.status
 
-        /*val inSteamDisplayText = if (ksPersonaStatus is Persona.Status.InGame) {
+        val inSteamDisplayText = if (ksPersonaStatus is Persona.Status.InGame) {
             richPresenceFormatter.formatRichPresenceText(
                 appid = ksPersonaStatus.appId,
                 language = steamClient.language,
@@ -50,20 +50,20 @@ class Persona internal constructor(
             )
         } else {
             null
-        }*/
+        }
 
         database.currentUserRealm.write {
             val existingManagedRealmPersona = query<RealmPersona>("id == $0", ksPersona.id.longId).first().find()
 
             if (existingManagedRealmPersona != null) {
-                existingManagedRealmPersona.merge(ksPersona)
+                existingManagedRealmPersona.also { it.merge(ksPersona) }
             } else {
                 copyToRealm(RealmPersona(ksPersona))
+            }.also { dbPersona ->
+                if (inSteamDisplayText != null) {
+                    dbPersona.status?.steamDisplayText = inSteamDisplayText
+                }
             }
-        }
-
-        if (ksPersona.status is Persona.Status.InGame) {
-            // Dispatch
         }
     }
 
@@ -195,7 +195,7 @@ class Persona internal constructor(
         }
 
         steamClient.on(EMsg.k_EMsgClientClanState) { packet ->
-            steamClient.logger.logVerbose("Persona-ClanState") {
+            steamClient.logger.logWarning("Persona-ClanState") {
                 CMsgClientClanState.ADAPTER.decode(packet.payload).toString()
             }
         }
