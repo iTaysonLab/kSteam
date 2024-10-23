@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.enums
 
-enum class EUserNewsType (val mask: Int, internal val apiEnum: Int) {
+enum class EUserNewsType (val mask: Int, val apiEnum: Int) {
     FriendAdded(1, 1),
     AchievementUnlocked(2, 2),
     ReceivedNewGame(4, 3),
@@ -36,7 +36,7 @@ enum class EUserNewsType (val mask: Int, internal val apiEnum: Int) {
     FilePublished_Screenshot_Tagged(0, 21);
 
     companion object {
-        fun byApiEnum(apiEnum: Int) = EUserNewsType.values().firstOrNull { it.apiEnum == apiEnum }
+        fun byApiEnum(apiEnum: Int) = EUserNewsType.entries.firstOrNull { it.apiEnum == apiEnum }
     }
 }
 

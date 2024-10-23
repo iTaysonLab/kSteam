@@ -12,6 +12,7 @@ import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import steam.webui.player.CPlayer_GetPostedStatus_Request
 import steam.webui.usernews.CUserNews_GetUserNews_Request
 import kotlin.time.measureTimedValue
 
@@ -80,6 +81,7 @@ class UserNews internal constructor(
         val totalClanAnnouncementIds = mutableListOf<Long>()
 
         val publishedFiles = mutableMapOf<Int, MutableList<Long>>()
+        val totalPostedStatuses = mutableListOf<Pair<Long, Long>>()
 
         measure("getUserNews:mapIds") {
             newsProto.news.asSequence().filter { event ->
@@ -110,6 +112,10 @@ class UserNews internal constructor(
                         mutableListOf()
                     }.add(event.publishedfileid!!)
                 }
+
+                if (event.eventtype == EUserNewsType.UserStatus.apiEnum && event.gameid != null && event.steamid_target != 0L) {
+                    totalPostedStatuses += ((event.steamid_target ?: 0) to (event.steamid_actor ?: 0))
+                }
             }
         }
 
@@ -126,7 +132,7 @@ class UserNews internal constructor(
 
             val userMapRequest = async {
                 measure("getUserNews:getProfileSummaries") {
-                    steamClient.profile.getProfileSummaries(totalSteamIds).associateBy { it.id }
+                    steamClient.profile.getProfileSummaries(totalUserIds.distinctBy(SteamId::id)).associateBy { it.id }
                 }
             }
 
@@ -138,9 +144,25 @@ class UserNews internal constructor(
                 }
             }
 
+            val userStatusMapRequests = async {
+                measure("getUserNews:getPostedStatuses") {
+                    totalPostedStatuses.map { (postId, steamId) ->
+                        steamClient.grpc.player.GetPostedStatus().executeSteam(
+                            data = CPlayer_GetPostedStatus_Request(
+                                steamid = steamId,
+                                postid = postId,
+                            )
+                        )
+                    }.associateBy {
+                       it.postid ?: 0
+                    }
+                }
+            }
+
             val summariesMap = summariesMapRequest.await()
             val userMap = userMapRequest.await()
             val publishedFileMap = publishedFileMapRequest.await()
+            val userStatusMap = userStatusMapRequests.await()
 
             // val announcementMap = getEventDetails(eventIds = totalClanAnnouncementIds, clanIds = totalClanSteamIds).associateBy { it.gid }
 
@@ -177,6 +199,19 @@ class UserNews internal constructor(
                             app = appSummary,
                             persona = actorPersona,
                             achievements = achievements
+                        )
+                    }
+
+                    EUserNewsType.UserStatus -> {
+                        val appSummary = summariesMap[event.gameid?.toInt() ?: continue] ?: continue
+                        val postStatus = userStatusMap[event.steamid_target ?: continue] ?: continue
+
+                        ActivityFeedEntry.PostedStatus(
+                            date = eventDate,
+                            app = appSummary,
+                            persona = actorPersona,
+                            postId = postStatus.postid ?: 0,
+                            text = postStatus.status_text.orEmpty(),
                         )
                     }
 
@@ -296,9 +331,34 @@ class UserNews internal constructor(
         /**
          * Mimics what is shown in "Friend Activity" webpage
          *
+         * According to Steam:
+         * -- Friends
+         * - adds a friend [FriendAdded]
+         * - earns achievements [AchievementUnlocked]
+         * - buys/preorders a game [ReceivedNewGame]
+         * - joins group [JoinedGroup]
+         * - creates group [GroupCreated]
+         * - adds to wishlist [AddedGameToWishlist]
+         * - publishes a review [RecommendedGame]
+         * - publishes a screenshot [FilePublished_Screenshot]
+         * - publishes a video [FilePublished_Video]
+         * - favorites a workshop item (guides)
+         * - [PlayedGameFirstTime], [UserStatus] (not on web settings)
+         *
+         * -- Groups (skipped)
+         * -- Workshop (skipped)
+         *
+         * -- Curators
+         * - recommends a game [CuratorRecommendedGame]
+         *
+         * -- Workshop / Users (skipped)
+         *
+         * -- When I
+         * - was tagged on a screenshot [FilePublished_Screenshot_Tagged]
+         *
          * Shows: unlocked achievements, published screenshots + videos, user status ("Post about this game"), new user + curator reviews, wishlist additions, first-time play, added/removed friends
          */
-        val FriendActivity = AppOverviewList + EUserNewsType.FriendAdded + EUserNewsType.FriendRemoved
+        val FriendActivity = AppOverviewList + EUserNewsType.FriendAdded + EUserNewsType.FriendRemoved + EUserNewsType.UserStatus + EUserNewsType.RecommendedGame + EUserNewsType.CuratorRecommendedGame
     }
 
     private inline fun <T> measure(label: String, func: () -> T): T {

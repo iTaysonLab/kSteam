@@ -143,6 +143,22 @@ sealed class ActivityFeedEntry (
     }
 
     /**
+     * A user has posted a status about the game.
+     */
+    @Immutable
+    class PostedStatus(
+        date: Int,
+        val postId: Long,
+        val persona: SummaryPersona,
+        val app: AppSummary,
+        val text: String
+    ): ActivityFeedEntry(id = buildId(date, persona, "ps_${app.id}_${postId}"), date) {
+        override fun toString(): String {
+            return "PostedStatus(date=$date, postId=$postId, persona=$persona, app=$app, text=$text)"
+        }
+    }
+
+    /**
      * kSteam does not know about this event.
      */
     @Immutable
