@@ -25,7 +25,14 @@ internal fun compileKsLibraryQueryToSql(query: KsLibraryQuery): RoomRawQuery {
 
         var shouldJoinWithTags: Boolean = appendViewTagsQuery(query)
 
-        if (this[lastIndex] == ',') deleteAt(lastIndex)
+        if (!shouldJoinWithTags) {
+            if (!shouldJoinWithCategories) {
+                deleteRange(lastIndex - 1, lastIndex + 1)
+            } else {
+                deleteRange(lastIndex, lastIndex + 1)
+            }
+        }
+
         appendLine()
 
         // == SELECTION
@@ -127,7 +134,7 @@ private fun StringBuilder.appendViewAppQuery(query: KsLibraryQuery, addBind: (Sq
                 addBind(SqlBindValue.String(type.vdfName))
             }
 
-            deleteAt(lastIndex)
+            deleteRange(lastIndex, lastIndex + 1)
             append(')')
         }
 
