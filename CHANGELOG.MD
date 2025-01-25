@@ -1,3 +1,17 @@
+## r41
+
+- **Rewritten network communication!** Inspired by job system in other Steam Network clients, the CMJob system in kSteam allows for more streamlined experience and better stability when working with the Steam Network.
+- - kSteam also introduces **Streaming CM Jobs**, which allow for processing every received part of a multi-message job, instead of collecting to List first. This really helps with PICS, where this new method greatly reduces memory usage on updates.
+- **Major PICS rewrite!** The whole database is now powered by Room (SQLite ORM by Google), which enables following things:
+- - Kotlin 2.1 support and beyond (Realm is currently "frozen")
+- - More platforms supported (kSteam still primarily supports only JVM + Android)
+- - Rewritten startup sequence, which should be more accurate in multi-user environments
+- - A lot of internal DB objects were rewritten from scratch to improve performance and decrease memory usage
+- **Jetpack Compose bindings removed.** Refer to `Jetpack Compose` section on README on how to improve stability when using kSteam models in `@Composable`.
+- **Synchronized Protobuf files and dependencies.**
+- `UserNews`: statuses support
+- `Account`: IP fetching is now on separate thread to "fix" NetworkOnMainThreadException on Android
+
 ## r40
 
 - **kSteam Library Queries!** This all-new system interops with Steam Library Collections (while adding new filters), allowing to fetch user's game library with play time and license support.
