@@ -1,0 +1,748 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "cd915b9cd3aa29188f29c696132e63ec",
+    "entities": [
+      {
+        "tableName": "entry_app",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `change_number` INTEGER NOT NULL, `access_token` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changeNumber",
+            "columnName": "change_number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accessToken",
+            "columnName": "access_token",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "entry_package",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `change_number` INTEGER NOT NULL, `access_token` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "changeNumber",
+            "columnName": "change_number",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "accessToken",
+            "columnName": "access_token",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "app_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `master_sub` INTEGER, `deck_compat` INTEGER NOT NULL, `controller` TEXT NOT NULL, `steam_release_date` INTEGER NOT NULL, `metacritic_score` INTEGER, `review_score` INTEGER NOT NULL, `icon` TEXT, `logo` TEXT, `clienticon` TEXT, `dlcforappid` INTEGER, `community_visible_stats` INTEGER NOT NULL, `community_hub_visible` INTEGER NOT NULL, `releasestate` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry_app`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "masterSubPackageId",
+            "columnName": "master_sub",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "steamDeckCompat",
+            "columnName": "deck_compat",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "controllerSupport",
+            "columnName": "controller",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "steamReleaseDate",
+            "columnName": "steam_release_date",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "metacriticScore",
+            "columnName": "metacritic_score",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "reviewScore",
+            "columnName": "review_score",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "iconId",
+            "columnName": "icon",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "logoId",
+            "columnName": "logo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "clientIconId",
+            "columnName": "clienticon",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dlcForAppId",
+            "columnName": "dlcforappid",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "hasStats",
+            "columnName": "community_visible_stats",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "hasContentHub",
+            "columnName": "community_hub_visible",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "releaseState",
+            "columnName": "releasestate",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "AppInfoByName",
+            "unique": false,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `AppInfoByName` ON `${TABLE_NAME}` (`name`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "entry_app",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_info_categories",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` INTEGER NOT NULL, `category_id` INTEGER NOT NULL, PRIMARY KEY(`app_id`, `category_id`), FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "app_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "category_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "app_id",
+            "category_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_app_info_categories_app_id",
+            "unique": false,
+            "columnNames": [
+              "app_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_categories_app_id` ON `${TABLE_NAME}` (`app_id`)"
+          },
+          {
+            "name": "index_app_info_categories_category_id",
+            "unique": false,
+            "columnNames": [
+              "category_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_categories_category_id` ON `${TABLE_NAME}` (`category_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "app_info",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "app_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_info_loc_assets",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` INTEGER NOT NULL, `lang` TEXT NOT NULL, `name` TEXT, `small_capsule` TEXT, `library_hero_path` TEXT, `library_hero_path_2x` TEXT, `library_hero_blur_path` TEXT, `library_hero_blur_path_2x` TEXT, `library_logo_path` TEXT, `library_logo_path_2x` TEXT, `library_capsule_path` TEXT, `library_capsule_path_2x` TEXT, `library_header_path` TEXT, `library_header_path_2x` TEXT, PRIMARY KEY(`app_id`, `lang`), FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "app_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "smallCapsule",
+            "columnName": "small_capsule",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryHero.path",
+            "columnName": "library_hero_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryHero.path2x",
+            "columnName": "library_hero_path_2x",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryHeroBlur.path",
+            "columnName": "library_hero_blur_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryHeroBlur.path2x",
+            "columnName": "library_hero_blur_path_2x",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryLogo.path",
+            "columnName": "library_logo_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryLogo.path2x",
+            "columnName": "library_logo_path_2x",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryCapsule.path",
+            "columnName": "library_capsule_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryCapsule.path2x",
+            "columnName": "library_capsule_path_2x",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryHeader.path",
+            "columnName": "library_header_path",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "libraryHeader.path2x",
+            "columnName": "library_header_path_2x",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "app_id",
+            "lang"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_app_info_loc_assets_name",
+            "unique": false,
+            "columnNames": [
+              "name"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_loc_assets_name` ON `${TABLE_NAME}` (`name`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "app_info",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "app_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_info_tags",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` INTEGER NOT NULL, `tag_id` INTEGER NOT NULL, PRIMARY KEY(`app_id`, `tag_id`), FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "app_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagId",
+            "columnName": "tag_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "app_id",
+            "tag_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_app_info_tags_app_id",
+            "unique": false,
+            "columnNames": [
+              "app_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_tags_app_id` ON `${TABLE_NAME}` (`app_id`)"
+          },
+          {
+            "name": "index_app_info_tags_tag_id",
+            "unique": false,
+            "columnNames": [
+              "tag_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_tags_tag_id` ON `${TABLE_NAME}` (`tag_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "app_info",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "app_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_info_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` INTEGER NOT NULL, `data` BLOB NOT NULL, PRIMARY KEY(`app_id`), FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "appid",
+            "columnName": "app_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "data",
+            "columnName": "data",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "app_id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "app_info",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "app_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "package_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `billingtype` INTEGER NOT NULL, `licensetype` INTEGER NOT NULL, `status` INTEGER NOT NULL, `allowcrossregiontradingandgifting` INTEGER NOT NULL, `allowpurchasefromrestrictedcountries` INTEGER NOT NULL, `onlyallowrestrictedcountries` INTEGER NOT NULL, `purchaserestrictedcountries` TEXT NOT NULL, `restrictedcountries` TEXT NOT NULL, `basepackage` INTEGER, `dontgrantifappidowned` INTEGER, `starttime` INTEGER NOT NULL, `expirytime` INTEGER NOT NULL, `freepromotion` INTEGER NOT NULL, `disabletradingcards` INTEGER NOT NULL, `excludefromsharing` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry_package`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "billingType",
+            "columnName": "billingtype",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "licenseType",
+            "columnName": "licensetype",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowInternationalGifting",
+            "columnName": "allowcrossregiontradingandgifting",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allowPurchaseFromRestricted",
+            "columnName": "allowpurchasefromrestrictedcountries",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "onlyAllowRestrictedCountries",
+            "columnName": "onlyallowrestrictedcountries",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "purchaseRestrictedCountries",
+            "columnName": "purchaserestrictedcountries",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "restrictedCountries",
+            "columnName": "restrictedcountries",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "basePackageId",
+            "columnName": "basepackage",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "dontGrantIfAppOwned",
+            "columnName": "dontgrantifappidowned",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "startTime",
+            "columnName": "starttime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiryTime",
+            "columnName": "expirytime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "freePromotion",
+            "columnName": "freepromotion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "disableTradingCards",
+            "columnName": "disabletradingcards",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "excludeFromFamilySharing",
+            "columnName": "excludefromsharing",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "entry_package",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "package_info_apps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `app_id` INTEGER NOT NULL, PRIMARY KEY(`id`, `app_id`), FOREIGN KEY(`id`) REFERENCES `package_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appId",
+            "columnName": "app_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id",
+            "app_id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_package_info_apps_id",
+            "unique": false,
+            "columnNames": [
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_package_info_apps_id` ON `${TABLE_NAME}` (`id`)"
+          },
+          {
+            "name": "index_package_info_apps_app_id",
+            "unique": false,
+            "columnNames": [
+              "app_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_package_info_apps_app_id` ON `${TABLE_NAME}` (`app_id`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "package_info",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "package_info_depots",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `depot_id` INTEGER NOT NULL, PRIMARY KEY(`id`, `depot_id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "depotId",
+            "columnName": "depot_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id",
+            "depot_id"
+          ]
+        }
+      },
+      {
+        "tableName": "rich_presence",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`appid` INTEGER NOT NULL, `lang` TEXT NOT NULL, `expires_at` INTEGER NOT NULL, `data` BLOB NOT NULL, PRIMARY KEY(`appid`, `lang`))",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "appid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expiresAt",
+            "columnName": "expires_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "content",
+            "columnName": "data",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "appid",
+            "lang"
+          ]
+        }
+      },
+      {
+        "tableName": "store_tag",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `lang` TEXT NOT NULL, `name` TEXT NOT NULL, `normalized` TEXT NOT NULL, PRIMARY KEY(`id`, `lang`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "language",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "normalizedName",
+            "columnName": "normalized",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id",
+            "lang"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_store_tag_id",
+            "unique": false,
+            "columnNames": [
+              "id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_store_tag_id` ON `${TABLE_NAME}` (`id`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cd915b9cd3aa29188f29c696132e63ec')"
+    ]
+  }
+}

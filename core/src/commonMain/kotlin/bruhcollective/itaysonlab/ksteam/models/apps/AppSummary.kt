@@ -2,10 +2,8 @@ package bruhcollective.itaysonlab.ksteam.models.apps
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityImageUrl
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatStaticAppImageUrl
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.common.StoreItem
 
-@Immutable
 data class AppSummary(
     val id: Int,
     val name: String,

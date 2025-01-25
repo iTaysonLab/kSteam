@@ -183,6 +183,14 @@ interface SteamClient {
     suspend fun <T> awaitMultipleProto(packet: SteamPacket, adapter: ProtoAdapter<T>, stopIf: (T) -> Boolean): List<T>
 
     /**
+     * Execute a [SteamPacket] and awaits multiple protobuf payloads in streaming mode.
+     *
+     * Unlike [awaitMultipleProto], this will process payloads in [process] directly after receiving them, suspending incoming network packets.
+     */
+    @Throws(CMJobDroppedException::class, CMJobTimeoutException::class, CMJobRemoteException::class, CancellationException::class)
+    suspend fun <T> awaitStreamedMultipleProto(packet: SteamPacket, adapter: ProtoAdapter<T>, process: suspend (T) -> Boolean)
+
+    /**
      * Execute a [SteamPacket] without waiting for a response.
      */
     suspend fun execute(packet: SteamPacket)

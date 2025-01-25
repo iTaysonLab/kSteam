@@ -18,10 +18,9 @@ import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.web.WebApi
 import com.squareup.wire.Message
 import com.squareup.wire.ProtoAdapter
-import io.ktor.client.plugins.HttpSend
-import io.ktor.client.plugins.plugin
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
-import io.ktor.http.HttpStatusCode
+import io.ktor.http.*
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -171,6 +170,14 @@ internal class SteamClientImpl internal constructor(
         stopIf: (T) -> Boolean
     ): List<T> {
         return requireCmTransport { cmClient.executeMultipleProtobuf(packet, adapter, stopIf) }
+    }
+
+    override suspend fun <T> awaitStreamedMultipleProto(
+        packet: SteamPacket,
+        adapter: ProtoAdapter<T>,
+        process: suspend (T) -> Boolean
+    ) {
+        requireCmTransport { cmClient.executeMultipleStreamingProtobuf(packet, adapter, process) }
     }
 
     override fun cmNetworkEnabled(): Boolean {

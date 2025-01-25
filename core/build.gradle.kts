@@ -8,14 +8,10 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r40"
+version = "r41"
 
 kotlin {
     multiplatformSetup()
-
-    androidDependencies {
-        implementation("androidx.compose.runtime:runtime:1.4.3")
-    }
 }
 
 androidLibrary("bruhcollective.itaysonlab.ksteam.core")
@@ -38,8 +34,6 @@ dependencies {
     commonMainImplementation(libs.kotlinx.coroutines.core)
 
     commonMainImplementation(libs.okio)
-
-    commonMainImplementation("co.touchlab:stately-concurrent-collections:2.1.0")
 
     commonMainApi(libs.wire)
     commonMainApi(libs.wire.grpc)

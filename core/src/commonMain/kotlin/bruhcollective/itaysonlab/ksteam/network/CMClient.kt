@@ -18,7 +18,9 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import okio.Buffer
 import okio.Source
 import okio.buffer
@@ -302,6 +304,18 @@ internal class CMClient(
         return postJob(packet, CMJob.MultipleProtobuf(createJobInformation(packet), adapter, stopIf)).await()
     }
 
+    /**
+     * Sends a [SteamPacket] and awaits multiple protobuf messages.
+     */
+    suspend fun <T> executeMultipleStreamingProtobuf(
+        packet: SteamPacket,
+        adapter: ProtoAdapter<T>,
+        process: suspend (T) -> Boolean
+    ) {
+        awaitConnectionOrThrow(packet = packet, authRequired = SteamPacket.canBeExecutedWithoutAuth(packet).not())
+        return postJob(packet, CMJob.MultipleStreamingProtobuf(createJobInformation(packet), adapter, process)).await()
+    }
+
     private fun createJobInformation(from: SteamPacket): CMJobInformation {
         return CMJobInformation(
             id = jobManager.createJobId(),
@@ -318,7 +332,7 @@ internal class CMClient(
         )
     }
 
-    private fun handleIncomingPacket(packet: SteamPacket) {
+    private suspend fun handleIncomingPacket(packet: SteamPacket) {
         val isPacketAttachedToAJob = jobManager.completeJob(packet)
         if (isPacketAttachedToAJob) return
 

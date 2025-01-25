@@ -1,0 +1,257 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "eac88b0e94e8a831aa46f2f7bf93d6c9",
+    "entities": [
+      {
+        "tableName": "package_license",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `package_id` INTEGER NOT NULL, `time_created` INTEGER, `time_next_process` INTEGER, `minute_limit` INTEGER, `minutes_used` INTEGER, `payment_method` INTEGER, `flags` INTEGER, `purchase_country_code` TEXT, `license_type` INTEGER, `territory_code` INTEGER, `change_number` INTEGER, `owner_id` INTEGER, `initial_period` INTEGER, `initial_time_unit` INTEGER, `renewal_period` INTEGER, `renewal_time_unit` INTEGER, `access_token` INTEGER, `master_package_id` INTEGER)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageId",
+            "columnName": "package_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeCreated",
+            "columnName": "time_created",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "timeNextProcess",
+            "columnName": "time_next_process",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "minuteLimit",
+            "columnName": "minute_limit",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "minutesUsed",
+            "columnName": "minutes_used",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "paymentMethod",
+            "columnName": "payment_method",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "flags",
+            "columnName": "flags",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "purchaseCountryCode",
+            "columnName": "purchase_country_code",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "licenseType",
+            "columnName": "license_type",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "territoryCode",
+            "columnName": "territory_code",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "changeNumber",
+            "columnName": "change_number",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "ownerId",
+            "columnName": "owner_id",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "initialPeriod",
+            "columnName": "initial_period",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "initialTimeUnit",
+            "columnName": "initial_time_unit",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "renewalPeriod",
+            "columnName": "renewal_period",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "renewalTimeUnit",
+            "columnName": "renewal_time_unit",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "accessToken",
+            "columnName": "access_token",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "masterPackageId",
+            "columnName": "master_package_id",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "PkgLicenseByPkgId",
+            "unique": false,
+            "columnNames": [
+              "package_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `PkgLicenseByPkgId` ON `${TABLE_NAME}` (`package_id`)"
+          }
+        ]
+      },
+      {
+        "tableName": "persona",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uid` INTEGER NOT NULL, `name` TEXT NOT NULL, `avatar_hash` TEXT NOT NULL, `last_seen_on` INTEGER NOT NULL, `last_seen_off` INTEGER NOT NULL, `last_seen_online` INTEGER NOT NULL, `status` INTEGER NOT NULL, `status_online` INTEGER, `status_non_steam_name` TEXT, `status_steam_appid` INTEGER, PRIMARY KEY(`uid`))",
+        "fields": [
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "avatarHash",
+            "columnName": "avatar_hash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenLogOn",
+            "columnName": "last_seen_on",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenLogOff",
+            "columnName": "last_seen_off",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeenLogOnline",
+            "columnName": "last_seen_online",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "statusOnlineAdditional",
+            "columnName": "status_online",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "statusNonSteamName",
+            "columnName": "status_non_steam_name",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "statusSteamAppid",
+            "columnName": "status_steam_appid",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uid"
+          ]
+        }
+      },
+      {
+        "tableName": "persona_relationship",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uid` INTEGER NOT NULL, `relationship` INTEGER NOT NULL, PRIMARY KEY(`uid`))",
+        "fields": [
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "relationship",
+            "columnName": "relationship",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uid"
+          ]
+        }
+      },
+      {
+        "tableName": "persona_rp_kvo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uid` INTEGER NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`uid`, `key`))",
+        "fields": [
+          {
+            "fieldPath": "uid",
+            "columnName": "uid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uid",
+            "key"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'eac88b0e94e8a831aa46f2f7bf93d6c9')"
+    ]
+  }
+}

@@ -4,7 +4,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
-import io.ktor.util.collections.ConcurrentMap
+import io.ktor.util.collections.*
 import kotlinx.atomicfu.atomic
 
 /**
@@ -38,7 +38,7 @@ internal class CMJobManager (
      * @return if the job was found
      */
     @OptIn(ExperimentalStdlibApi::class)
-    fun completeJob(packet: SteamPacket): Boolean {
+    suspend fun completeJob(packet: SteamPacket): Boolean {
         val jobId = packet.header.targetJobId
         val job = currentJobs[jobId] ?: return false
 
@@ -50,6 +50,7 @@ internal class CMJobManager (
                     currentJobs.remove(jobId)
                 }
             }.onFailure {
+                logger.logVerbose("CMJobManager") { "exception when completing ${job.information} [message = ${it.message}]" }
                 currentJobs.remove(jobId)
             }
         } else {

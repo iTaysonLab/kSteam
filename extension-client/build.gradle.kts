@@ -3,19 +3,16 @@ plugins {
     kotlin("multiplatform")
     kotlin("plugin.serialization")
     id("com.android.library")
-    id("io.realm.kotlin")
+    id("com.google.devtools.ksp")
+    id("androidx.room")
     `maven-publish`
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r40"
+version = "r41"
 
 kotlin {
     multiplatformSetup()
-
-    androidDependencies {
-        implementation("androidx.compose.runtime:runtime:1.4.3")
-    }
 }
 
 androidLibrary("bruhcollective.itaysonlab.ksteam.extensions.core")
@@ -32,8 +29,27 @@ dependencies {
     commonMainImplementation(libs.kotlinx.datetime)
 
     commonMainImplementation(libs.ktor.client)
-    commonMainImplementation(libs.realm)
     commonMainImplementation(libs.cache4k)
 
+    commonMainImplementation(libs.androidx.room.runtime)
+    commonMainImplementation(libs.androidx.sqlite)
+
     commonTestImplementation(kotlin("test"))
+}
+
+dependencies {
+    listOf(
+        "kspAndroid",
+        "kspJvm",
+        // "kspIosSimulatorArm64",
+        // "kspIosX64",
+        // "kspIosArm64",
+        "kspCommonMainMetadata",
+    ).forEach {
+        add(it, libs.androidx.room.compiler)
+    }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
