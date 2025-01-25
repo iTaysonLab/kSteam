@@ -95,6 +95,15 @@ message CCommunity_DeleteCommentFromThread_Request {
 message CCommunity_DeleteCommentFromThread_Response {
 }
 
+message CCommunity_FetchTranslationFromCrowdIn_Request {
+	optional fixed64 steamid = 1;
+	optional uint64 itemid = 2;
+	optional uint32 language = 3;
+}
+
+message CCommunity_FetchTranslationFromCrowdIn_Response {
+}
+
 message CCommunity_GetAppRichPresenceLocalization_Request {
 	optional int32 appid = 1;
 	optional string language = 2;
@@ -156,6 +165,26 @@ message CCommunity_GetClanAnnouncementVoteForUser_Request {
 message CCommunity_GetClanAnnouncementVoteForUser_Response {
 	optional bool voted_up = 1;
 	optional bool voted_down = 2;
+}
+
+message CCommunity_GetClanCrowdInMetadata_Request {
+	optional fixed64 steamid = 1;
+}
+
+message CCommunity_GetClanCrowdInMetadata_Response {
+	optional uint64 crowdin_project_id = 1;
+	optional uint64 crowdin_directory_id = 2;
+	optional bool push_by_default = 3;
+}
+
+message CCommunity_GetClanEventCrowdInMetadata_Request {
+	optional fixed64 steamid = 1;
+	optional uint64 itemid = 2;
+}
+
+message CCommunity_GetClanEventCrowdInMetadata_Response {
+	optional uint64 crowdin_project_id = 1;
+	optional uint64 crowdin_file_id = 2;
 }
 
 message CCommunity_GetCommentThread_Request {
@@ -347,11 +376,14 @@ service Community {
 	rpc ClearSinglePartnerEventsAppPriority (.CCommunity_ClearSinglePartnerEventsAppPriority_Request) returns (.CCommunity_ClearSinglePartnerEventsAppPriority_Response);
 	rpc ClearUserPartnerEventsAppPriorities (.CCommunity_ClearUserPartnerEventsAppPriorities_Request) returns (.CCommunity_ClearUserPartnerEventsAppPriorities_Response);
 	rpc DeleteCommentFromThread (.CCommunity_DeleteCommentFromThread_Request) returns (.CCommunity_DeleteCommentFromThread_Response);
+	rpc FetchTranslationFromCrowdIn (.CCommunity_FetchTranslationFromCrowdIn_Request) returns (.CCommunity_FetchTranslationFromCrowdIn_Response);
 	rpc GetAppRichPresenceLocalization (.CCommunity_GetAppRichPresenceLocalization_Request) returns (.CCommunity_GetAppRichPresenceLocalization_Response);
 	rpc GetApps (.CCommunity_GetApps_Request) returns (.CCommunity_GetApps_Response);
 	rpc GetAvatarHistory (.CCommunity_GetAvatarHistory_Request) returns (.CCommunity_GetAvatarHistory_Response);
 	rpc GetBestEventsForUser (.CCommunity_GetBestEventsForUser_Request) returns (.CCommunity_GetBestEventsForUser_Response);
 	rpc GetClanAnnouncementVoteForUser (.CCommunity_GetClanAnnouncementVoteForUser_Request) returns (.CCommunity_GetClanAnnouncementVoteForUser_Response);
+	rpc GetClanCrowdInMetadata (.CCommunity_GetClanCrowdInMetadata_Request) returns (.CCommunity_GetClanCrowdInMetadata_Response);
+	rpc GetClanEventCrowdInMetadata (.CCommunity_GetClanEventCrowdInMetadata_Request) returns (.CCommunity_GetClanEventCrowdInMetadata_Response);
 	rpc GetCommentThread (.CCommunity_GetCommentThread_Request) returns (.CCommunity_GetCommentThread_Response);
 	rpc GetCommentThreadRatings (.CCommunity_GetCommentThreadRatings_Request) returns (.CCommunity_GetCommentThreadRatings_Response);
 	rpc GetUserPartnerEventNews (.CCommunity_GetUserPartnerEventNews_Request) returns (.CCommunity_GetUserPartnerEventNews_Response);
