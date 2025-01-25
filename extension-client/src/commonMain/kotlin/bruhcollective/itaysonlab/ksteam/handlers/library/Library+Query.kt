@@ -1,11 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EAppFeature
-import bruhcollective.itaysonlab.ksteam.models.enums.EGenre
-import bruhcollective.itaysonlab.ksteam.models.enums.EPartner
-import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckSupport
-import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
+import bruhcollective.itaysonlab.ksteam.models.enums.*
 import bruhcollective.itaysonlab.ksteam.models.library.DfEntry
 import bruhcollective.itaysonlab.ksteam.models.library.DynamicFilters
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
@@ -32,17 +28,17 @@ fun LibraryCollection.Dynamic.toKsLibraryQuery(): KsLibraryQuery {
     // 3. byAppFeature
     for (feature in filters.byAppFeature.entries) {
         when (feature) {
-            EAppFeature.Ignored -> {}
+            ECollectionAppFeature.Ignored -> {}
 
-            EAppFeature.FullControllerSupport -> {
+            ECollectionAppFeature.FullControllerSupport -> {
                 query.withControllerSupport(KsLibraryQueryControllerSupportFilter.Full)
             }
 
-            EAppFeature.PartialControllerSupport -> {
+            ECollectionAppFeature.PartialControllerSupport -> {
                 query.withControllerSupport(KsLibraryQueryControllerSupportFilter.Partial)
             }
 
-            EAppFeature.VRSupport -> {
+            ECollectionAppFeature.VRSupport -> {
                 query.withStoreCategories(
                     EStoreCategory.VRThirdParty,
                     EStoreCategory.VRSteam,
@@ -50,23 +46,23 @@ fun LibraryCollection.Dynamic.toKsLibraryQuery(): KsLibraryQuery {
                 )
             }
 
-            EAppFeature.TradingCards -> {
+            ECollectionAppFeature.TradingCards -> {
                 query.withStoreCategory(EStoreCategory.TradingCard)
             }
 
-            EAppFeature.Workshop -> {
+            ECollectionAppFeature.Workshop -> {
                 query.withStoreCategory(EStoreCategory.Workshop)
             }
 
-            EAppFeature.Achievements -> {
+            ECollectionAppFeature.Achievements -> {
                 query.withStoreCategory(EStoreCategory.Achievements)
             }
 
-            EAppFeature.SinglePlayer -> {
+            ECollectionAppFeature.SinglePlayer -> {
                 query.withStoreCategory(EStoreCategory.Singleplayer)
             }
 
-            EAppFeature.MultiPlayer -> {
+            ECollectionAppFeature.MultiPlayer -> {
                 query.withStoreCategories(
                     EStoreCategory.Multiplayer,
                     EStoreCategory.OnlinePvP,
@@ -77,7 +73,7 @@ fun LibraryCollection.Dynamic.toKsLibraryQuery(): KsLibraryQuery {
                 )
             }
 
-            EAppFeature.CoOp -> {
+            ECollectionAppFeature.CoOp -> {
                 query.withStoreCategories(
                     EStoreCategory.Coop,
                     EStoreCategory.OnlineCoop,
@@ -85,59 +81,59 @@ fun LibraryCollection.Dynamic.toKsLibraryQuery(): KsLibraryQuery {
                 )
             }
 
-            EAppFeature.Cloud -> {
+            ECollectionAppFeature.Cloud -> {
                 query.withStoreCategory(EStoreCategory.Cloud)
             }
 
-            EAppFeature.RemotePlayTogether -> {
+            ECollectionAppFeature.RemotePlayTogether -> {
                 query.withStoreCategory(EStoreCategory.RemotePlayTogether)
             }
 
-            EAppFeature.SteamDeckVerified -> {
+            ECollectionAppFeature.SteamDeckVerified -> {
                 query.withSteamDeckMinimumSupport(ESteamDeckSupport.Verified)
             }
 
-            EAppFeature.SteamDeckPlayable -> {
+            ECollectionAppFeature.SteamDeckPlayable -> {
                 query.withSteamDeckMinimumSupport(ESteamDeckSupport.Playable)
             }
 
-            EAppFeature.SteamDeckUnsupported -> {
+            ECollectionAppFeature.SteamDeckUnsupported -> {
                 query.withSteamDeckMinimumSupport(ESteamDeckSupport.Unsupported)
             }
 
-            EAppFeature.SteamDeckUnknown -> {
+            ECollectionAppFeature.SteamDeckUnknown -> {
                 query.withSteamDeckMinimumSupport(ESteamDeckSupport.Unknown)
             }
 
-            EAppFeature.PS4ControllerSupport -> {
+            ECollectionAppFeature.PS4ControllerSupport -> {
                 query.withStoreCategories(EStoreCategory.PS4ControllerSupport, EStoreCategory.PS4ControllerBTSupport)
             }
 
-            EAppFeature.PS4ControllerBTSupport -> {
+            ECollectionAppFeature.PS4ControllerBTSupport -> {
                 query.withStoreCategory(EStoreCategory.PS4ControllerBTSupport)
             }
 
-            EAppFeature.PS5ControllerSupport -> {
+            ECollectionAppFeature.PS5ControllerSupport -> {
                 query.withStoreCategories(EStoreCategory.PS5ControllerSupport, EStoreCategory.PS5ControllerBTSupport)
             }
 
-            EAppFeature.PS5ControllerBTSupport -> {
+            ECollectionAppFeature.PS5ControllerBTSupport -> {
                 query.withStoreCategory(EStoreCategory.PS5ControllerBTSupport)
             }
 
-            EAppFeature.SteamInputAPI -> {
+            ECollectionAppFeature.SteamInputAPI -> {
                 query.withStoreCategory(EStoreCategory.SteamInputAPI)
             }
 
-            EAppFeature.GamepadPreferred -> {
+            ECollectionAppFeature.GamepadPreferred -> {
                 query.withStoreCategory(EStoreCategory.GamepadPreferred)
             }
 
-            EAppFeature.HDR -> {
+            ECollectionAppFeature.HDR -> {
                 query.withStoreCategory(EStoreCategory.HDROutput)
             }
 
-            EAppFeature.FamilySharing -> {
+            ECollectionAppFeature.FamilySharing -> {
                 query.withStoreCategory(EStoreCategory.FamilySharing)
             }
         }
@@ -154,7 +150,7 @@ fun LibraryCollection.Dynamic.toKsLibraryQuery(): KsLibraryQuery {
     // 6. byPartner
     for (partner in filters.byPartner.entries) {
         when (partner) {
-            EPartner.EASubscription -> {
+            ECollectionPartner.EASubscription -> {
                 query.withMasterSubscriptionPackage(1289670)
             }
         }
@@ -177,50 +173,50 @@ fun KsLibraryQuery.toSteamDynamicCollection(): DynamicFilters {
         byAppFeature = DfEntry(toSteamDynamicFeatures() to false),
         byGenre = DfEntry(genres to false),
         byStoreTag = DfEntry(storeTags to false),
-        byPartner = DfEntry((if (masterSubPackageId == 1289670) listOf(EPartner.EASubscription) else emptyList<EPartner>()) to false),
+        byPartner = DfEntry((if (masterSubPackageId == 1289670) listOf(ECollectionPartner.EASubscription) else emptyList<ECollectionPartner>()) to false),
         byFriend = DfEntry(emptyList<SteamId>() to false)
     )
 }
 
-private fun KsLibraryQuery.toSteamStoreTags(): Pair<List<EGenre>, List<Int>> {
-    val genres = mutableListOf<EGenre>()
+private fun KsLibraryQuery.toSteamStoreTags(): Pair<List<ECollectionGenre>, List<Int>> {
+    val genres = mutableListOf<ECollectionGenre>()
     val tags = mutableListOf<Int>()
 
     for (tag in storeTags) {
-        EGenre.byNumber(tag)?.let { genre -> genres.add(genre) } ?: tags.add(tag)
+        ECollectionGenre.byNumber(tag)?.let { genre -> genres.add(genre) } ?: tags.add(tag)
     }
 
     return genres to tags
 }
 
-private fun KsLibraryQuery.toSteamDynamicFeatures(): List<EAppFeature> {
-    val list = mutableListOf<EAppFeature>()
+private fun KsLibraryQuery.toSteamDynamicFeatures(): List<ECollectionAppFeature> {
+    val list = mutableListOf<ECollectionAppFeature>()
 
     when (controllerSupport) {
         KsLibraryQueryControllerSupportFilter.None -> Unit
-        KsLibraryQueryControllerSupportFilter.Partial -> list += EAppFeature.PartialControllerSupport
-        KsLibraryQueryControllerSupportFilter.Full -> list += EAppFeature.FullControllerSupport
+        KsLibraryQueryControllerSupportFilter.Partial -> list += ECollectionAppFeature.PartialControllerSupport
+        KsLibraryQueryControllerSupportFilter.Full -> list += ECollectionAppFeature.FullControllerSupport
     }
 
     when (steamDeckMinimumSupport) {
         ESteamDeckSupport.Unknown -> Unit
-        ESteamDeckSupport.Unsupported -> list += EAppFeature.SteamDeckUnsupported
-        ESteamDeckSupport.Playable -> list += EAppFeature.SteamDeckPlayable
-        ESteamDeckSupport.Verified -> list += EAppFeature.SteamDeckVerified
+        ESteamDeckSupport.Unsupported -> list += ECollectionAppFeature.SteamDeckUnsupported
+        ESteamDeckSupport.Playable -> list += ECollectionAppFeature.SteamDeckPlayable
+        ESteamDeckSupport.Verified -> list += ECollectionAppFeature.SteamDeckVerified
     }
 
     for (category in storeCategories.flatten()) {
         when (category) {
             EStoreCategory.Reserved0 -> Unit
-            EStoreCategory.Multiplayer -> list += EAppFeature.MultiPlayer
-            EStoreCategory.Singleplayer -> list += EAppFeature.SinglePlayer
+            EStoreCategory.Multiplayer -> list += ECollectionAppFeature.MultiPlayer
+            EStoreCategory.Singleplayer -> list += ECollectionAppFeature.SinglePlayer
             EStoreCategory.Reserved3 -> Unit
             EStoreCategory.Reserved4 -> Unit
             EStoreCategory.Reserved5 -> Unit
             EStoreCategory.ModHL2 -> Unit
             EStoreCategory.ModHL -> Unit
             EStoreCategory.VAC -> Unit
-            EStoreCategory.Coop -> list += EAppFeature.CoOp
+            EStoreCategory.Coop -> list += ECollectionAppFeature.CoOp
             EStoreCategory.Demo -> Unit
             EStoreCategory.Friends -> Unit
             EStoreCategory.HDR -> Unit
@@ -229,51 +225,51 @@ private fun KsLibraryQuery.toSteamDynamicFeatures(): List<EAppFeature> {
             EStoreCategory.Stats -> Unit
             EStoreCategory.SDK -> Unit
             EStoreCategory.Editor -> Unit
-            EStoreCategory.PartialController -> list += EAppFeature.PartialControllerSupport
+            EStoreCategory.PartialController -> list += ECollectionAppFeature.PartialControllerSupport
             EStoreCategory.Mod -> Unit
-            EStoreCategory.MMO -> list += EAppFeature.MultiPlayer
+            EStoreCategory.MMO -> list += ECollectionAppFeature.MultiPlayer
             EStoreCategory.DLC -> Unit
-            EStoreCategory.Achievements -> list += EAppFeature.Achievements
-            EStoreCategory.Cloud -> list += EAppFeature.Cloud
-            EStoreCategory.SharedSplitscreen -> list += EAppFeature.MultiPlayer
+            EStoreCategory.Achievements -> list += ECollectionAppFeature.Achievements
+            EStoreCategory.Cloud -> list += ECollectionAppFeature.Cloud
+            EStoreCategory.SharedSplitscreen -> list += ECollectionAppFeature.MultiPlayer
             EStoreCategory.Leaderboards -> Unit
             EStoreCategory.Guide -> Unit
-            EStoreCategory.CrossPlatMultiplayer -> list += EAppFeature.MultiPlayer
-            EStoreCategory.FullController -> list += EAppFeature.FullControllerSupport
-            EStoreCategory.TradingCard -> list += EAppFeature.TradingCards
-            EStoreCategory.Workshop -> list += EAppFeature.Workshop
-            EStoreCategory.VRThirdParty -> list += EAppFeature.VRSupport
+            EStoreCategory.CrossPlatMultiplayer -> list += ECollectionAppFeature.MultiPlayer
+            EStoreCategory.FullController -> list += ECollectionAppFeature.FullControllerSupport
+            EStoreCategory.TradingCard -> list += ECollectionAppFeature.TradingCards
+            EStoreCategory.Workshop -> list += ECollectionAppFeature.Workshop
+            EStoreCategory.VRThirdParty -> list += ECollectionAppFeature.VRSupport
             EStoreCategory.AsyncGameNotifications -> Unit
             EStoreCategory.SteamController -> Unit
-            EStoreCategory.VRSteam -> list += EAppFeature.VRSupport
+            EStoreCategory.VRSteam -> list += ECollectionAppFeature.VRSupport
             EStoreCategory.InAppPurchases -> Unit
-            EStoreCategory.OnlinePvP -> list += EAppFeature.MultiPlayer
-            EStoreCategory.LocalPvP -> list += EAppFeature.MultiPlayer
-            EStoreCategory.OnlineCoop -> list += EAppFeature.CoOp
-            EStoreCategory.LocalCoop -> list += EAppFeature.CoOp
+            EStoreCategory.OnlinePvP -> list += ECollectionAppFeature.MultiPlayer
+            EStoreCategory.LocalPvP -> list += ECollectionAppFeature.MultiPlayer
+            EStoreCategory.OnlineCoop -> list += ECollectionAppFeature.CoOp
+            EStoreCategory.LocalCoop -> list += ECollectionAppFeature.CoOp
             EStoreCategory.SteamVRCollectibles -> Unit
-            EStoreCategory.RemotePlayToPhone -> list += EAppFeature.RemotePlayTogether
-            EStoreCategory.RemotePlayToTablet -> list += EAppFeature.RemotePlayTogether
-            EStoreCategory.RemotePlayToTV -> list += EAppFeature.RemotePlayTogether
-            EStoreCategory.RemotePlayTogether -> list += EAppFeature.RemotePlayTogether
+            EStoreCategory.RemotePlayToPhone -> list += ECollectionAppFeature.RemotePlayTogether
+            EStoreCategory.RemotePlayToTablet -> list += ECollectionAppFeature.RemotePlayTogether
+            EStoreCategory.RemotePlayToTV -> list += ECollectionAppFeature.RemotePlayTogether
+            EStoreCategory.RemotePlayTogether -> list += ECollectionAppFeature.RemotePlayTogether
             EStoreCategory.CloudGaming -> Unit
             EStoreCategory.CloudGamingNVIDIA -> Unit
-            EStoreCategory.LANPvP -> list += EAppFeature.MultiPlayer
-            EStoreCategory.LANCoop -> list += EAppFeature.CoOp
-            EStoreCategory.PvP -> list += EAppFeature.MultiPlayer
+            EStoreCategory.LANPvP -> list += ECollectionAppFeature.MultiPlayer
+            EStoreCategory.LANCoop -> list += ECollectionAppFeature.CoOp
+            EStoreCategory.PvP -> list += ECollectionAppFeature.MultiPlayer
             EStoreCategory.HighQualitySoundtrackAudio -> Unit
             EStoreCategory.SteamChinaWorkshop -> Unit
             EStoreCategory.TrackedControllerSupport -> Unit
-            EStoreCategory.VRSupported -> list += EAppFeature.VRSupport
+            EStoreCategory.VRSupported -> list += ECollectionAppFeature.VRSupport
             EStoreCategory.VROnly -> Unit
-            EStoreCategory.PS4ControllerSupport -> list += EAppFeature.PS4ControllerSupport
-            EStoreCategory.PS4ControllerBTSupport -> list += EAppFeature.PS4ControllerBTSupport
-            EStoreCategory.PS5ControllerSupport -> list += EAppFeature.PS5ControllerSupport
-            EStoreCategory.PS5ControllerBTSupport -> list += EAppFeature.PS5ControllerBTSupport
-            EStoreCategory.SteamInputAPI -> list += EAppFeature.SteamInputAPI
-            EStoreCategory.GamepadPreferred -> list += EAppFeature.GamepadPreferred
-            EStoreCategory.HDROutput -> list += EAppFeature.HDR
-            EStoreCategory.FamilySharing -> list += EAppFeature.FamilySharing
+            EStoreCategory.PS4ControllerSupport -> list += ECollectionAppFeature.PS4ControllerSupport
+            EStoreCategory.PS4ControllerBTSupport -> list += ECollectionAppFeature.PS4ControllerBTSupport
+            EStoreCategory.PS5ControllerSupport -> list += ECollectionAppFeature.PS5ControllerSupport
+            EStoreCategory.PS5ControllerBTSupport -> list += ECollectionAppFeature.PS5ControllerBTSupport
+            EStoreCategory.SteamInputAPI -> list += ECollectionAppFeature.SteamInputAPI
+            EStoreCategory.GamepadPreferred -> list += ECollectionAppFeature.GamepadPreferred
+            EStoreCategory.HDROutput -> list += ECollectionAppFeature.HDR
+            EStoreCategory.FamilySharing -> list += ECollectionAppFeature.FamilySharing
             EStoreCategory.SteamTimeline -> Unit
         }
     }

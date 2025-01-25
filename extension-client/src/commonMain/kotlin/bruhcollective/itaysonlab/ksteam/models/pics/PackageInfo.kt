@@ -1,31 +1,10 @@
-@file:UseSerializers(
-    MutableRealmIntKSerializer::class,
-    RealmAnyKSerializer::class,
-    RealmDictionaryKSerializer::class,
-    RealmInstantKSerializer::class,
-    RealmListKSerializer::class,
-    RealmSetKSerializer::class,
-    RealmUUIDKSerializer::class
-)
-
 package bruhcollective.itaysonlab.ksteam.models.pics
 
-import io.realm.kotlin.ext.realmListOf
-import io.realm.kotlin.serializers.*
-import io.realm.kotlin.types.EmbeddedRealmObject
-import io.realm.kotlin.types.RealmList
-import io.realm.kotlin.types.RealmObject
-import io.realm.kotlin.types.annotations.PrimaryKey
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
 
 @Serializable
-internal class PackageInfo: RealmObject {
-    // Fixes https://github.com/realm/realm-kotlin/issues/1567
-    companion object
-
-    @PrimaryKey
+internal class PackageInfo {
     @SerialName("packageid")
     var packageId: Int = 0
 
@@ -39,19 +18,16 @@ internal class PackageInfo: RealmObject {
     var status: Int = 0
 
     @SerialName("extended")
-    var extended: InfoExtended? = null
+    var extended: InfoExtended = InfoExtended()
 
     @SerialName("appids")
-    var appIds: RealmList<Int> = realmListOf()
+    var appIds: List<Int> = emptyList()
 
     @SerialName("depotids")
-    var depotIds: RealmList<Int> = realmListOf()
+    var depotIds: List<Int> = emptyList()
 
     @Serializable
-    internal class InfoExtended: EmbeddedRealmObject {
-        // Fixes https://github.com/realm/realm-kotlin/issues/1567
-        companion object
-
+    internal class InfoExtended {
         @SerialName("allowcrossregiontradingandgifting")
         var allowInternationalGifting: Boolean = false
 

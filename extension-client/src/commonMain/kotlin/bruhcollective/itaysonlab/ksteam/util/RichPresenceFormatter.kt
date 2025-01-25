@@ -1,15 +1,14 @@
 package bruhcollective.itaysonlab.ksteam.util
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
-import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
-import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmRichPresenceDictionary
+import bruhcollective.itaysonlab.ksteam.database.room.KsSharedDatabase
+import bruhcollective.itaysonlab.ksteam.database.room.entity.apps.RoomRichPresenceDictionary
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import io.github.reactivecircus.cache4k.Cache
-import io.realm.kotlin.UpdatePolicy
-import io.realm.kotlin.ext.query
-import io.realm.kotlin.types.RealmInstant
 import kotlinx.datetime.Clock
+import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response_Token
+import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response_TokenList
 import kotlin.time.Duration.Companion.hours
 
 /**
@@ -17,7 +16,7 @@ import kotlin.time.Duration.Companion.hours
  */
 class RichPresenceFormatter internal constructor(
     private val steamClient: ExtendedSteamClient,
-    private val database: KSteamRealmDatabase
+    private val database: KsSharedDatabase
 ) {
     companion object {
         // How many dictionaries we can save in memory?
@@ -54,25 +53,32 @@ class RichPresenceFormatter internal constructor(
 
         return rpLocalizationCache.get(key = cacheKey) {
             // 1. We check the database for cache availability
-            val inDatabase = database.sharedRealm.query<RealmRichPresenceDictionary>("id == $0", cacheKey.key)
-                .first()
-                .find()
+            val inDatabase = database.richPresenceDictionaries().get(appId = appId.value, language = cacheKey.language.vdfName)
 
-            if (inDatabase != null && inDatabase.expiresAt > RealmInstant.now()) {
+            if (inDatabase != null && inDatabase.expiresAt > Clock.System.now().epochSeconds) {
                 // Dictionary is not expired, we can use it
-                return@get inDatabase.strings
+                return@get CCommunity_GetAppRichPresenceLocalization_Response_TokenList.ADAPTER.decode(inDatabase.content).tokens
+                    .associate { it.name.orEmpty() to it.value_.orEmpty() }
             }
 
             // Otherwise, go for the network!
-            return@get steamClient.store.getRichPresenceLocalization(appId = appId.value).orEmpty().also { strings ->
+            return@get steamClient.store.getRichPresenceLocalization(appId = appId.value, language = language).orEmpty().also { strings ->
                 // Save in the database for speeding access after process death
-                database.sharedRealm.write {
-                    val cached = RealmRichPresenceDictionary()
-                    cached.id = cacheKey.key
-                    cached.expiresAt = RealmInstant.from(epochSeconds = (Clock.System.now() + IN_DISK_CACHE_DURATION).epochSeconds, nanosecondAdjustment = 0)
-                    cached.strings.putAll(strings)
-                    copyToRealm(cached, updatePolicy = UpdatePolicy.ALL)
-                }
+                database.richPresenceDictionaries().upsert(
+                    RoomRichPresenceDictionary(
+                        appId = appId.value,
+                        language = language.vdfName,
+                        expiresAt = (Clock.System.now() + IN_DISK_CACHE_DURATION).epochSeconds,
+                        content = CCommunity_GetAppRichPresenceLocalization_Response_TokenList.ADAPTER.encode(
+                            CCommunity_GetAppRichPresenceLocalization_Response_TokenList(
+                                language = language.vdfName,
+                                tokens = strings.entries.map { (k, v) ->
+                                    CCommunity_GetAppRichPresenceLocalization_Response_Token(name = k, value_ = v)
+                                }
+                            )
+                        )
+                    )
+                )
             }
         }
     }

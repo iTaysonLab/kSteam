@@ -1,28 +1,22 @@
 package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
+import bruhcollective.itaysonlab.ksteam.database.sql.compileKsLibraryQueryToSql
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.OwnedSteamApplication
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationPlaytime
+import bruhcollective.itaysonlab.ksteam.models.enums.ECollectionPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckSupport
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryCollection
 import bruhcollective.itaysonlab.ksteam.models.library.LibraryShelf
 import bruhcollective.itaysonlab.ksteam.models.library.OwnedGame
 import bruhcollective.itaysonlab.ksteam.models.library.RemoteCollectionModel
-import bruhcollective.itaysonlab.ksteam.models.library.query.KsLibraryQuery
-import bruhcollective.itaysonlab.ksteam.models.library.query.KsLibraryQueryControllerSupportFilter
-import bruhcollective.itaysonlab.ksteam.models.library.query.KsLibraryQueryOwnerFilter
-import bruhcollective.itaysonlab.ksteam.models.library.query.KsLibraryQuerySortBy
-import bruhcollective.itaysonlab.ksteam.models.library.query.KsLibraryQuerySortByDirection
+import bruhcollective.itaysonlab.ksteam.models.library.query.*
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import bruhcollective.itaysonlab.ksteam.util.executeSteamOrNull
-import io.realm.kotlin.ext.query
-import io.realm.kotlin.query.Sort
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.Json
@@ -31,8 +25,6 @@ import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Request
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Response_Game
 import steam.webui.player.CPlayer_LastPlayedTimes_Notification
-import kotlin.collections.filter
-import kotlin.collections.map
 import kotlin.time.Duration.Companion.minutes
 
 /**
@@ -131,7 +123,7 @@ class Library internal constructor(
                             it
                         }
                     }
-                    .map(::augmentSteamApplication)
+                    .map { app -> augmentSteamApplication(app) }
             }
 
             is LibraryCollection.Dynamic -> {
@@ -155,8 +147,8 @@ class Library internal constructor(
     fun getRecentApps(): Flow<List<OwnedSteamApplication>> {
         return _playtime.map {
             it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> a.appid }.take(5).toList()
-        }.map {
-            steamClient.pics.getSteamApplications(it).map(::augmentSteamApplication)
+        }.map { ids ->
+            steamClient.pics.getSteamApplications(ids).map { app -> augmentSteamApplication(app) }
         }
     }
 
@@ -198,7 +190,9 @@ class Library internal constructor(
     /**
      * Checks if a current user is actually owning an [appId].
      */
-    fun ownsThisApp(appId: Int) = steamClient.pics.appIds.contains(appId)
+    suspend fun ownsThisApp(appId: AppId): Boolean {
+        return steamClient.pics.findLicensesForCurrentUser(appId).isNotEmpty()
+    }
 
     private suspend fun startCollector() {
         // Collect user play time
@@ -390,7 +384,7 @@ class Library internal constructor(
     /**
      * Augments [SteamApplication] with playtime and license information.
      */
-    fun augmentSteamApplication(application: SteamApplication): OwnedSteamApplication {
+    suspend fun augmentSteamApplication(application: SteamApplication): OwnedSteamApplication {
         return OwnedSteamApplication(
             application = application,
             licenses = steamClient.pics.findLicensesForCurrentUser(application.id),
@@ -400,116 +394,33 @@ class Library internal constructor(
 
     /**
      * Executes [KsLibraryQuery] in a separate thread and returns a list of OwnedSteamApplication.
+     *
+     * @param query a compiled kSteam Library Query, use [KsLibraryQueryBuilder] to build them
+     * @return a [kotlinx.coroutines.flow.Flow] of [OwnedSteamApplication]
      */
-    suspend fun execute(query: KsLibraryQuery): List<OwnedSteamApplication> = withContext(Dispatchers.Default) {
-        // Initial Query Building
-        var initialQuery = steamClient.database.sharedRealm.query<AppInfo>()
-
-        if (query.searchQuery != null) {
-            initialQuery = initialQuery.query("common.name CONTAINS[c] $0", query.searchQuery)
-        }
-
-        if (query.appType.isNotEmpty()) {
-            initialQuery = initialQuery.query("common.type IN[c] $0", query.appType.map { it.name })
-        }
-
-        if (query.masterSubPackageId != 0) {
-            initialQuery = initialQuery.query("common.masterSubPackageId == $0", query.masterSubPackageId)
-        }
-
-        if (query.storeCategories.isNotEmpty()) {
-            // Optimize the query by shifting different one-sized sets into one "large"
-            // Was: ANY [c0, c10] AND ANY [c1] AND ANY [c2] AND ANY [c3] AND ANY [c4] AND ANY [c5]
-            // Now: ANY [c0, c10] AND ALL [c1, c2, c3, c4, c5]
-            val (anySets, requiredSets) = query.storeCategories.filter { it.isNotEmpty() }.partition { set -> set.size > 1 }
-
-            for (categorySet in anySets) {
-                initialQuery = initialQuery.query("ANY $0 == common.category.@keys", categorySet.map { "category_${it.ordinal}" })
-            }
-
-            requiredSets.flatten().takeIf { it.isNotEmpty() }?.let { requiredSet ->
-                initialQuery = initialQuery.query("ALL $0 == common.category.@keys", requiredSet.map { "category_${it.ordinal}" })
-            }
-        }
-
-        if (query.steamDeckMinimumSupport != ESteamDeckSupport.Unknown) {
-            initialQuery = initialQuery.query("common.steamDeckCompat.category >= $0", query.steamDeckMinimumSupport.ordinal)
-        }
-
-        if (query.controllerSupport != KsLibraryQueryControllerSupportFilter.None) {
-            when (query.controllerSupport) {
-                KsLibraryQueryControllerSupportFilter.None -> {}
-
-                KsLibraryQueryControllerSupportFilter.Partial -> {
-                    initialQuery = initialQuery.query("common.controllerSupport IN $0 OR common.category[$1] == TRUE OR common.category[$2] == TRUE", listOf("full", "partial"), "category_18", "category_28")
-                }
-
-                KsLibraryQueryControllerSupportFilter.Full -> {
-                    initialQuery = initialQuery.query("common.controllerSupport ==[c] $0 OR common.category[$1] == TRUE", "full", "category_28")
-                }
-            }
-        }
-
-        if (query.storeTags.isNotEmpty()) {
-            initialQuery = initialQuery.query("ALL $0 == common.tags", query.storeTags)
-        }
-
-        if (query.limit > 0) {
-            initialQuery = initialQuery.limit(query.limit)
-        }
-
-        val sortDirection = when (query.sortByDirection) {
-            KsLibraryQuerySortByDirection.Ascending -> Sort.ASCENDING
-            KsLibraryQuerySortByDirection.Descending -> Sort.DESCENDING
-        }
-
-        when (query.sortBy) {
-            KsLibraryQuerySortBy.None -> {}
-            KsLibraryQuerySortBy.PlayedTime -> {} // not part of initial query
-            KsLibraryQuerySortBy.LastPlayed -> {} // not part of initial query
-
-            KsLibraryQuerySortBy.Name -> {
-                initialQuery = initialQuery.sort("common.name", sortDirection)
-            }
-
-            KsLibraryQuerySortBy.ReleaseDate -> {
-                initialQuery = initialQuery.sort("common.steamReleaseDate", sortDirection)
-            }
-
-            KsLibraryQuerySortBy.MetacriticScore -> {
-                initialQuery = initialQuery.sort("common.metacriticScore", sortDirection)
-            }
-
-            KsLibraryQuerySortBy.SteamScore -> {
-                initialQuery = initialQuery.sort("common.reviewScore", sortDirection)
-            }
-
-            KsLibraryQuerySortBy.AppId -> {
-                initialQuery = initialQuery.sort("appId", sortDirection)
-            }
-        }
-
-        // Execute Initial Query
-        val initialQueryResults: List<AppInfo> = initialQuery.find()
+    suspend fun execute(query: KsLibraryQuery): List<OwnedSteamApplication> {
+        val initialQueryResults = steamClient.database.sharedDatabase.picsApplications().rawFilteredApplications(
+            query = compileKsLibraryQueryToSql(query)
+        )
 
         // Augment with license and playtime information
-        var ownedSteamApplications = initialQueryResults.map { picsAppInfo ->
+        var ownedSteamApplications = initialQueryResults.map { dbInfo ->
             OwnedSteamApplication(
-                application = SteamApplication.fromPics(picsAppInfo),
-                licenses = steamClient.pics.findLicensesForCurrentUser(AppId(picsAppInfo.appId)),
-                playTime = getApplicationPlaytime(AppId(picsAppInfo.appId))
+                application = SteamApplication.fromDatabase(dbInfo),
+                licenses = steamClient.pics.findLicensesForCurrentUser(AppId(dbInfo.appInfo.id)),
+                playTime = steamClient.library.getApplicationPlaytime(AppId(dbInfo.appInfo.id))
             )
         }
 
         // Filter by Play State
         when (query.playState) {
-            EPlayState.PlayedNever -> {
+            ECollectionPlayState.PlayedNever -> {
                 ownedSteamApplications = ownedSteamApplications.filter {
                     it.playTime != null && it.playTime.firstLaunch.total == 0
                 }
             }
 
-            EPlayState.PlayedPreviously -> {
+            ECollectionPlayState.PlayedPreviously -> {
                 ownedSteamApplications = ownedSteamApplications.filter {
                     it.playTime != null && it.playTime.firstLaunch.total != 0
                 }
@@ -550,7 +461,7 @@ class Library internal constructor(
         }
 
         // And, finally, filter by owner
-        return@withContext when (query.ownerTypeFilter) {
+        return when (query.ownerTypeFilter) {
             KsLibraryQueryOwnerFilter.None -> ownedSteamApplications
             KsLibraryQueryOwnerFilter.Default -> ownedSteamApplications.filter { it.licenses.isNotEmpty() }
             KsLibraryQueryOwnerFilter.OwnedOnly -> ownedSteamApplications.filter { it.ownsThisApp(steamClient) }

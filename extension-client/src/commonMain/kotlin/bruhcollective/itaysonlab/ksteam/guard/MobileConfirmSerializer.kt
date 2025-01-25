@@ -1,6 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.guard
 
-import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
+import bruhcollective.itaysonlab.ksteam.models.guard.ConfirmationListState
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.json.*
 import kotlinx.serialization.serializer

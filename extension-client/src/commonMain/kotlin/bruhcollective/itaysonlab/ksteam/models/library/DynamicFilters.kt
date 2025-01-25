@@ -5,12 +5,12 @@ import bruhcollective.itaysonlab.ksteam.models.enums.*
 import kotlin.jvm.JvmInline
 
 data class DynamicFilters (
-    val byAppType: DfEntry<EAppType> = DfEntry(emptyList<EAppType>() to false),
-    val byPlayState: DfEntry<EPlayState> = DfEntry(emptyList<EPlayState>() to false),
-    val byAppFeature: DfEntry<EAppFeature> = DfEntry(emptyList<EAppFeature>() to false),
-    val byGenre: DfEntry<EGenre> = DfEntry(emptyList<EGenre>() to false),
+    val byAppType: DfEntry<ECollectionAppType> = DfEntry(emptyList<ECollectionAppType>() to false),
+    val byPlayState: DfEntry<ECollectionPlayState> = DfEntry(emptyList<ECollectionPlayState>() to false),
+    val byAppFeature: DfEntry<ECollectionAppFeature> = DfEntry(emptyList<ECollectionAppFeature>() to false),
+    val byGenre: DfEntry<ECollectionGenre> = DfEntry(emptyList<ECollectionGenre>() to false),
     val byStoreTag: DfEntry<Int> = DfEntry(emptyList<Int>() to false),
-    val byPartner: DfEntry<EPartner> = DfEntry(emptyList<EPartner>() to false),
+    val byPartner: DfEntry<ECollectionPartner> = DfEntry(emptyList<ECollectionPartner>() to false),
     val byFriend: DfEntry<SteamId> = DfEntry(emptyList<SteamId>() to false)
 )
 

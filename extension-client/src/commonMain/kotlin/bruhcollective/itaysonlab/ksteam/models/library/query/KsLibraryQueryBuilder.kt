@@ -1,20 +1,17 @@
 package bruhcollective.itaysonlab.ksteam.models.library.query
 
-import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
-import bruhcollective.itaysonlab.ksteam.models.enums.EGenre
-import bruhcollective.itaysonlab.ksteam.models.enums.EPlayState
-import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckSupport
-import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
+import bruhcollective.itaysonlab.ksteam.models.enums.*
 
 /**
  * Builds a [KsLibraryQuery] that can be used in [bruhcollective.itaysonlab.ksteam.handlers.library.Library].
  */
 class KsLibraryQueryBuilder constructor() {
-    private var appType: MutableList<EAppType> = mutableListOf()
-    private var playState: EPlayState? = null
+    private var appType: MutableList<ECollectionAppType> = mutableListOf()
+    private var playState: ECollectionPlayState? = null
     private var storeCategories: MutableList<List<EStoreCategory>> = mutableListOf()
     private var controllerSupport: KsLibraryQueryControllerSupportFilter = KsLibraryQueryControllerSupportFilter.None
     private var searchQuery: String? = null
+    private var offset: Int = 0
     private var limit: Int = 0
     private var ownerTypeFilter: KsLibraryQueryOwnerFilter = KsLibraryQueryOwnerFilter.None
     private var masterSubPackageId: Int = 0
@@ -29,6 +26,7 @@ class KsLibraryQueryBuilder constructor() {
         storeCategories = existing.storeCategories.toMutableList()
         controllerSupport = existing.controllerSupport
         searchQuery = existing.searchQuery
+        offset = existing.offset
         limit = existing.limit
         ownerTypeFilter = existing.ownerTypeFilter
         masterSubPackageId = existing.masterSubPackageId
@@ -39,12 +37,12 @@ class KsLibraryQueryBuilder constructor() {
     }
 
     /**
-     * Adds [EAppType] filter.
+     * Adds [ECollectionAppType] filter.
      *
      * If none was specified - everything will be returned.
      * If several - filter behaves like 'OR' operator, returning only specified types.
      */
-    fun withAppType(type: EAppType) = apply {
+    fun withAppType(type: ECollectionAppType) = apply {
         appType.add(type)
     }
 
@@ -119,16 +117,16 @@ class KsLibraryQueryBuilder constructor() {
      *
      * The filter behaves like 'AND' operator, returning apps that contains ALL of specified genres.
      */
-    fun withGenre(genre: EGenre) = apply {
+    fun withGenre(genre: ECollectionGenre) = apply {
         storeTags.add(genre.tagNumber)
     }
 
     /**
-     * Sets [EPlayState] filter. This runs after the initial query and is intended for multi-account setups or Family Sharing.
+     * Sets [ECollectionPlayState] filter. This runs after the initial query and is intended for multi-account setups or Family Sharing.
      *
-     * Only [EPlayState.PlayedPreviously] and [EPlayState.PlayedNever] are used in kSteam - other values will be ignored.
+     * Only [ECollectionPlayState.PlayedPreviously] and [ECollectionPlayState.PlayedNever] are used in kSteam - other values will be ignored.
      */
-    fun withPlayState(state: EPlayState) = apply {
+    fun withPlayState(state: ECollectionPlayState) = apply {
         playState = state
     }
 
@@ -154,6 +152,16 @@ class KsLibraryQueryBuilder constructor() {
     fun withLimit(value: Int) = apply {
         require(value >= 0) { "Limit must be a positive number." }
         limit = value
+    }
+
+    /**
+     * Sets an offset. 0 will start from the beginning the limit, negative values will result in a [IllegalArgumentException].
+     *
+     * Please note that offset will be done BEFORE [withPlayState] and [withOwnerFilter] - these filters run on limited results (offset 10 means final filter will be from offset 10 apps).
+     */
+    fun withOffset(value: Int) = apply {
+        require(value >= 0) { "Offset must be a positive number." }
+        offset = value
     }
 
     /**
@@ -196,6 +204,7 @@ class KsLibraryQueryBuilder constructor() {
             controllerSupport = controllerSupport,
             searchQuery = searchQuery,
             limit = limit,
+            offset = offset,
             ownerTypeFilter = ownerTypeFilter,
             masterSubPackageId = masterSubPackageId,
             storeTags = storeTags,

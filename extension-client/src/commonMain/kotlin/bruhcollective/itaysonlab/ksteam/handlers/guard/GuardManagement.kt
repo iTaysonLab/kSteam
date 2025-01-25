@@ -1,8 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.handlers.guard
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
-import bruhcollective.itaysonlab.ksteam.guard.models.ActiveSession
-import bruhcollective.itaysonlab.ksteam.guard.models.IncomingSession
+import bruhcollective.itaysonlab.ksteam.models.guard.ActiveSession
+import bruhcollective.itaysonlab.ksteam.models.guard.IncomingSession
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay

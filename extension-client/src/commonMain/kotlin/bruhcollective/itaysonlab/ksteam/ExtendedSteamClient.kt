@@ -1,21 +1,26 @@
 package bruhcollective.itaysonlab.ksteam
 
-import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
+import bruhcollective.itaysonlab.ksteam.database.KSteamDatabaseProvider
+import bruhcollective.itaysonlab.ksteam.database.KSteamRoomDatabase
 import bruhcollective.itaysonlab.ksteam.handlers.*
 import bruhcollective.itaysonlab.ksteam.handlers.guard.Guard
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardConfirmation
 import bruhcollective.itaysonlab.ksteam.handlers.guard.GuardManagement
 import bruhcollective.itaysonlab.ksteam.handlers.library.Library
 import bruhcollective.itaysonlab.ksteam.handlers.library.Pics
+import bruhcollective.itaysonlab.ksteam.util.RichPresenceFormatter
 
 /**
  * An object that holds [SteamClient] with an extra handlers that are helpful in building UI applications.
  */
-class ExtendedSteamClient (
+class ExtendedSteamClient internal constructor (
+    val databaseProvider: KSteamDatabaseProvider,
     val enablePics: Boolean,
     val client: SteamClient
 ): SteamClient by client {
-    internal val database = KSteamRealmDatabase(client)
+    // Extensions
+    internal val database = KSteamRoomDatabase(client, databaseProvider)
+    val richPresenceFormatter = RichPresenceFormatter(this, database.sharedDatabase)
 
     // Subsystems
     val currentPersona: CurrentPersona = CurrentPersona(this)
@@ -72,12 +77,15 @@ class ExtendedSteamClient (
 /**
  * Extends [SteamClient] with subsystems adapted for UI client development.
  *
+ * @param databaseProvider Room database provider
  * @param enablePics enables PICS-related subsystems (Library and Pics), which can make startup process longer
  */
 fun SteamClient.extendToClient(
+    databaseProvider: KSteamDatabaseProvider,
     enablePics: Boolean
 ): ExtendedSteamClient {
     return ExtendedSteamClient(
+        databaseProvider = databaseProvider,
         enablePics = enablePics,
         client = this
     )

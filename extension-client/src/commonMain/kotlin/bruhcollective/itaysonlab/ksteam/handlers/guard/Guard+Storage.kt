@@ -1,7 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers.guard
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
+import bruhcollective.itaysonlab.ksteam.models.guard.GuardStructure
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import kotlin.jvm.JvmInline
 

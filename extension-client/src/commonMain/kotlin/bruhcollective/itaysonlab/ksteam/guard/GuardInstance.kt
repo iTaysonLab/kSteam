@@ -3,11 +3,11 @@ package bruhcollective.itaysonlab.ksteam.guard
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContext
 import bruhcollective.itaysonlab.ksteam.guard.clock.currentTime
 import bruhcollective.itaysonlab.ksteam.guard.clock.currentTimeMs
-import bruhcollective.itaysonlab.ksteam.guard.models.CodeModel
-import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationTicket
-import bruhcollective.itaysonlab.ksteam.guard.models.GuardStructure
-import bruhcollective.itaysonlab.ksteam.guard.models.StaticAuthCode
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.guard.CodeModel
+import bruhcollective.itaysonlab.ksteam.models.guard.ConfirmationTicket
+import bruhcollective.itaysonlab.ksteam.models.guard.GuardStructure
+import bruhcollective.itaysonlab.ksteam.models.guard.StaticAuthCode
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow

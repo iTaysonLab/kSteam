@@ -1,9 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.handlers.guard
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
-import bruhcollective.itaysonlab.ksteam.guard.models.ConfirmationListState
-import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfResult
-import bruhcollective.itaysonlab.ksteam.guard.models.MobileConfirmationItem
+import bruhcollective.itaysonlab.ksteam.models.guard.ConfirmationListState
+import bruhcollective.itaysonlab.ksteam.models.guard.MobileConfResult
+import bruhcollective.itaysonlab.ksteam.models.guard.MobileConfirmationItem
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import io.ktor.client.statement.*
 import io.ktor.http.*

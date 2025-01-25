@@ -4,6 +4,9 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
 
+// For minor edits or local development, this can be set to false in order to skip Kotlin/Native
+const val ALLOW_APPLE_PLATFORMS = false
+
 fun KotlinMultiplatformExtension.multiplatformSetup(
     additionalNativeTargetConfig: KotlinNativeTarget.() -> Unit = {}
 ) {
@@ -33,18 +36,20 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
         }
     }
 
-    // Enable native support for macOS
-    macosArm64(additionalNativeTargetConfig)
-    macosX64(additionalNativeTargetConfig)
+    if (ALLOW_APPLE_PLATFORMS) {
+        // Enable native support for macOS
+        macosArm64(additionalNativeTargetConfig)
+        macosX64(additionalNativeTargetConfig)
 
-    // Enable iOS support
-    iosX64(additionalNativeTargetConfig)
-    iosArm64(additionalNativeTargetConfig)
-    iosSimulatorArm64(additionalNativeTargetConfig)
+        // Enable iOS support
+        iosX64(additionalNativeTargetConfig)
+        iosArm64(additionalNativeTargetConfig)
+        iosSimulatorArm64(additionalNativeTargetConfig)
 
-    // Allow @ExperimentalObjCName annotation
-    sourceSets.all {
-        languageSettings.optIn("kotlin.experimental.ExperimentalObjCName")
+        // Allow @ExperimentalObjCName annotation
+        sourceSets.all {
+            languageSettings.optIn("kotlin.experimental.ExperimentalObjCName")
+        }
     }
 }
 

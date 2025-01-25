@@ -1,8 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
-import bruhcollective.itaysonlab.ksteam.database.KSteamRealmDatabase
-import bruhcollective.itaysonlab.ksteam.database.models.apps.RealmPackageLicenses
+import bruhcollective.itaysonlab.ksteam.database.KSteamRoomDatabase
+import bruhcollective.itaysonlab.ksteam.database.room.entity.apps.RoomPackageLicense
+import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsAppEntry
+import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsPackageEntry
+import bruhcollective.itaysonlab.ksteam.database.room.entity.store.RoomStoreTag
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
@@ -10,21 +13,18 @@ import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationLicense
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
-import bruhcollective.itaysonlab.ksteam.models.pics.PicsAppChangeNumber
-import bruhcollective.itaysonlab.ksteam.models.pics.PicsPackageChangeNumber
+import bruhcollective.itaysonlab.ksteam.util.SharedCompressor
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
-import io.realm.kotlin.UpdatePolicy
-import io.realm.kotlin.delete
-import io.realm.kotlin.ext.query
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
 import steam.webui.common.*
+import kotlin.math.max
 
 /**
  * A handler to access the PICS infrastructure
@@ -32,8 +32,15 @@ import steam.webui.common.*
 @OptIn(ExperimentalSerializationApi::class)
 class Pics internal constructor(
     private val steamClient: ExtendedSteamClient,
-    internal val database: KSteamRealmDatabase
+    internal val database: KSteamRoomDatabase
 ) {
+    private companion object {
+        private const val TAG = "PicsHandler"
+        private const val PERSISTENCE_KEY = "pics_last_change_number"
+    }
+
+    //
+
     private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
 
@@ -49,10 +56,8 @@ class Pics internal constructor(
      *
      * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
      */
-    fun getSteamApplication(id: Int): SteamApplication? {
-        return SteamApplication.fromPics(
-            database.sharedRealm.query<AppInfo>("appId == $0", id).first().find() ?: return null
-        )
+    suspend fun getSteamApplication(id: Int): SteamApplication? {
+        return SteamApplication.fromDatabase(database.sharedDatabase.picsApplications().getFullApplicationById(id) ?: return null)
     }
 
     /**
@@ -60,31 +65,29 @@ class Pics internal constructor(
      *
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
-    fun getSteamApplications(vararg ids: Int): List<SteamApplication> = getSteamApplications(ids.toList())
+    suspend fun getSteamApplications(vararg ids: Int): List<SteamApplication> {
+        return getSteamApplications(ids.toList())
+    }
 
     /**
      * Queries multiple applications in PICS subsystem, returning [SteamApplication]s if any apps are found.
      *
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
-    fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
-        return database.sharedRealm.query<AppInfo>("appId IN $0", ids).find().map(SteamApplication::fromPics)
+    suspend fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
+        return database.sharedDatabase.picsApplications().getFullApplicationByIds(ids).map(SteamApplication::fromDatabase)
     }
 
     /**
      * Finds application licenses for the current account.
      */
-    fun findLicensesForCurrentUser(appId: AppId): List<SteamApplicationLicense> {
-        // Find the packages ID and map them to licenses
-        return database.sharedRealm.query<PackageInfo>("$0 IN ANY appIds", appId.value).find().mapNotNull { packageInfo ->
-            database.currentUserRealm.query<RealmPackageLicenses>("packageId == $0", packageInfo.packageId).first().find()
-        }.flatMap(RealmPackageLicenses::convert)
+    suspend fun findLicensesForCurrentUser(appId: AppId): List<SteamApplicationLicense> {
+        return database.sharedDatabase.picsPackages().getGrantedAppConnection(appId.value)?.let { packageId ->
+            database.currentUserDatabase.packageLicenses().getLicensesByPackageId(packageId)
+        }.orEmpty().map(RoomPackageLicense::convert)
     }
 
     // region Internal stuff
-
-    internal var appIds: List<Int> = emptyList()
-        private set
 
     /**
      * 1: Receive k_EMsgClientLicenseList
@@ -96,83 +99,82 @@ class Pics internal constructor(
      */
     init {
         steamClient.on(EMsg.k_EMsgClientLicenseList) { packet ->
-            handleServerLicenseList(CMsgClientLicenseList.ADAPTER.decode(packet.payload).licenses)
+            runCatching {
+                handleServerLicenseList(CMsgClientLicenseList.ADAPTER.decode(packet.payload).licenses)
+            }.onFailure { e ->
+                steamClient.logger.logError(TAG) { "[handleLicenses] error = ${e.message}" }
+                e.printStackTrace()
+            }.onSuccess {
+                steamClient.logger.logDebug(TAG) { "[handleLicenses] ready!" }
+            }
         }
     }
 
     private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
-        steamClient.logger.logDebug("Pics:HandleLicenses") { "Got licenses: ${licenses.size}" }
+        steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] received ${licenses.size} licenses" }
 
-        val requiresUpdate = withContext(Dispatchers.Default) {
-            licenses.filter { sLicense ->
-                if (sLicense.package_id != null && sLicense.change_number != null) {
-                    val packageId = sLicense.package_id ?: return@filter false
-                    val changeNumber = sLicense.change_number ?: return@filter false
-                    val databaseChangeNumber = database.sharedRealm.query<PicsPackageChangeNumber>("packageId == $0", packageId).first().find()?.changeNumber
+        val changesResponse = steamClient.awaitProto(
+            packet = SteamPacket.newProto(
+                messageId = EMsg.k_EMsgClientPICSChangesSinceRequest,
+                payload = CMsgClientPICSChangesSinceRequest(
+                    since_change_number = steamClient.persistence.getInt(PERSISTENCE_KEY),
+                    send_app_info_changes = true,
+                    send_package_info_changes = true
+                )
+            ), adapter = CMsgClientPICSChangesSinceResponse.ADAPTER
+        )
 
-                    // if null, package was NOT cached
-                    databaseChangeNumber == null || changeNumber > databaseChangeNumber
-                } else {
-                    false
-                }
+        steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] changes: since = ${changesResponse.since_change_number} -> ${changesResponse.current_change_number}, full = ${changesResponse.force_full_update}, apps = ${changesResponse.app_changes.size} [${changesResponse.force_full_app_update}], packages = ${changesResponse.package_changes.size} [${changesResponse.force_full_package_update}]" }
+
+        _isPicsAvailable.value = PicsState.UpdatingPackages
+        if (changesResponse.force_full_update == true || changesResponse.force_full_app_update == true || changesResponse.force_full_app_update == true) {
+            // Short-circuit to full database update
+            requestAndWritePackageChunks(tokens = licenses.associate { it.package_id!! to it.access_token })
+
+            _isPicsAvailable.value = PicsState.UpdatingApps
+            requestTokensAndUpdate(appIds = licenses.mapNotNull { it.package_id }.let { database.sharedDatabase.picsPackages().getGrantedAppsForPackages(it) })
+        } else {
+            // Update known packages by using PICS response
+            changesResponse.package_changes.associate { appChange ->
+                (appChange.packageid!! to database.sharedDatabase.picsEntries().getAccessTokenForPackage(appChange.packageid!!))
+            }.filterValues { it != null }.let { packages -> requestAndWritePackageChunks(packages) }
+
+            _isPicsAvailable.value = PicsState.UpdatingApps
+            // Update known apps by using PICS response
+            changesResponse.app_changes.associate { appChange ->
+                appChange.appid!! to database.sharedDatabase.picsEntries().getAccessTokenForApp(appChange.appid!!)
+            }.filterValues { it != null }.let { apps -> requestAndWriteAppChunks(apps) }
+
+            // If license size differs, also scan for unknown packages
+            if (licenses.size != database.currentUserDatabase.packageLicenses().count()) {
+                checkForMissingEntries(licenses)
             }
         }
 
-        runCatching {
-            withContext(Dispatchers.Default) {
-                updatePackagesMetadata(requiresUpdate)
-                checkAppsIntegrity(licenses)
-                writeAccountSpecificLicenseInformation(licenses)
-            }
-        }.onFailure { e ->
-            steamClient.logger.logError("Pics:HandleLicenses") { "There was an error while initializing the PICS subsystem: ${e.message}. Already cached data is available." }
-            e.printStackTrace()
-        }.onSuccess {
-            steamClient.logger.logDebug("Pics:HandleLicenses") { "PICS subsystem initialized and is ready to use!" }
-        }
+        // Save persistence
+        steamClient.persistence.set(PERSISTENCE_KEY, changesResponse.current_change_number ?: max(database.sharedDatabase.picsEntries().getPackageLastChangeNumber(), database.sharedDatabase.picsEntries().getAppLastChangeNumber()).toInt())
 
+        // Write licenses
+        writeAccountSpecificLicenseInformation(licenses)
         _isPicsAvailable.value = PicsState.Ready
     }
 
-    private suspend fun updatePackagesMetadata(requiresUpdate: List<CMsgClientLicenseList_License>) {
-        _isPicsAvailable.value = PicsState.UpdatingPackages
+    private suspend fun checkForMissingEntries(licenses: List<CMsgClientLicenseList_License>) {
+        steamClient.logger.logDebug(TAG) { "[checkForMissingEntries]" }
 
-        if (requiresUpdate.isEmpty()) {
-            steamClient.logger.logDebug("Pics:UpdatePackagesMetadata") {
-                "Package metadata is in up-to-date state, no update required"
-            }
-            return
-        } else {
-            steamClient.logger.logDebug("Pics:UpdatePackagesMetadata") {
-                "Requesting metadata for ${requiresUpdate.size} packages"
-            }
+        val newPackages = licenses.filter { sLicense ->
+            database.currentUserDatabase.packageLicenses().getLicensesByPackageId(sLicense.package_id!!).isEmpty()
         }
 
-        picsFlow(
-            request = CMsgClientPICSProductInfoRequest(
-                meta_data_only = false,
-                packages = requiresUpdate.map {
-                    CMsgClientPICSProductInfoRequest_PackageInfo(
-                        packageid = it.package_id,
-                        access_token = it.access_token,
-                    )
-                }
-            ), selector = CMsgClientPICSProductInfoResponse::packages
-        ).also {
-            writePicsPackageChunk(it)
-        }
+        // Write new packages
+        requestAndWritePackageChunks(newPackages.associate { pkg -> pkg.package_id!! to pkg.access_token })
+
+        // Get the apps from them
+        requestTokensAndUpdate(database.sharedDatabase.picsPackages().getGrantedAppsForPackages(newPackages.map { it.package_id!! }))
     }
 
-    // This is trying to mimic Steam client behavior
-    private suspend fun checkAppsIntegrity(licenses: List<CMsgClientLicenseList_License>) {
-        // Get ids of app that we actually own
-        appIds = licenses.mapNotNull { it.package_id }
-            .let { owningPackages -> database.sharedRealm.query<PackageInfo>("packageId IN $0", owningPackages).find() }
-            .flatMap { it.appIds }
-            .distinct()
-
-        // We request app tokens to access any metadata at all
-        val tokens = steamClient.awaitProto(
+    private suspend fun requestTokensAndUpdate(appIds: List<Int>) {
+        steamClient.awaitProto(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
                 payload = CMsgClientPICSAccessTokenRequest(appids = appIds.toList())
@@ -181,146 +183,108 @@ class Pics internal constructor(
             token.appid != null
         }.associate {
             it.appid!! to it.access_token
-        }
-
-        if (database.sharedRealm.query<AppInfo>().count().find() > 0) {
-            // Not a new launch, we should check everything
-            partiallyRefreshAppIds(tokens)
-        } else {
-            // Short-circuit through the non-content PICS requests and immediately request everything
-            fullyRefreshAppInfos(tokens)
+        }.let { tokens ->
+            requestAndWriteAppChunks(tokens)
         }
     }
 
-    private suspend fun fullyRefreshAppInfos(tokens: Map<Int, Long?>) {
-        steamClient.logger.logDebug("Pics:HandleLicenses") { "[Full] Requesting metadata for ${tokens.size} apps" }
-        _isPicsAvailable.value = PicsState.UpdatingApps
+    private suspend fun requestAndWritePackageChunks(tokens: Map<Int, Long?>) {
+        if (tokens.isEmpty()) return
 
-        // And now, we request those apps and write them!
-
-        picsFlow(
+        awaitStreamedPicsRequest(
             request = CMsgClientPICSProductInfoRequest(
                 meta_data_only = false,
-                apps = tokens.map { (appId, accessToken) ->
-                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
+                packages = tokens.entries.map { (id, token) ->
+                    CMsgClientPICSProductInfoRequest_PackageInfo(
+                        packageid = id,
+                        access_token = token,
+                    )
                 }
-            ), selector = CMsgClientPICSProductInfoResponse::apps
-        ).also {
-            writePicsAppChunk(it)
+            ), selector = CMsgClientPICSProductInfoResponse::packages
+        ) { chunk ->
+            writePicsPackageChunk(tokens, chunk)
         }
     }
 
-    private suspend fun partiallyRefreshAppIds(tokens: Map<Int, Long?>) {
-        // Here, we add app IDs that we will update from PICS
-        val appIdsToUpdate = mutableListOf<Int>()
+    private suspend fun requestAndWriteAppChunks(tokens: Map<Int, Long?>) {
+        if (tokens.isEmpty()) return
 
-        // Then, we load cloud app metadata
-        picsFlow(
-            request = CMsgClientPICSProductInfoRequest(
-                meta_data_only = true,
-                apps = tokens.map { (appId, accessToken) ->
-                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
-                }
-            ), selector = CMsgClientPICSProductInfoResponse::apps
-        ).also { metadataChunk ->
-            // Here, we diff the change numbers and note what apps we are missing in the DB
-            for (appInfo in metadataChunk) {
-                val appId = appInfo.appid ?: continue
-                val changeNumber = appInfo.change_number ?: continue
-                val databaseChangeNumber = database.sharedRealm.query<PicsAppChangeNumber>("appId == $0", appId).first().find()?.changeNumber
-
-                if (databaseChangeNumber == null) {
-                    steamClient.logger.logVerbose("Pics:HandleLicenses") {
-                        "[$appId] not yet cached: $changeNumber"
+        SharedCompressor().use { compressor ->
+            awaitStreamedPicsRequest(
+                request = CMsgClientPICSProductInfoRequest(
+                    meta_data_only = false,
+                    apps = tokens.map { (appId, accessToken) ->
+                        CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
                     }
-
-                    appIdsToUpdate.add(appId)
-                } else if (changeNumber > databaseChangeNumber) {
-                    steamClient.logger.logVerbose("Pics:HandleLicenses") {
-                        "[$appId] is outdated: $changeNumber > $databaseChangeNumber"
-                    }
-
-                    appIdsToUpdate.add(appId)
-                } // otherwise it is actual
+                ), selector = CMsgClientPICSProductInfoResponse::apps
+            ) { chunk ->
+                writePicsAppChunk(compressor, tokens, chunk)
             }
         }
-
-        if (appIdsToUpdate.isEmpty()) {
-            steamClient.logger.logDebug("Pics:HandleLicenses") { "App metadata is in up-to-date state, no update required" }
-            return
-        }
-
-        steamClient.logger.logDebug("Pics:HandleLicenses") { "[Partial] Requesting metadata for ${appIdsToUpdate.size} apps" }
-        _isPicsAvailable.value = PicsState.UpdatingApps
-
-        // And now, we request those apps and write them!
-
-        picsFlow(
-            request = CMsgClientPICSProductInfoRequest(
-                meta_data_only = false,
-                apps = appIdsToUpdate.map { appId ->
-                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = tokens[appId])
-                }
-            ), selector = CMsgClientPICSProductInfoResponse::apps
-        ).also {
-            writePicsAppChunk(it)
-        }
-    }
-
-    private suspend fun <T> picsFlow(
-        request: CMsgClientPICSProductInfoRequest,
-        selector: (CMsgClientPICSProductInfoResponse) -> List<T>
-    ): List<T> {
-        return steamClient.awaitMultipleProto(
-            packet = SteamPacket.newProto(
-                messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
-                payload = request
-            ), adapter = CMsgClientPICSProductInfoResponse.ADAPTER, stopIf = { response ->
-                response.response_pending == null || response.response_pending == false
-            }
-        ).flatMap(transform = selector)
     }
 
     private suspend fun writePicsPackageChunk(
+        licenseMap: Map<Int, Long?>,
         chunk: List<CMsgClientPICSProductInfoResponse_PackageInfo>
     ) {
-        steamClient.logger.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} packages received!" }
+        steamClient.logger.logVerbose(TAG) { "[writePicsPackageChunk] size = ${chunk.size}" }
 
-        database.sharedRealm.write {
-            for (packageInfo in chunk) {
-                val changeNumber = packageInfo.change_number ?: continue
-                val buffer = packageInfo.buffer?.toByteArray() ?: continue
-                val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: continue
+        for (packageInfo in chunk) {
+            val changeNumber = packageInfo.change_number ?: continue
+            val buffer = packageInfo.buffer?.toByteArray() ?: continue
+            val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: continue
 
-                copyToRealm(PicsPackageChangeNumber().apply {
-                    this.packageId = parsedPackageInfo.packageId
-                    this.changeNumber = changeNumber
-                }, updatePolicy = UpdatePolicy.ALL)
+            database.sharedDatabase.picsEntries().upsertPackageEntry(
+                RoomPicsPackageEntry(
+                    id = parsedPackageInfo.packageId,
+                    changeNumber = changeNumber,
+                    accessToken = licenseMap[parsedPackageInfo.packageId] ?: 0L
+                )
+            )
 
-                copyToRealm(parsedPackageInfo, updatePolicy = UpdatePolicy.ALL)
-            }
+            database.sharedDatabase.picsPackages().upsertPicsPackage(parsedPackageInfo)
         }
     }
 
     private suspend fun writePicsAppChunk(
+        compressor: SharedCompressor,
+        licenseMap: Map<Int, Long?>,
         chunk: List<CMsgClientPICSProductInfoResponse_AppInfo>
     ) {
-        steamClient.logger.logDebug("Pics:HandleLicenses") { "Processing PICS batch: ${chunk.size} apps received!" }
+        steamClient.logger.logVerbose(TAG) { "[writePicsAppChunk] size = ${chunk.size}" }
 
-        database.sharedRealm.write {
-            for (appInfo in chunk) {
-                val changeNumber = appInfo.change_number ?: continue
-                val buffer = appInfo.buffer?.toByteArray() ?: continue
-                val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: continue
+        for (appInfo in chunk) {
+            val changeNumber = appInfo.change_number ?: continue
+            val buffer = appInfo.buffer?.toByteArray() ?: continue
+            val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: continue
 
-                copyToRealm(PicsAppChangeNumber().apply {
-                    this.appId = parsedAppInfo.appId
-                    this.changeNumber = changeNumber
-                }, updatePolicy = UpdatePolicy.ALL)
+            database.sharedDatabase.picsEntries().upsertAppEntry(
+                RoomPicsAppEntry(
+                    id = parsedAppInfo.appId,
+                    changeNumber = changeNumber,
+                    accessToken = licenseMap[parsedAppInfo.appId] ?: 0L
+                )
+            )
 
-                copyToRealm(parsedAppInfo, updatePolicy = UpdatePolicy.ALL)
-            }
+            database.sharedDatabase.storeTags().insertOrIgnoreStoreTags(parsedAppInfo.common?.tags?.map { RoomStoreTag(id = it, language = "english", name = "", normalizedName = "") }.orEmpty())
+            database.sharedDatabase.picsApplications().upsertAppInfo(parsedAppInfo, compressor.compress(buffer))
         }
+    }
+
+    private suspend fun <T> awaitStreamedPicsRequest(
+        request: CMsgClientPICSProductInfoRequest,
+        selector: (CMsgClientPICSProductInfoResponse) -> List<T>,
+        process: suspend (List<T>) -> Unit
+    ) {
+        steamClient.awaitStreamedMultipleProto(
+            packet = SteamPacket.newProto(
+                messageId = EMsg.k_EMsgClientPICSProductInfoRequest,
+                payload = request
+            ), adapter = CMsgClientPICSProductInfoResponse.ADAPTER, process = { response ->
+                process(selector(response))
+                response.response_pending == null || response.response_pending == false
+            }
+        )
     }
 
     // endregion
@@ -328,22 +292,8 @@ class Pics internal constructor(
     // region Account-specific license information
 
     private suspend fun writeAccountSpecificLicenseInformation(licenses: List<CMsgClientLicenseList_License>) {
-        database.currentUserRealm.write {
-            delete<RealmPackageLicenses>()
-
-            for (license in licenses) {
-                val mutableInformation = query<RealmPackageLicenses>("packageId == $0", license.package_id).first().find()
-
-                if (mutableInformation != null) {
-                    mutableInformation.licenses.add(RealmPackageLicenses.RealmPackageLicense(license))
-                } else {
-                    val newInformation = RealmPackageLicenses()
-                    newInformation.packageId = license.package_id ?: 0
-                    newInformation.licenses.add(RealmPackageLicenses.RealmPackageLicense(license))
-                    copyToRealm(newInformation)
-                }
-            }
-        }
+        database.currentUserDatabase.packageLicenses().deleteAll()
+        database.currentUserDatabase.packageLicenses().insert(licenses.map(::RoomPackageLicense))
     }
 
     // endregion

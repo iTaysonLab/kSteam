@@ -1,36 +1,13 @@
-@file:UseSerializers(
-    MutableRealmIntKSerializer::class,
-    RealmAnyKSerializer::class,
-    RealmDictionaryKSerializer::class,
-    RealmInstantKSerializer::class,
-    RealmListKSerializer::class,
-    RealmSetKSerializer::class,
-    RealmUUIDKSerializer::class
-)
-
 package bruhcollective.itaysonlab.ksteam.models.pics
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityImageUrl
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatStaticAppImageUrl
-import bruhcollective.itaysonlab.ksteam.models.enums.EAppType
-import io.realm.kotlin.ext.realmDictionaryOf
-import io.realm.kotlin.ext.realmListOf
-import io.realm.kotlin.serializers.*
-import io.realm.kotlin.types.EmbeddedRealmObject
-import io.realm.kotlin.types.RealmDictionary
-import io.realm.kotlin.types.RealmList
-import io.realm.kotlin.types.RealmObject
-import io.realm.kotlin.types.annotations.PrimaryKey
+import bruhcollective.itaysonlab.ksteam.models.enums.ECollectionAppType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.UseSerializers
 
 @Serializable
-internal class AppInfo: RealmObject {
-    // Fixes https://github.com/realm/realm-kotlin/issues/1567
-    companion object
-
-    @PrimaryKey
+internal class AppInfo {
     @SerialName("appid")
     var appId: Int = 0
 
@@ -46,10 +23,7 @@ internal class AppInfo: RealmObject {
     // Sub-classes
 
     @Serializable
-    internal class AppInfoCommon: EmbeddedRealmObject {
-        // Fixes https://github.com/realm/realm-kotlin/issues/1567
-        companion object
-
+    internal class AppInfoCommon {
         @SerialName("name")
         var name: String = ""
 
@@ -120,39 +94,39 @@ internal class AppInfo: RealmObject {
         // Lists
 
         @SerialName("content_descriptors")
-        var contentDescriptors: RealmList<String> = realmListOf()
+        var contentDescriptors: List<String> = emptyList()
 
         @SerialName("genres")
-        var genres: RealmList<Int> = realmListOf()
+        var genres: List<Int> = emptyList()
 
         @SerialName("associations")
-        var associations: RealmList<AppAssociation> = realmListOf()
+        var associations: List<AppAssociation> = emptyList()
 
         @SerialName("store_tags")
-        var tags: RealmList<Int> = realmListOf()
+        var tags: List<Int> = emptyList()
 
         @SerialName("eulas")
-        var eulas: RealmList<AppEula> = realmListOf()
+        var eulas: List<AppEula> = emptyList()
 
         // Dictionaries
 
         @SerialName("name_localized")
-        var nameLocalized: RealmDictionary<String> = realmDictionaryOf()
+        var nameLocalized: Map<String, String> = emptyMap()
 
         @SerialName("small_capsule")
-        var smallCapsule: RealmDictionary<String> = realmDictionaryOf()
+        var smallCapsule: Map<String, String> = emptyMap()
 
         @SerialName("header_image")
-        var headerImages: RealmDictionary<String> = realmDictionaryOf()
+        var headerImages: Map<String, String> = emptyMap()
 
         @SerialName("category")
-        var category: RealmDictionary<Boolean> = realmDictionaryOf()
+        var category: Map<String, Boolean> = emptyMap()
 
         @SerialName("languages")
-        var languages: RealmDictionary<Boolean> = realmDictionaryOf()
+        var languages: Map<String, Boolean> = emptyMap()
 
         @SerialName("supported_languages")
-        var supportedLanguages: RealmDictionary<AppSupportedLanguageMatrix?> = realmDictionaryOf()
+        var supportedLanguages: Map<String, AppSupportedLanguageMatrix?> = emptyMap()
 
         // Booleans
 
@@ -177,50 +151,47 @@ internal class AppInfo: RealmObject {
         // Sub-Objects
 
         @SerialName("steam_deck_compatibility")
-        var steamDeckCompat: AppSteamDeckCompatibility? = null
+        var steamDeckCompat: AppSteamDeckCompatibility = AppSteamDeckCompatibility()
 
         @SerialName("library_assets_full")
-        var libraryFullAssets: AppInfoLibraryFullAssets? = null
+        var libraryFullAssets: AppInfoLibraryFullAssets = AppInfoLibraryFullAssets()
 
         // Sub-classes
 
         @Serializable
-        class AppInfoLibraryFullAssets: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppInfoLibraryFullAssets {
             @SerialName("library_capsule")
-            var libraryCapsule: AppInfoLibraryFullAssetDefinition? = null
+            var libraryCapsule: AppInfoLibraryFullAssetDefinition = AppInfoLibraryFullAssetDefinition()
 
             @SerialName("library_hero")
-            var libraryHero: AppInfoLibraryFullAssetDefinition? = null
+            var libraryHero: AppInfoLibraryFullAssetDefinition = AppInfoLibraryFullAssetDefinition()
+
+            @SerialName("library_hero_blur")
+            var libraryHeroBlur: AppInfoLibraryFullAssetDefinition = AppInfoLibraryFullAssetDefinition()
 
             @SerialName("library_logo")
-            var libraryLogo: AppInfoLibraryFullAssetDefinition? = null
+            var libraryLogo: AppInfoLibraryFullAssetDefinition = AppInfoLibraryFullAssetDefinition()
+
+            @SerialName("library_header")
+            var libraryHeader: AppInfoLibraryFullAssetDefinition = AppInfoLibraryFullAssetDefinition()
 
             @Serializable
-            class AppInfoLibraryFullAssetDefinition: EmbeddedRealmObject {
-                // Fixes https://github.com/realm/realm-kotlin/issues/1567
-                companion object
-
+            class AppInfoLibraryFullAssetDefinition {
                 @SerialName("image")
-                var image: RealmDictionary<String> = realmDictionaryOf()
+                var image: Map<String, String> = emptyMap()
 
                 @SerialName("image2x")
-                var image2x: RealmDictionary<String> = realmDictionaryOf()
+                var image2x: Map<String, String> = emptyMap()
             }
         }
 
         @Serializable
-        class AppSteamDeckCompatibility: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppSteamDeckCompatibility {
             @SerialName("category")
             var category: Int = 0
 
             @SerialName("tests")
-            var tests: RealmList<AppSteamDeckCompatTestEntry> = realmListOf()
+            var tests: List<AppSteamDeckCompatTestEntry> = emptyList()
 
             @SerialName("test_timestamp")
             var testedOn: Long = 0
@@ -228,10 +199,7 @@ internal class AppInfo: RealmObject {
             // Sub-classes
 
             @Serializable
-            class AppSteamDeckCompatTestEntry: EmbeddedRealmObject {
-                // Fixes https://github.com/realm/realm-kotlin/issues/1567
-                companion object
-
+            class AppSteamDeckCompatTestEntry {
                 @SerialName("display")
                 var display: Int = 0
 
@@ -241,10 +209,7 @@ internal class AppInfo: RealmObject {
         }
 
         @Serializable
-        class AppAssociation: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppAssociation {
             @SerialName("type")
             var type: String = ""
 
@@ -253,10 +218,7 @@ internal class AppInfo: RealmObject {
         }
 
         @Serializable
-        class AppSupportedLanguageMatrix: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppSupportedLanguageMatrix {
             @SerialName("supported")
             var supported: Boolean = false
 
@@ -268,10 +230,7 @@ internal class AppInfo: RealmObject {
         }
 
         @Serializable
-        class AppEula: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppEula {
             @SerialName("id")
             var id: String = ""
 
@@ -287,10 +246,7 @@ internal class AppInfo: RealmObject {
     }
 
     @Serializable
-    class AppInfoExtended: EmbeddedRealmObject {
-        // Fixes https://github.com/realm/realm-kotlin/issues/1567
-        companion object
-
+    class AppInfoExtended {
         @SerialName("developer")
         var developer: String = ""
 
@@ -317,12 +273,9 @@ internal class AppInfo: RealmObject {
     }
 
     @Serializable
-    class AppInfoAlbumMetadata: EmbeddedRealmObject {
-        // Fixes https://github.com/realm/realm-kotlin/issues/1567
-        companion object
-
+    class AppInfoAlbumMetadata {
         @SerialName("tracks")
-        var trackList: RealmList<AppInfoMusicTrack> = realmListOf()
+        var trackList: List<AppInfoMusicTrack> = emptyList()
 
         @SerialName("metadata")
         var metadata: AppInfoMusicMetadata? = null
@@ -331,10 +284,7 @@ internal class AppInfo: RealmObject {
         var cdnAssets: AppInfoMusicCdnAssets? = null
 
         @Serializable
-        class AppInfoMusicTrack: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppInfoMusicTrack {
             @SerialName("discnumber")
             var discNumber: Int = 0
 
@@ -352,28 +302,22 @@ internal class AppInfo: RealmObject {
         }
 
         @Serializable
-        class AppInfoMusicMetadata: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppInfoMusicMetadata {
             @SerialName("artist")
-            var artist: RealmDictionary<String> = realmDictionaryOf()
+            var artist: Map<String, String> = emptyMap()
 
             @SerialName("composer")
-            var composer: RealmDictionary<String> = realmDictionaryOf()
+            var composer: Map<String, String> = emptyMap()
 
             @SerialName("label")
-            var label: RealmDictionary<String> = realmDictionaryOf()
+            var label: Map<String, String> = emptyMap()
 
             @SerialName("othercredits")
-            var otherCredits: RealmDictionary<String> = realmDictionaryOf()
+            var otherCredits: Map<String, String> = emptyMap()
         }
 
         @Serializable
-        class AppInfoMusicCdnAssets: EmbeddedRealmObject {
-            // Fixes https://github.com/realm/realm-kotlin/issues/1567
-            companion object
-
+        class AppInfoMusicCdnAssets {
             @SerialName("album_cover")
             var albumCoverId: String = ""
         }
@@ -382,7 +326,7 @@ internal class AppInfo: RealmObject {
 
 //
 
-internal val AppInfo.type get() = EAppType.entries.firstOrNull { it.name.equals(common?.type, ignoreCase = true) } ?: EAppType.Invalid
+internal val AppInfo.type get() = ECollectionAppType.entries.firstOrNull { it.name.equals(common?.type, ignoreCase = true) } ?: ECollectionAppType.Invalid
 internal val AppInfo.icon get() = formatCommunityImageUrl(appId, "${common?.iconId}.jpg")
 internal val AppInfo.logo get() = formatCommunityImageUrl(appId, "${common?.logoId}.jpg")
 internal val AppInfo.header get() = formatStaticAppImageUrl(appId, "header.jpg")

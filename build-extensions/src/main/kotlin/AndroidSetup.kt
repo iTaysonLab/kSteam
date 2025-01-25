@@ -2,7 +2,7 @@ import com.android.build.gradle.LibraryExtension
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 
-fun Project.androidLibrary(moduleNamespace: String) {
+fun Project.androidLibrary(moduleNamespace: String, extraConfiguration: LibraryExtension.() -> Unit = {}) {
     extensions.configure<LibraryExtension>("android") {
         namespace = moduleNamespace
         compileSdk = 33
@@ -15,5 +15,7 @@ fun Project.androidLibrary(moduleNamespace: String) {
             sourceCompatibility = JavaVersion.VERSION_11
             targetCompatibility = JavaVersion.VERSION_11
         }
+
+        extraConfiguration()
     }
 }

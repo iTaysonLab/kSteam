@@ -1,15 +1,17 @@
 [versions]
-kotlin = "2.0.20"
-kotlinx-coroutines = "1.8.1"
-kotlinx-json = "1.7.2"
+kotlin = "2.1.0"
+kotlinx-coroutines = "1.9.0"
+kotlinx-json = "1.7.3"
 kotlinx-atomicfu = "0.25.0"
+ksp = "2.1.0-1.0.29"
 agp = "8.2.2"
-ktorClientVersion = "2.3.12"
-okio = "3.9.0"
-realm = "2.3.0"
-wire = "5.0.0"
+ktorClientVersion = "3.0.2"
+okio = "3.9.1"
+wire = "5.2.1"
 dokka = "1.9.20"
 cache4k = "0.13.0"
+room = "2.7.0-alpha12"
+sqlite = "2.5.0-alpha12"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -17,22 +19,28 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-atomicfu = { id = "org.jetbrains.kotlinx.atomicfu", version.ref = "kotlinx-atomicfu" }
 
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
 android-library = { id = "com.android.library", version.ref = "agp" }
-realm = { id = "io.realm.kotlin", version.ref = "realm" }
 wire = { id = "com.squareup.wire", version.ref = "wire" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+room = { id = "androidx.room", version.ref = "room" }
 
 [libraries]
 androidx-security-crypto = { module = "androidx.security:security-crypto", version = "1.1.0-alpha06" }
 androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version = "1.1.0-alpha06" }
-androidx-collection = { module = "androidx.collection:collection", version = "1.4.4" }
+androidx-collection = { module = "androidx.collection:collection", version = "1.4.5" }
+
+androidx-sqlite = { group = "androidx.sqlite", name = "sqlite-bundled", version.ref = "sqlite" }
+androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
+androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinx-json" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-json" }
 kotlinx-serialization-json-okio = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json-okio", version.ref = "kotlinx-json" }
-kotlinx-immutables = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version = "0.3.5" }
-kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version = "0.4.1" }
+kotlinx-immutables = { group = "org.jetbrains.kotlinx", name = "kotlinx-collections-immutable", version = "0.3.8" }
+kotlinx-datetime = { group = "org.jetbrains.kotlinx", name = "kotlinx-datetime", version = "0.6.1" }
 
 ktor-serialization = { module = "io.ktor:ktor-serialization", version.ref = "ktorClientVersion" }
 ktor-client = { module = "io.ktor:ktor-client-core", version.ref = "ktorClientVersion" }
@@ -48,6 +56,5 @@ ktor-client-engine-cio = { module = "io.ktor:ktor-client-cio", version.ref = "kt
 cache4k = { module = "io.github.reactivecircus.cache4k:cache4k", version.ref = "cache4k" }
 
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
-realm = { group = "io.realm.kotlin", name = "library-base", version.ref = "realm" }
 wire = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }
 wire-grpc = { group = "com.squareup.wire", name = "wire-grpc-client", version.ref = "wire" }
