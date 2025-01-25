@@ -1,7 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.database.room
 
+import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import bruhcollective.itaysonlab.ksteam.database.room.dao.RoomPackageLicenseDao
 import bruhcollective.itaysonlab.ksteam.database.room.dao.RoomPersonaDao
@@ -24,6 +26,7 @@ import bruhcollective.itaysonlab.ksteam.database.room.entity.persona.RoomPersona
     ],
     version = 1
 )
+@ConstructedBy(KsUserDatabaseInitializer::class)
 internal abstract class KsUserDatabase: RoomDatabase() {
     companion object {
         fun newInstance(builder: Builder<KsUserDatabase>): KsUserDatabase {
@@ -37,3 +40,5 @@ internal abstract class KsUserDatabase: RoomDatabase() {
     abstract fun packageLicenses(): RoomPackageLicenseDao
     abstract fun personas(): RoomPersonaDao
 }
+
+internal expect object KsUserDatabaseInitializer: RoomDatabaseConstructor<KsUserDatabase>

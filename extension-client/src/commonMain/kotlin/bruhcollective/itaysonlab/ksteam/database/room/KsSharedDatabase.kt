@@ -1,7 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.database.room
 
+import androidx.room.ConstructedBy
 import androidx.room.Database
+import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.RoomDatabaseConstructor
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import bruhcollective.itaysonlab.ksteam.database.room.dao.*
 import bruhcollective.itaysonlab.ksteam.database.room.entity.apps.RoomRichPresenceDictionary
@@ -41,6 +44,7 @@ import bruhcollective.itaysonlab.ksteam.database.room.entity.store.RoomStoreTag
     ],
     version = 1
 )
+@ConstructedBy(KsSharedDatabaseInitializer::class)
 internal abstract class KsSharedDatabase: RoomDatabase() {
     companion object {
         fun newInstance(builder: Builder<KsSharedDatabase>): KsSharedDatabase {
@@ -58,3 +62,5 @@ internal abstract class KsSharedDatabase: RoomDatabase() {
     abstract fun richPresenceDictionaries(): RoomRichPresenceDictionaryDao
     abstract fun storeTags(): RoomStoreTagDao
 }
+
+internal expect object KsSharedDatabaseInitializer: RoomDatabaseConstructor<KsSharedDatabase>
