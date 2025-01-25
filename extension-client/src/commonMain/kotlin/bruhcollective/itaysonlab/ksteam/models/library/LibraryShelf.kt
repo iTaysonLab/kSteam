@@ -1,10 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.models.library
 
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-@Immutable
 data class LibraryShelf (
     val id: String,
     val linkedCollection: String,

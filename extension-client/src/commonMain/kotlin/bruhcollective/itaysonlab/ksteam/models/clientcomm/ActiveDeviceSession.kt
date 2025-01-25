@@ -2,12 +2,10 @@ package bruhcollective.itaysonlab.ksteam.models.clientcomm
 
 import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 /**
  * Describes an active device running desktop Steam client.
  */
-@Immutable
 data class ActiveDeviceSession (
     /**
      * Instance ID that is used to send remote signals.

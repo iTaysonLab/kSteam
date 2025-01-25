@@ -4,7 +4,6 @@ import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EFriendRelationship
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.common.CMsgClientPersonaState_Friend
 
 /**
@@ -12,7 +11,6 @@ import steam.webui.common.CMsgClientPersonaState_Friend
  *
  * Some of the data can be defined as "unknown" - you need to call specific methods in [bruhcollective.itaysonlab.ksteam.handlers.Persona] to request that data.
  */
-@Immutable
 data class Persona (
     /**
      * The [SteamId] of the user.

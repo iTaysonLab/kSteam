@@ -2,11 +2,9 @@ package bruhcollective.itaysonlab.ksteam.models.publishedfiles
 
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.Serializable
 import steam.webui.publishedfile.PublishedFileDetails
 
-@Immutable
 sealed interface PublishedFile {
     /**
      * Unique ID of the file.

@@ -4,12 +4,10 @@ import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.enums.EUserNewsType
 import bruhcollective.itaysonlab.ksteam.models.persona.SummaryPersona
 import bruhcollective.itaysonlab.ksteam.models.publishedfiles.PublishedFile
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.webui.usernews.CUserNews_Event
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
-@Immutable
 sealed class ActivityFeedEntry (
     val id: String,
     val date: Int
@@ -30,7 +28,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user now owns these games from the list.
      */
-    @Immutable
     class ReceivedNewGame(
         date: Int,
         val persona: SummaryPersona,
@@ -49,7 +46,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user posted a screenshot from a specific game.
      */
-    @Immutable
     class ScreenshotPosted(
         date: Int,
         val persona: SummaryPersona,
@@ -68,7 +64,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user posted several screenshots from a specific game.
      */
-    @Immutable
     class ScreenshotsPosted(
         date: Int,
         val persona: SummaryPersona,
@@ -83,7 +78,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user added some games to their wishlist.
      */
-    @Immutable
     class AddedToWishlist(
         date: Int,
         val persona: SummaryPersona,
@@ -101,7 +95,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user played the game for the first time.
      */
-    @Immutable
     class PlayedForFirstTime(
         date: Int,
         val persona: SummaryPersona,
@@ -115,7 +108,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user has received new achievements in this game.
      */
-    @Immutable
     class NewAchievements(
         date: Int,
         val persona: SummaryPersona,
@@ -145,7 +137,6 @@ sealed class ActivityFeedEntry (
     /**
      * A user has posted a status about the game.
      */
-    @Immutable
     class PostedStatus(
         date: Int,
         val postId: Long,
@@ -161,7 +152,6 @@ sealed class ActivityFeedEntry (
     /**
      * kSteam does not know about this event.
      */
-    @Immutable
     class UnknownEvent(
         date: Int,
         val persona: SummaryPersona,

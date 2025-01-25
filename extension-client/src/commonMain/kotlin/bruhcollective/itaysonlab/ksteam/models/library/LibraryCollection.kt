@@ -2,7 +2,6 @@ package bruhcollective.itaysonlab.ksteam.models.library
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.*
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,7 +10,6 @@ import kotlinx.serialization.Serializable
  *
  * A library collection is a defined set of filters which is used to sort applications in user's Steam library.
  */
-@Immutable
 sealed interface LibraryCollection {
     val id: String
     val name: String
@@ -92,12 +90,12 @@ internal class DynamicFilterSpec(
     )
 
     internal fun parseFilters() = DynamicFilters(
-        byAppType = DfEntry(mapOptions(0, EAppType::byBitMask) to acceptsUnion(0)),
-        byPlayState = DfEntry(mapOptions(1, EPlayState::byIndex) to acceptsUnion(1)),
-        byAppFeature = DfEntry(mapOptions(2, EAppFeature::byIndex) to acceptsUnion(2)),
-        byGenre = DfEntry(mapOptions(3, EGenre::byNumber) to acceptsUnion(3)),
+        byAppType = DfEntry(mapOptions(0, ECollectionAppType::byBitMask) to acceptsUnion(0)),
+        byPlayState = DfEntry(mapOptions(1, ECollectionPlayState::byIndex) to acceptsUnion(1)),
+        byAppFeature = DfEntry(mapOptions(2, ECollectionAppFeature::byIndex) to acceptsUnion(2)),
+        byGenre = DfEntry(mapOptions(3, ECollectionGenre::byNumber) to acceptsUnion(3)),
         byStoreTag = DfEntry(mapOptions(4) { it } to acceptsUnion(4)),
-        byPartner = DfEntry(mapOptions(5, EPartner::byIndex) to acceptsUnion(5)),
+        byPartner = DfEntry(mapOptions(5, ECollectionPartner::byIndex) to acceptsUnion(5)),
         byFriend = DfEntry(emptyList<SteamId>() to acceptsUnion(6)) // TODO
     )
 

@@ -1,9 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityPublicAssetUrl
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
-@Immutable
 data class ProfileItem (
     val imageSmall: String?,
     val imageLarge: String?,

@@ -1,11 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import steam.enums.EBanContentCheckResult
 import steam.enums.EProfileCustomizationStyle
 import steam.enums.EProfileCustomizationType
 
-@Immutable
 data class ProfileCustomization (
     val profileWidgets: List<ProfileWidget> = emptyList(),
     val slotsAvailable: Int = 0,
@@ -17,7 +15,6 @@ data class ProfileCustomization (
     }
 }
 
-@Immutable
 data class ProfileCustomizationEntry (
     val customizationType: EProfileCustomizationType,
     val level: Int,
@@ -36,7 +33,6 @@ data class ProfileCustomizationEntry (
     )
 }
 
-@Immutable
 data class ProfileCustomizationSlot (
     val appId: Int,
     val publishedFileId: Long,
@@ -67,7 +63,6 @@ data class ProfileCustomizationSlot (
     )
 }
 
-@Immutable
 data class ProfileTheme (
     val themeId: String,
     val title: String
@@ -78,7 +73,6 @@ data class ProfileTheme (
     )
 }
 
-@Immutable
 data class ProfilePreferences (
     val hideProfileAwards: Boolean
 ) {

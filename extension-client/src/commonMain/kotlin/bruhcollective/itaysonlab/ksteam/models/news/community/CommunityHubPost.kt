@@ -1,12 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.models.news.community
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable(with = CommunityHubSerializer::class)
-@Immutable
 sealed class CommunityHubPost {
     @SerialName("published_file_id")
     abstract val fileId: String
@@ -45,7 +43,6 @@ sealed class CommunityHubPost {
     abstract val creator: CommunityHubPersonaInformation
 
     @Serializable
-    @Immutable
     data class Artwork(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -62,7 +59,6 @@ sealed class CommunityHubPost {
     ): CommunityHubPost()
 
     @Serializable
-    @Immutable
     data class Video(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -80,7 +76,6 @@ sealed class CommunityHubPost {
     ): CommunityHubPost()
 
     @Serializable
-    @Immutable
     data class Screenshot(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -97,7 +92,6 @@ sealed class CommunityHubPost {
     ): CommunityHubPost()
 
     @Serializable
-    @Immutable
     data class CommunityItem(
         @SerialName("published_file_id") override val fileId: String,
         @SerialName("title") override val title: String,
@@ -115,7 +109,6 @@ sealed class CommunityHubPost {
 }
 
 @Serializable
-@Immutable
 class CommunityHubPersonaInformation(
     val name: String,
     val steamid: String,
@@ -125,7 +118,6 @@ class CommunityHubPersonaInformation(
 }
 
 @Serializable
-@Immutable
 class CommunityHubReactionItem(
     @SerialName("reaction_type") val reactionId: Int,
     val count: Int

@@ -3,13 +3,11 @@ package bruhcollective.itaysonlab.ksteam.models.news
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
 import bruhcollective.itaysonlab.ksteam.models.persona.Persona
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.coroutines.flow.Flow
 
 /**
  * Describes an event on the Steam "News" page.
  */
-@Immutable
 data class NewsEvent (
     /**
      * The unique ID of an event.

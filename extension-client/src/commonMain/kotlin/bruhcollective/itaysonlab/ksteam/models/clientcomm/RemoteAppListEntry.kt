@@ -1,12 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.models.clientcomm
 
 import bruhcollective.itaysonlab.ksteam.models.AppId
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 
 /**
  * Describes the entry in the application list.
  */
-@Immutable
 data class RemoteAppListEntry (
     /**
      * Application ID.
@@ -28,12 +26,10 @@ data class RemoteAppListEntry (
      */
     val favorite: Boolean,
 ) {
-    @Immutable
     sealed interface State {
         /**
          * Application is installed and ready to launch.
          */
-        @Immutable
         data class Installed (
             /**
              * Is this application running right now?
@@ -49,7 +45,6 @@ data class RemoteAppListEntry (
         /**
          * Application is being installing or updated
          */
-        @Immutable
         data class Downloading (
             /**
              * Is this download paused?
@@ -112,13 +107,11 @@ data class RemoteAppListEntry (
         /**
          * Application is being uninstalled.
          */
-        @Immutable
         data object Uninstalling: State
 
         /**
          * Application is available to install.
          */
-        @Immutable
         data class Available (
             /**
              * Reported application size, in bytes
@@ -129,7 +122,6 @@ data class RemoteAppListEntry (
         /**
          * Application is unavailable due to lack of storage space.
          */
-        @Immutable
         data class InsufficientStorageSpace (
             /**
              * Reported application size, in bytes
@@ -151,7 +143,6 @@ data class RemoteAppListEntry (
         /**
          * Application is unavailable due to platform support.
          */
-        @Immutable
         data object UnsupportedPlatform: State
     }
 }

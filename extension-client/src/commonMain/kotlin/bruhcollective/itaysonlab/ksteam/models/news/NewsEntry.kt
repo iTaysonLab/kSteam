@@ -1,12 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.models.news
 
-
-import bruhcollective.itaysonlab.ksteam.platform.Immutable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-@Immutable
 data class NewsEntry (
     @SerialName("announcement_body")
     val announcementBody: AnnouncementBody = AnnouncementBody(),
@@ -86,7 +83,6 @@ data class NewsEntry (
     val videoPreviewType: String = "", // youtube
 ) {
     @Serializable
-    @Immutable
     data class AnnouncementBody(
         @SerialName("ban_check_result")
         val banCheckResult: Int = 0,
