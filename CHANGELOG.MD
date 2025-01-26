@@ -1,3 +1,19 @@
+## r43
+
+- **Even faster library!** PICS chunk processing is now faster, decreasing initial startup time even more.
+- 
+
+## r42
+
+- **Supercharged library queries!** For UI display reasons, you might not need to query ALL the data from applications. 
+- - Now, kSteam adds a `full` argument to most of the methods in `Library` that can skip extra information.
+- - **kSteam Library Queries** got new parameters: `alwaysFetchLicenses`, `alwaysFetchPlayTime` and `fetchFullInformation`. All of them are false by default.
+- - `fetchFullInformation` or `full` set to false will skip querying the following metadata: content descriptors, tags, categories, localized assets, developers, publishers and franchises
+- **Improved PICS Database!** With new fields included in SQLite tables, kSteam does no longer store any VDF at all, greatly improving update speeds and reducing database sizes.
+- `SteamApplication`: Content Descriptors are now parsed properly
+- `Library`: SQL query building is fixed for some collections and simple requests
+- `Library`: Added `KsLibraryQuerySortBy.NormalizedName` for sorting based on `sortas` field in AppInfo with fallback to regular names
+
 ## r41
 
 - **Rewritten network communication!** Inspired by job system in other Steam Network clients, the CMJob system in kSteam allows for more streamlined experience and better stability when working with the Steam Network.

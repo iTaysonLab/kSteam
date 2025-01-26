@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r41"
+version = "r43"
 
 kotlin {
     multiplatformSetup()
@@ -36,7 +36,14 @@ dependencies {
     commonMainImplementation(libs.okio)
 
     commonMainApi(libs.wire)
-    commonMainApi(libs.wire.grpc)
+
+    commonMainApi(libs.wire.grpc) {
+        exclude(group = "com.squareup.okhttp3", module = "okhttp")
+    }
+}
+
+configurations.all {
+    exclude(group = "com.squareup.okhttp3", module = "okhttp")
 }
 
 /*publishing {

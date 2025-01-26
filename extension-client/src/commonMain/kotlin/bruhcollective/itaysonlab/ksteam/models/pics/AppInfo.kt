@@ -27,6 +27,9 @@ internal class AppInfo {
         @SerialName("name")
         var name: String = ""
 
+        @SerialName("sortas")
+        var sortAs: String = ""
+
         // Strings
 
         @SerialName("type")
@@ -115,9 +118,6 @@ internal class AppInfo {
 
         @SerialName("small_capsule")
         var smallCapsule: Map<String, String> = emptyMap()
-
-        @SerialName("header_image")
-        var headerImages: Map<String, String> = emptyMap()
 
         @SerialName("category")
         var category: Map<String, Boolean> = emptyMap()

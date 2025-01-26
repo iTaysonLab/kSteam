@@ -31,9 +31,6 @@ internal data class RoomPicsAppInfoLocalizedAssets(
     @ColumnInfo(name = "small_capsule")
     val smallCapsule: String?,
 
-    @Embedded(prefix = "header_image_")
-    val headerImage: String?,
-
     @Embedded(prefix = "library_hero_")
     val libraryHero: RetinaAsset?,
 
@@ -62,7 +59,6 @@ internal data class RoomPicsAppInfoLocalizedAssets(
         language = lang.vdfName,
         name = pack.name,
         smallCapsule = pack.smallCapsule,
-        headerImage = pack.headerImage,
         libraryHero = pack.libraryHero?.let { RetinaAsset(path = it.path, path2x = it.path2x) },
         libraryHeader = pack.libraryHeader?.let { RetinaAsset(path = it.path, path2x = it.path2x) },
         libraryCapsule = pack.libraryCapsule?.let { RetinaAsset(path = it.path, path2x = it.path2x) },

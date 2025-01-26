@@ -32,7 +32,8 @@ import bruhcollective.itaysonlab.ksteam.database.room.entity.store.RoomStoreTag
         RoomPicsAppInfoCategory::class,
         RoomPicsAppInfoLocalizedAssets::class,
         RoomPicsAppInfoStoreTagJunction::class,
-        RoomPicsAppInfoVdf::class,
+        RoomPicsAppInfoAssociation::class,
+        RoomPicsAppInfoContentDescriptor::class,
 
         // PICS - Package
         RoomPicsPackageInfo::class,

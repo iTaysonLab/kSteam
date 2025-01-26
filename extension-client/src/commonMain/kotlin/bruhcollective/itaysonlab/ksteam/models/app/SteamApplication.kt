@@ -1,8 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.app
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants
-import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.apps.RoomPicsAppInfoLocalizedAssets
-import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.apps.RoomPicsFullAppInfo
+import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.apps.*
 import bruhcollective.itaysonlab.ksteam.database.room.entity.store.RoomStoreTag
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.Assets.LocalizedAssetPack
@@ -29,22 +28,17 @@ data class SteamApplication(
     /**
      * This will return true is the object is in "lite" state.
      *
-     * "Lite" [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication] will have only following info:
-     * - [id]
-     * - [type]
-     * - [name]
-     * - [steamReleaseDate]
-     * - [releaseState]
-     * - [controllerSupport]
-     * - [ReviewData.reviewScore]
-     * - [ReviewData.metacriticScore]
+     * "Lite" [SteamApplication] will have these fields empty:
+     * - [contentDescriptors]
      * - [tags]
-     * - [Assets.clientIcon]
-     * - [Assets.localizedAssets]
      * - [categories]
-     * - [SteamDeckSupport.category]
+     * - [Assets.localizedAssets]
+     * - [developers]
+     * - [publishers]
+     * - [franchises]
      *
      * "Lite" objects are queried from the inbuilt PICS database and are great to use if you only want to display application image/title in UI.
+     * They don't require to fetch EVERY associated field, slowing down requests.
      */
     val isLiteObject: Boolean,
 
@@ -202,9 +196,9 @@ data class SteamApplication(
             clientIconId: String?,
             localizedAssets: Map<ELanguage, LocalizedAssetPack>
         ): this(
-            icon = iconId?.let { id -> EnvironmentConstants.formatCommunityImageUrl(appId.value, "${id}.jpg") }.orEmpty(),
-            logo = logoId?.let { id -> EnvironmentConstants.formatCommunityImageUrl(appId.value, "${id}.jpg") }.orEmpty(),
-            clientIcon = clientIconId?.let { id -> EnvironmentConstants.formatCommunityImageUrl(appId.value, "${id}.icon") }.orEmpty(),
+            icon = iconId?.takeIf { it.isNotEmpty() }?.let { id -> EnvironmentConstants.formatCommunityImageUrl(appId.value, "${id}.jpg") }.orEmpty(),
+            logo = logoId?.takeIf { it.isNotEmpty() }?.let { id -> EnvironmentConstants.formatCommunityImageUrl(appId.value, "${id}.jpg") }.orEmpty(),
+            clientIcon = clientIconId?.takeIf { it.isNotEmpty() }?.let { id -> EnvironmentConstants.formatCommunityImageUrl(appId.value, "${id}.ico") }.orEmpty(),
             mediumCapsule = EnvironmentConstants.formatSharedStoreAssetUrl(appId.value, "capsule_467x181.jpg"),
             largeCapsule = EnvironmentConstants.formatSharedStoreAssetUrl(appId.value, "capsule_616x353.jpg"),
             heroCapsule = EnvironmentConstants.formatSharedStoreAssetUrl(appId.value, "hero_capsule.jpg"),
@@ -217,12 +211,37 @@ data class SteamApplication(
          */
         data class LocalizedAssetPack(
             val name: String?,
+
+            /**
+             * A 231x87 capsule image.
+             */
             val smallCapsule: String?,
-            val headerImage: String?,
+
+            /**
+             * Asset path for library capsule - a 600x900 (w*h) image which is basically a cover art shown in library grid.
+             */
             val libraryCapsule: RetinaAsset?,
+
+            /**
+             * Asset path for library hero - a key art WITHOUT the logo.
+             */
             val libraryHero: RetinaAsset?,
+
+            /**
+             * Asset path for library logo. This is an image that appears on top of all layers.
+             */
             val libraryLogo: RetinaAsset?,
+
+            /**
+             * Asset path for library header - a key art WITH the logo.
+             */
             val libraryHeader: RetinaAsset?,
+
+            /**
+             * Asset path for blurred library hero - a key art WITHOUT the logo.
+             *
+             * This might not be available everywhere.
+             */
             val libraryHeroBlur: RetinaAsset?
         ) {
             /**
@@ -373,10 +392,33 @@ data class SteamApplication(
          * Converts a database [RoomPicFullAppInfo] into a client-facing [SteamApplication].
          */
         internal fun fromDatabase(info: RoomPicsFullAppInfo): SteamApplication {
+            return fromDatabase(
+                info = info.appInfo,
+                categories = info.categories,
+                tags = info.tags,
+                descriptors = info.descriptors,
+                localizedAssets = info.localizedAssets,
+                associations = info.associations,
+                liteObject = false
+            )
+        }
+
+        /**
+         * Converts a database [RoomPicFullAppInfo] into a client-facing [SteamApplication].
+         */
+        internal fun fromDatabase(
+            info: RoomPicsAppInfo,
+            liteObject: Boolean = true,
+            categories: List<RoomPicsAppInfoCategory> = emptyList(),
+            tags: List<RoomStoreTag> = emptyList(),
+            descriptors: List<RoomPicsAppInfoContentDescriptor> = emptyList(),
+            localizedAssets: List<RoomPicsAppInfoLocalizedAssets> = emptyList(),
+            associations: List<RoomPicsAppInfoAssociation> = emptyList(),
+        ): SteamApplication {
             return SteamApplication(
-                isLiteObject = true,
-                id = AppId(info.appInfo.id),
-                type = when (info.appInfo.type.lowercase()) {
+                isLiteObject = liteObject,
+                id = AppId(info.id),
+                type = when (info.type) {
                     "game" -> Type.Game
                     "tool" -> Type.Tool
                     "dlc" -> Type.DLC
@@ -388,58 +430,57 @@ data class SteamApplication(
                     "demo" -> Type.Demo
                     else -> Type.Unknown
                 },
-                name = info.appInfo.name,
-                steamReleaseDate = info.appInfo.steamReleaseDate,
+                name = info.name,
+                steamReleaseDate = info.steamReleaseDate,
                 originalReleaseDate = 0L,
                 supportedOs = emptyList(),
-                releaseState = when (info.appInfo.releaseState.lowercase()) {
+                releaseState = when (info.releaseState.lowercase()) {
                     "released" -> ReleaseState.Released
                     "prerelease" -> ReleaseState.Prerelease
                     "preloadonly" -> ReleaseState.PreloadOnly
                     "disabled" -> ReleaseState.Disabled
                     else -> ReleaseState.Unavailable
                 },
-                controllerSupport = when (info.appInfo.controllerSupport.lowercase()) {
+                controllerSupport = when (info.controllerSupport.lowercase()) {
                     "partial" -> ControllerSupport.Partial
                     "full" -> ControllerSupport.Full
                     else -> ControllerSupport.None
                 },
                 reviewData = ReviewData(
-                    reviewScore = info.appInfo.reviewScore,
-                    reviewPercentage = 0,
-                    metacriticScore = info.appInfo.metacriticScore ?: 0,
-                    metacriticUrl = "",
+                    reviewScore = info.reviewScore,
+                    reviewPercentage = info.reviewPercentage,
+                    metacriticScore = info.metacriticScore ?: 0,
+                    metacriticUrl = info.metacriticUrl.orEmpty(),
                 ),
-                contentDescriptors = emptyList(),
-                tags = info.tags.map(RoomStoreTag::id),
-                categories = info.categories.mapNotNull { c -> EStoreCategory.entries.getOrNull(c.categoryId) },
+                contentDescriptors = descriptors.mapNotNull { ContentDescriptor.entries.getOrNull(it.descriptor - 1) },
+                tags = tags.map(RoomStoreTag::id),
+                categories = categories.mapNotNull { c -> EStoreCategory.entries.getOrNull(c.categoryId) },
                 assets = Assets(
-                    appId = AppId(info.appInfo.id),
-                    iconId = info.appInfo.iconId,
-                    logoId = info.appInfo.logoId,
-                    clientIconId = info.appInfo.clientIconId,
-                    localizedAssets = info.localizedAssets.associate { roomAssetPack ->
+                    appId = AppId(info.id),
+                    iconId = info.iconId,
+                    logoId = info.logoId,
+                    clientIconId = info.clientIconId,
+                    localizedAssets = localizedAssets.associate { roomAssetPack ->
                         ELanguage.byVdf(id = roomAssetPack.language)!! to LocalizedAssetPack(
                             name = roomAssetPack.name,
-                            smallCapsule = roomAssetPack.smallCapsule,
-                            headerImage = roomAssetPack.headerImage,
-                            libraryCapsule = roomAssetPack.libraryCapsule?.toRetina(),
-                            libraryHero = roomAssetPack.libraryHero?.toRetina(),
-                            libraryHeroBlur = roomAssetPack.libraryHeroBlur?.toRetina(),
-                            libraryHeader = roomAssetPack.libraryHeader?.toRetina(),
-                            libraryLogo = roomAssetPack.libraryLogo?.toRetina(),
+                            smallCapsule = roomAssetPack.smallCapsule?.let { EnvironmentConstants.formatSharedStoreAssetUrl(info.id, it) },
+                            libraryCapsule = roomAssetPack.libraryCapsule?.toRetina(info.id),
+                            libraryHero = roomAssetPack.libraryHero?.toRetina(info.id),
+                            libraryHeroBlur = roomAssetPack.libraryHeroBlur?.toRetina(info.id),
+                            libraryHeader = roomAssetPack.libraryHeader?.toRetina(info.id),
+                            libraryLogo = roomAssetPack.libraryLogo?.toRetina(info.id),
                         )
                     }
                 ),
-                dlcForAppId = info.appInfo.dlcForAppId?.let(::AppId),
-                developers = emptyList(),
-                franchises = emptyList(),
-                publishers = emptyList(),
-                homePageUrl = "",
-                manualUrl = "",
+                dlcForAppId = info.dlcForAppId?.let(::AppId),
+                developers = associations.filter { it.type == "developer" }.map(RoomPicsAppInfoAssociation::name),
+                franchises = associations.filter { it.type == "franchise" }.map(RoomPicsAppInfoAssociation::name),
+                publishers = associations.filter { it.type == "publisher" }.map(RoomPicsAppInfoAssociation::name),
+                homePageUrl = info.homepage.orEmpty(),
+                manualUrl = info.manualUrl.orEmpty(),
                 availableDlc = emptyList(),
                 steamDeck = SteamDeckSupport(
-                    category = ESteamDeckSupport.entries[info.appInfo.steamDeckCompat],
+                    category = ESteamDeckSupport.entries[info.steamDeckCompat],
                     tests = emptyList(),
                     testDate = 0L
                 )
@@ -480,7 +521,7 @@ data class SteamApplication(
             }
 
             val contentDescriptors = common.contentDescriptors.mapNotNull { contentDescriptor ->
-                ContentDescriptor.entries.getOrNull(contentDescriptor.toIntOrNull() ?: return@mapNotNull null)
+                ContentDescriptor.entries.getOrNull((contentDescriptor.toIntOrNull() ?: return@mapNotNull null) - 1)
             }
 
             val assets = Assets(
@@ -488,7 +529,7 @@ data class SteamApplication(
                 iconId = common.iconId,
                 logoId = common.logoId,
                 clientIconId = common.clientIconId,
-                localizedAssets = extractLocalizedAssetsFrom(pics)
+                localizedAssets = extractLocalizedAssetsFrom(pics, true)
             )
 
             val steamDeck = SteamDeckSupport(
@@ -535,13 +576,12 @@ data class SteamApplication(
             )
         }
 
-        internal fun extractLocalizedAssetsFrom(appInfo: AppInfo): Map<ELanguage, LocalizedAssetPack> {
+        internal fun extractLocalizedAssetsFrom(appInfo: AppInfo, appendCdn: Boolean): Map<ELanguage, LocalizedAssetPack> {
             val common = appInfo.common ?: error("[${appInfo.appId}] PICS common field should not be null!")
 
             return (
                     common.nameLocalized.keys +
                             common.smallCapsule.keys +
-                            common.headerImages.keys +
                             common.libraryFullAssets.libraryCapsule.image.keys +
                             common.libraryFullAssets.libraryLogo.image.keys +
                             common.libraryFullAssets.libraryHeader.image.keys +
@@ -551,27 +591,36 @@ data class SteamApplication(
                     ELanguage.byVdf(language)!! to LocalizedAssetPack(
                         name = common.nameLocalized[language],
                         smallCapsule = common.smallCapsule[language],
-                        headerImage = common.headerImages[language],
-                        libraryCapsule = common.libraryFullAssets.libraryCapsule.toRetina(language),
-                        libraryHero = common.libraryFullAssets.libraryHero.toRetina(language),
-                        libraryHeroBlur = common.libraryFullAssets.libraryHeroBlur.toRetina(language),
-                        libraryHeader = common.libraryFullAssets.libraryHeader.toRetina(language),
-                        libraryLogo = common.libraryFullAssets.libraryLogo.toRetina(language),
+                        libraryCapsule = common.libraryFullAssets.libraryCapsule.toRetina(appInfo.appId, language, appendCdn),
+                        libraryHero = common.libraryFullAssets.libraryHero.toRetina(appInfo.appId, language, appendCdn),
+                        libraryHeroBlur = common.libraryFullAssets.libraryHeroBlur.toRetina(appInfo.appId, language, appendCdn),
+                        libraryHeader = common.libraryFullAssets.libraryHeader.toRetina(appInfo.appId, language, appendCdn),
+                        libraryLogo = common.libraryFullAssets.libraryLogo.toRetina(appInfo.appId, language, appendCdn),
                     )
                 }
         }
 
-        private fun AppInfo.AppInfoCommon.AppInfoLibraryFullAssets.AppInfoLibraryFullAssetDefinition.toRetina(lang: String): LocalizedAssetPack.RetinaAsset? {
+        private fun AppInfo.AppInfoCommon.AppInfoLibraryFullAssets.AppInfoLibraryFullAssetDefinition.toRetina(appId: Int, lang: String, appendCdn: Boolean): LocalizedAssetPack.RetinaAsset? {
             return image[lang]?.let { path ->
-                LocalizedAssetPack.RetinaAsset(
-                    path = path,
-                    path2x = image2x[lang]
-                )
+                if (appendCdn) {
+                    LocalizedAssetPack.RetinaAsset(
+                        path = EnvironmentConstants.formatSharedStoreAssetUrl(appId, path),
+                        path2x = image2x[lang]?.let { x2 -> EnvironmentConstants.formatSharedStoreAssetUrl(appId, x2) }
+                    )
+                } else {
+                    LocalizedAssetPack.RetinaAsset(
+                        path = path,
+                        path2x = image2x[lang]
+                    )
+                }
             }
         }
 
-        private fun RoomPicsAppInfoLocalizedAssets.RetinaAsset.toRetina(): LocalizedAssetPack.RetinaAsset? {
-            return LocalizedAssetPack.RetinaAsset(path = path, path2x = path2x)
+        private fun RoomPicsAppInfoLocalizedAssets.RetinaAsset.toRetina(appId: Int): LocalizedAssetPack.RetinaAsset? {
+            return LocalizedAssetPack.RetinaAsset(
+                path = EnvironmentConstants.formatSharedStoreAssetUrl(appId, path),
+                path2x = path2x?.let { x2 -> EnvironmentConstants.formatSharedStoreAssetUrl(appId, x2) }
+            )
         }
     }
 }

@@ -14,54 +14,66 @@ import bruhcollective.itaysonlab.ksteam.models.library.query.KsLibraryQuerySortB
 internal fun compileKsLibraryQueryToSql(query: KsLibraryQuery): RoomRawQuery {
     val binds = mutableListOf<SqlBindValue>()
 
+    val shouldHaveAppView = shouldHaveAppView(query)
+    val shouldHaveCategoryView = shouldHaveCategoryView(query)
+    val shouldHaveTagView = shouldHaveTagView(query)
+
     val sql = buildString {
-        // == VIEWS
-        append("WITH ")
-        appendViewAppQuery(query, binds::add)
-        append(',')
+        if (shouldHaveCategoryView || shouldHaveTagView) {
+            // == VIEWS
+            append("WITH ")
 
-        val shouldJoinWithCategories: Boolean = appendViewCategoryQuery(query)
-        append(',')
-
-        var shouldJoinWithTags: Boolean = appendViewTagsQuery(query)
-
-        if (!shouldJoinWithTags) {
-            if (!shouldJoinWithCategories) {
-                deleteRange(lastIndex - 1, lastIndex + 1)
-            } else {
-                deleteRange(lastIndex, lastIndex + 1)
+            if (shouldHaveAppView) {
+                appendViewAppQuery(query, binds::add)
+                append(",")
             }
-        }
 
-        appendLine()
+            if (shouldHaveCategoryView) {
+                appendViewCategoryQuery(query, shouldHaveAppView)
+                if (shouldHaveTagView) append(",")
+            }
 
-        // == SELECTION
-        appendLine("SELECT app.* FROM app_info app")
-        if (shouldJoinWithCategories) appendLine("INNER JOIN ${SqlConstants.VIEW_CATEGORIES} c ON c.app_id = app.id")
-        if (shouldJoinWithTags) appendLine("INNER JOIN ${SqlConstants.VIEW_TAGS} t ON c.app_id = app.id")
-
-        if (shouldJoinWithCategories || shouldJoinWithTags) {
-            append("WHERE ")
-
-            if (shouldJoinWithCategories) append("c.cat_cnt != 0")
-            if (shouldJoinWithCategories && shouldJoinWithTags) append(" AND ")
-            if (shouldJoinWithTags) append("t.tag_cnt = ").append(query.storeTags.size)
+            if (shouldHaveTagView) {
+                appendViewTagsQuery(query, shouldHaveAppView)
+            }
 
             appendLine()
         }
 
-        appendLine("GROUP BY app.id")
+        // == SELECTION
+        appendLine("SELECT app.* FROM app_info app")
+        if (shouldHaveCategoryView) appendLine("INNER JOIN ${SqlConstants.VIEW_CATEGORIES} c ON c.app_id = app.id")
+        if (shouldHaveTagView) appendLine("INNER JOIN ${SqlConstants.VIEW_TAGS} t ON t.app_id = app.id")
 
-        when (query.sortBy) {
-            KsLibraryQuerySortBy.None, KsLibraryQuerySortBy.PlayedTime, KsLibraryQuerySortBy.LastPlayed -> Unit
-            KsLibraryQuerySortBy.AppId -> append("ORDER BY app.id")
-            KsLibraryQuerySortBy.Name -> append("ORDER BY app.name")
-            KsLibraryQuerySortBy.ReleaseDate -> append("ORDER BY app.steam_release_date")
-            KsLibraryQuerySortBy.MetacriticScore -> append("ORDER BY app.metacritic_score")
-            KsLibraryQuerySortBy.SteamScore -> append("ORDER BY app.review_score")
+        if (shouldHaveCategoryView || shouldHaveTagView) {
+            append("WHERE ")
+
+            if (shouldHaveCategoryView) {
+                append("c.cat_cnt != 0")
+                if (shouldHaveTagView) append(" AND ")
+            }
+
+            if (shouldHaveTagView) append("t.tag_cnt = ").append(query.storeTags.size)
+
+            appendLine()
+        } else {
+            append("WHERE ")
+            appendViewAppQueryWhere(query, binds::add)
         }
 
+        appendLine("GROUP BY app.id")
+
         if (query.sortBy != KsLibraryQuerySortBy.None && query.sortBy != KsLibraryQuerySortBy.PlayedTime && query.sortBy != KsLibraryQuerySortBy.LastPlayed) {
+            when (query.sortBy) {
+                KsLibraryQuerySortBy.AppId -> append("ORDER BY app.id")
+                KsLibraryQuerySortBy.Name -> append("ORDER BY app.name")
+                KsLibraryQuerySortBy.NormalizedName -> append("ORDER BY app.sortas")
+                KsLibraryQuerySortBy.ReleaseDate -> append("ORDER BY app.steam_release_date")
+                KsLibraryQuerySortBy.MetacriticScore -> append("ORDER BY app.metacritic_score")
+                KsLibraryQuerySortBy.SteamScore -> append("ORDER BY app.review_score")
+                else -> Unit
+            }
+
             when (query.sortByDirection) {
                 KsLibraryQuerySortByDirection.Ascending -> appendLine(" ASC")
                 KsLibraryQuerySortByDirection.Descending -> appendLine(" DESC")
@@ -90,8 +102,6 @@ internal fun compileKsLibraryQueryToSql(query: KsLibraryQuery): RoomRawQuery {
 }
 
 private object SqlConstants {
-    const val LINE_END_CHARACTER = ' '
-
     const val VIEW_APPS = "apps"
     const val VIEW_CATEGORIES = "cats"
     const val VIEW_TAGS = "tags"
@@ -114,7 +124,11 @@ private sealed interface SqlBindValue {
 private fun StringBuilder.appendViewAppQuery(query: KsLibraryQuery, addBind: (SqlBindValue) -> Unit) {
     appendLine("${SqlConstants.VIEW_APPS} as (")
     append("SELECT id FROM app_info WHERE ")
+    appendViewAppQueryWhere(query, addBind)
+    append(')')
+}
 
+private fun StringBuilder.appendViewAppQueryWhere(query: KsLibraryQuery, addBind: (SqlBindValue) -> Unit) {
     if (query.searchQuery != null) {
         // TODO: Localized?
         append("name LIKE '%' || ? || '%'")
@@ -125,13 +139,13 @@ private fun StringBuilder.appendViewAppQuery(query: KsLibraryQuery, addBind: (Sq
     if (query.appType.isNotEmpty()) {
         if (query.appType.size == 1) {
             append("type = ?")
-            addBind(SqlBindValue.String(query.appType.first().vdfName))
+            addBind(SqlBindValue.String(query.appType.first().vdfName.lowercase()))
         } else {
             append("type IN (")
 
             for (type in query.appType) {
                 append('?').append(',')
-                addBind(SqlBindValue.String(type.vdfName))
+                addBind(SqlBindValue.String(type.vdfName.lowercase()))
             }
 
             deleteRange(lastIndex, lastIndex + 1)
@@ -172,21 +186,33 @@ private fun StringBuilder.appendViewAppQuery(query: KsLibraryQuery, addBind: (Sq
         // (SELECT ... FROM ... WHERE ... AND )
         deleteRange(startIndex = lastIndex - 4, endIndex = lastIndex)
     }
+}
 
-    append(')')
+private fun shouldHaveAppView(query: KsLibraryQuery): Boolean {
+    return query.controllerSupport != KsLibraryQueryControllerSupportFilter.None
+            || query.steamDeckMinimumSupport != ESteamDeckSupport.Unknown
+            || query.masterSubPackageId != 0
+            || query.appType.isNotEmpty()
+            || query.searchQuery != null
+}
+
+private fun shouldHaveCategoryView(query: KsLibraryQuery): Boolean {
+    return !(query.storeCategories.isEmpty() && query.controllerSupport == KsLibraryQueryControllerSupportFilter.None)
+}
+
+private fun shouldHaveTagView(query: KsLibraryQuery): Boolean {
+    return query.storeTags.isNotEmpty()
 }
 
 // Appends a VIEW of categories
-private fun StringBuilder.appendViewCategoryQuery(query: KsLibraryQuery): Boolean {
-    if (query.storeCategories.isEmpty() && query.controllerSupport == KsLibraryQueryControllerSupportFilter.None) {
-        return false // there is no filtering based on categories
-    }
+private fun StringBuilder.appendViewCategoryQuery(query: KsLibraryQuery, hasAppView: Boolean) {
+    if (!shouldHaveCategoryView(query)) return // there is no filtering based on categories
 
     val hasControllerCategories = query.controllerSupport != KsLibraryQueryControllerSupportFilter.None
 
     appendLine("${SqlConstants.VIEW_CATEGORIES} as (")
     appendLine("SELECT app_id, category_id, count(*) AS ${SqlConstants.COLUMN_COUNT_CATEGORIES} FROM app_info_categories aic")
-    appendLine("INNER JOIN ${SqlConstants.VIEW_APPS} ON ${SqlConstants.VIEW_APPS}.id = aic.app_id")
+    if (hasAppView) appendLine("INNER JOIN ${SqlConstants.VIEW_APPS} ON ${SqlConstants.VIEW_APPS}.id = aic.app_id")
     append("WHERE ")
 
     fun StringBuilder.appendESC(categories: List<EStoreCategory>) {
@@ -213,16 +239,15 @@ private fun StringBuilder.appendViewCategoryQuery(query: KsLibraryQuery): Boolea
 
     appendLine("GROUP BY aic.app_id")
     append(')')
-    return true
 }
 
 // Appends a VIEW of tags
-private fun StringBuilder.appendViewTagsQuery(query: KsLibraryQuery): Boolean {
-    if (query.storeTags.isEmpty()) return false // there is no filtering based on tags
+private fun StringBuilder.appendViewTagsQuery(query: KsLibraryQuery, hasAppView: Boolean) {
+    if (!shouldHaveTagView(query)) return // there is no filtering based on tags
 
     appendLine("${SqlConstants.VIEW_TAGS} as (")
     appendLine("SELECT app_id, tag_id, count(*) AS ${SqlConstants.COLUMN_COUNT_TAGS} FROM app_info_tags ait")
-    appendLine("INNER JOIN ${SqlConstants.VIEW_APPS} ON ${SqlConstants.VIEW_APPS}.id = ait.app_id")
+    if (hasAppView) appendLine("INNER JOIN ${SqlConstants.VIEW_APPS} ON ${SqlConstants.VIEW_APPS}.id = ait.app_id")
 
     append("WHERE ait.tag_id IN (")
     query.storeTags.forEachIndexed { index, tagId ->
@@ -233,5 +258,4 @@ private fun StringBuilder.appendViewTagsQuery(query: KsLibraryQuery): Boolean {
 
     appendLine("GROUP BY ait.app_id")
     append(')')
-    return true
 }

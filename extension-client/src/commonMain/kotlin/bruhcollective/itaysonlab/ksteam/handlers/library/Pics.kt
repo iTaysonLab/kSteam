@@ -2,10 +2,11 @@ package bruhcollective.itaysonlab.ksteam.handlers.library
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRoomDatabase
+import bruhcollective.itaysonlab.ksteam.database.room.dao.RoomPicsApplicationDao.PendingApplicationEntry
+import bruhcollective.itaysonlab.ksteam.database.room.dao.RoomPicsPackageDao.PendingPackageEntry
 import bruhcollective.itaysonlab.ksteam.database.room.entity.apps.RoomPackageLicense
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsAppEntry
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsPackageEntry
-import bruhcollective.itaysonlab.ksteam.database.room.entity.store.RoomStoreTag
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
@@ -13,13 +14,13 @@ import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationLicense
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
-import bruhcollective.itaysonlab.ksteam.util.SharedCompressor
 import bruhcollective.itaysonlab.kxvdf.RootNodeSkipperDeserializationStrategy
 import bruhcollective.itaysonlab.kxvdf.Vdf
 import bruhcollective.itaysonlab.kxvdf.decodeFromBufferedSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.serialization.ExperimentalSerializationApi
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
@@ -41,14 +42,17 @@ class Pics internal constructor(
 
     //
 
-    private val _isPicsAvailable = MutableStateFlow(PicsState.Initialization)
+    private val _isPicsAvailable = MutableStateFlow(false)
     val isPicsAvailable = _isPicsAvailable.asStateFlow()
+
+    private val _picsInitializationProgress = MutableStateFlow(0f)
+    val picsInitializationProgress = _picsInitializationProgress.asStateFlow()
 
     /**
      * Suspends execution until PICS subsystem is ready to be used (all packages/apps verified and inserted into DB).
      */
     suspend fun awaitPicsInitialization() {
-        _isPicsAvailable.first { it == PicsState.Ready }
+        _isPicsAvailable.first { it == true }
     }
 
     /**
@@ -56,8 +60,12 @@ class Pics internal constructor(
      *
      * @return [SteamApplication], or null if app is not found in the database or PICS infrastructure was not ready yet
      */
-    suspend fun getSteamApplication(id: Int): SteamApplication? {
-        return SteamApplication.fromDatabase(database.sharedDatabase.picsApplications().getFullApplicationById(id) ?: return null)
+    suspend fun getSteamApplication(full: Boolean, id: Int): SteamApplication? {
+        return if (full) {
+            SteamApplication.fromDatabase(database.sharedDatabase.picsApplications().getFullApplicationById(id) ?: return null)
+        } else {
+            SteamApplication.fromDatabase(database.sharedDatabase.picsApplications().getApplicationById(id) ?: return null)
+        }
     }
 
     /**
@@ -65,8 +73,8 @@ class Pics internal constructor(
      *
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
-    suspend fun getSteamApplications(vararg ids: Int): List<SteamApplication> {
-        return getSteamApplications(ids.toList())
+    suspend fun getSteamApplications(full: Boolean, vararg ids: Int): List<SteamApplication> {
+        return getSteamApplications(full, ids.toList())
     }
 
     /**
@@ -74,8 +82,12 @@ class Pics internal constructor(
      *
      * @return a list of [SteamApplication]. Some or all elements might be missing due to absence of apps in DB or PICS infrastructure was not ready yet
      */
-    suspend fun getSteamApplications(ids: List<Int>): List<SteamApplication> {
-        return database.sharedDatabase.picsApplications().getFullApplicationByIds(ids).map(SteamApplication::fromDatabase)
+    suspend fun getSteamApplications(full: Boolean, ids: List<Int>): List<SteamApplication> {
+        return if (full) {
+            database.sharedDatabase.picsApplications().getFullApplicationByIds(ids).map(SteamApplication::fromDatabase)
+        } else {
+            database.sharedDatabase.picsApplications().getApplicationByIds(ids).map(SteamApplication::fromDatabase)
+        }
     }
 
     /**
@@ -126,27 +138,28 @@ class Pics internal constructor(
 
         steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] changes: since = ${changesResponse.since_change_number} -> ${changesResponse.current_change_number}, full = ${changesResponse.force_full_update}, apps = ${changesResponse.app_changes.size} [${changesResponse.force_full_app_update}], packages = ${changesResponse.package_changes.size} [${changesResponse.force_full_package_update}]" }
 
-        _isPicsAvailable.value = PicsState.UpdatingPackages
+        _picsInitializationProgress.value = 0f
         if (changesResponse.force_full_update == true || changesResponse.force_full_app_update == true || changesResponse.force_full_app_update == true) {
             // Short-circuit to full database update
-            requestAndWritePackageChunks(tokens = licenses.associate { it.package_id!! to it.access_token })
+            requestAndWritePackageChunks(tokens = licenses.associate { it.package_id!! to it.access_token }, 0.5f)
 
-            _isPicsAvailable.value = PicsState.UpdatingApps
-            requestTokensAndUpdate(appIds = licenses.mapNotNull { it.package_id }.let { database.sharedDatabase.picsPackages().getGrantedAppsForPackages(it) })
+            _picsInitializationProgress.value = 0.5f
+            requestTokensAndUpdate(appIds = licenses.mapNotNull { it.package_id }.let { database.sharedDatabase.picsPackages().getGrantedAppsForPackages(it) }, 0.5f)
         } else {
             // Update known packages by using PICS response
             changesResponse.package_changes.associate { appChange ->
                 (appChange.packageid!! to database.sharedDatabase.picsEntries().getAccessTokenForPackage(appChange.packageid!!))
-            }.filterValues { it != null }.let { packages -> requestAndWritePackageChunks(packages) }
+            }.filterValues { it != null }.let { packages -> requestAndWritePackageChunks(packages, progressFactor = 0.25f) }
 
-            _isPicsAvailable.value = PicsState.UpdatingApps
+            _picsInitializationProgress.value = 0.25f
             // Update known apps by using PICS response
             changesResponse.app_changes.associate { appChange ->
                 appChange.appid!! to database.sharedDatabase.picsEntries().getAccessTokenForApp(appChange.appid!!)
-            }.filterValues { it != null }.let { apps -> requestAndWriteAppChunks(apps) }
+            }.filterValues { it != null }.let { apps -> requestAndWriteAppChunks(apps, progressFactor = 0.25f) }
 
             // If license size differs, also scan for unknown packages
             if (licenses.size != database.currentUserDatabase.packageLicenses().count()) {
+                _picsInitializationProgress.value = 0.5f
                 checkForMissingEntries(licenses)
             }
         }
@@ -156,7 +169,8 @@ class Pics internal constructor(
 
         // Write licenses
         writeAccountSpecificLicenseInformation(licenses)
-        _isPicsAvailable.value = PicsState.Ready
+        _picsInitializationProgress.value = 1f
+        _isPicsAvailable.value = true
     }
 
     private suspend fun checkForMissingEntries(licenses: List<CMsgClientLicenseList_License>) {
@@ -167,13 +181,13 @@ class Pics internal constructor(
         }
 
         // Write new packages
-        requestAndWritePackageChunks(newPackages.associate { pkg -> pkg.package_id!! to pkg.access_token })
+        requestAndWritePackageChunks(newPackages.associate { pkg -> pkg.package_id!! to pkg.access_token }, progressFactor = 0.25f)
 
         // Get the apps from them
-        requestTokensAndUpdate(database.sharedDatabase.picsPackages().getGrantedAppsForPackages(newPackages.map { it.package_id!! }))
+        requestTokensAndUpdate(database.sharedDatabase.picsPackages().getGrantedAppsForPackages(newPackages.map { it.package_id!! }), progressFactor = 0.25f)
     }
 
-    private suspend fun requestTokensAndUpdate(appIds: List<Int>) {
+    private suspend fun requestTokensAndUpdate(appIds: List<Int>, progressFactor: Float) {
         steamClient.awaitProto(
             SteamPacket.newProto(
                 messageId = EMsg.k_EMsgClientPICSAccessTokenRequest,
@@ -184,11 +198,11 @@ class Pics internal constructor(
         }.associate {
             it.appid!! to it.access_token
         }.let { tokens ->
-            requestAndWriteAppChunks(tokens)
+            requestAndWriteAppChunks(tokens, progressFactor)
         }
     }
 
-    private suspend fun requestAndWritePackageChunks(tokens: Map<Int, Long?>) {
+    private suspend fun requestAndWritePackageChunks(tokens: Map<Int, Long?>, progressFactor: Float) {
         if (tokens.isEmpty()) return
 
         awaitStreamedPicsRequest(
@@ -203,23 +217,23 @@ class Pics internal constructor(
             ), selector = CMsgClientPICSProductInfoResponse::packages
         ) { chunk ->
             writePicsPackageChunk(tokens, chunk)
+            _picsInitializationProgress.update { value -> value + (progressFactor * (chunk.size.toFloat() / tokens.size.toFloat())) }
         }
     }
 
-    private suspend fun requestAndWriteAppChunks(tokens: Map<Int, Long?>) {
+    private suspend fun requestAndWriteAppChunks(tokens: Map<Int, Long?>, progressFactor: Float) {
         if (tokens.isEmpty()) return
 
-        SharedCompressor().use { compressor ->
-            awaitStreamedPicsRequest(
-                request = CMsgClientPICSProductInfoRequest(
-                    meta_data_only = false,
-                    apps = tokens.map { (appId, accessToken) ->
-                        CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
-                    }
-                ), selector = CMsgClientPICSProductInfoResponse::apps
-            ) { chunk ->
-                writePicsAppChunk(compressor, tokens, chunk)
-            }
+        awaitStreamedPicsRequest(
+            request = CMsgClientPICSProductInfoRequest(
+                meta_data_only = false,
+                apps = tokens.map { (appId, accessToken) ->
+                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
+                }
+            ), selector = CMsgClientPICSProductInfoResponse::apps
+        ) { chunk ->
+            writePicsAppChunk(tokens, chunk)
+            _picsInitializationProgress.update { value -> value + (progressFactor * (chunk.size.toFloat() / tokens.size.toFloat())) }
         }
     }
 
@@ -229,45 +243,37 @@ class Pics internal constructor(
     ) {
         steamClient.logger.logVerbose(TAG) { "[writePicsPackageChunk] size = ${chunk.size}" }
 
-        for (packageInfo in chunk) {
-            val changeNumber = packageInfo.change_number ?: continue
-            val buffer = packageInfo.buffer?.toByteArray() ?: continue
-            val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: continue
+        chunk.fold(PendingPackageEntry()) { entry, packageInfo ->
+            val changeNumber = packageInfo.change_number ?: return@fold entry
+            val buffer = packageInfo.buffer?.toByteArray() ?: return@fold entry
+            val parsedPackageInfo = parseBinaryVdf<PackageInfo>(buffer) ?: return@fold entry
 
-            database.sharedDatabase.picsEntries().upsertPackageEntry(
-                RoomPicsPackageEntry(
-                    id = parsedPackageInfo.packageId,
-                    changeNumber = changeNumber,
-                    accessToken = licenseMap[parsedPackageInfo.packageId] ?: 0L
-                )
-            )
+            entry += RoomPicsPackageEntry(id = parsedPackageInfo.packageId, changeNumber = changeNumber, accessToken = licenseMap[parsedPackageInfo.packageId] ?: 0L)
+            entry += parsedPackageInfo
 
-            database.sharedDatabase.picsPackages().upsertPicsPackage(parsedPackageInfo)
+            entry
+        }.let { pendingEntry ->
+            database.sharedDatabase.picsPackages().upsertPicsPackage(pendingEntry)
         }
     }
 
     private suspend fun writePicsAppChunk(
-        compressor: SharedCompressor,
         licenseMap: Map<Int, Long?>,
         chunk: List<CMsgClientPICSProductInfoResponse_AppInfo>
     ) {
         steamClient.logger.logVerbose(TAG) { "[writePicsAppChunk] size = ${chunk.size}" }
 
-        for (appInfo in chunk) {
-            val changeNumber = appInfo.change_number ?: continue
-            val buffer = appInfo.buffer?.toByteArray() ?: continue
-            val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: continue
+        chunk.fold(PendingApplicationEntry()) { entry, appInfo ->
+            val changeNumber = appInfo.change_number ?: return@fold entry
+            val buffer = appInfo.buffer?.toByteArray() ?: return@fold entry
+            val parsedAppInfo = parseTextVdf<AppInfo>(buffer) ?: return@fold entry
 
-            database.sharedDatabase.picsEntries().upsertAppEntry(
-                RoomPicsAppEntry(
-                    id = parsedAppInfo.appId,
-                    changeNumber = changeNumber,
-                    accessToken = licenseMap[parsedAppInfo.appId] ?: 0L
-                )
-            )
+            entry += RoomPicsAppEntry(id = parsedAppInfo.appId, changeNumber = changeNumber, accessToken = licenseMap[parsedAppInfo.appId] ?: 0L)
+            entry += parsedAppInfo
 
-            database.sharedDatabase.storeTags().insertOrIgnoreStoreTags(parsedAppInfo.common?.tags?.map { RoomStoreTag(id = it, language = "english", name = "", normalizedName = "") }.orEmpty())
-            database.sharedDatabase.picsApplications().upsertAppInfo(parsedAppInfo, compressor.compress(buffer))
+            entry
+        }.let { pendingEntry ->
+            database.sharedDatabase.picsApplications().upsertAppInfo(pendingEntry)
         }
     }
 

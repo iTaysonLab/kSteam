@@ -16,11 +16,12 @@ internal object TableNames {
     const val PACKAGE_INFO_DEPOTS = "package_info_depots"
 
     const val APP_INFO = "app_info"
-    const val APP_INFO_FTS = "app_info_fts"
     const val APP_INFO_LOCALE_NAMES = "app_info_loc_assets"
     const val APP_INFO_CATEGORIES = "app_info_categories"
     const val APP_INFO_TAGS = "app_info_tags"
     const val APP_INFO_DATA = "app_info_data"
+    const val APP_INFO_DESCRIPTORS = "app_info_descriptors"
+    const val APP_INFO_ASSOCIATIONS = "app_info_associations"
 
     const val STORE_TAGS = "store_tag"
 }

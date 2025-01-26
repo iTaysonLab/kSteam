@@ -19,6 +19,9 @@ class KsLibraryQueryBuilder constructor() {
     private var steamDeckMinimumSupport: ESteamDeckSupport = ESteamDeckSupport.Unknown
     private var sortBy: KsLibraryQuerySortBy = KsLibraryQuerySortBy.Name
     private var sortByDirection: KsLibraryQuerySortByDirection = KsLibraryQuerySortByDirection.Ascending
+    private var fetchFullInformation: Boolean = false
+    private var alwaysFetchLicenses: Boolean = false
+    private var alwaysFetchPlayTime: Boolean = false
 
     internal constructor(existing: KsLibraryQuery): this() {
         appType = existing.appType.toMutableList()
@@ -34,6 +37,7 @@ class KsLibraryQueryBuilder constructor() {
         steamDeckMinimumSupport = existing.steamDeckMinimumSupport
         sortBy = existing.sortBy
         sortByDirection = existing.sortByDirection
+        fetchFullInformation = existing.fetchFullInformation
     }
 
     /**
@@ -186,6 +190,45 @@ class KsLibraryQueryBuilder constructor() {
     }
 
     /**
+     * Sets if this query must query for ALL data in database. This will add the following data in [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication] objects:
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.contentDescriptors]
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.tags]
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.categories]
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.Assets.localizedAssets]
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.developers]
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.publishers]
+     * - [bruhcollective.itaysonlab.ksteam.models.app.SteamApplication.franchises]
+     *
+     * **IMPORTANT**: For large query results, this will SIGNIFICANTLY increase query time!
+     * For example, querying 1507 apps on Samsung Galaxy S23 takes approximately 4 seconds with this setting enabled...
+     *
+     * Note that you don't need this to be turned on in order to use any of the sort/filter options in queries. For example, you still can filter by tags or categories even with [fetchFullInformation] being false.
+     */
+    fun fetchFullInformation(value: Boolean) = apply {
+        fetchFullInformation = value
+    }
+
+    /**
+     * If true, this query will always populate [bruhcollective.itaysonlab.ksteam.models.app.OwnedSteamApplication.licenses].
+     *
+     * Note that this value will be ignored if [KsLibraryQueryOwnerFilter] is set to any value except for [KsLibraryQueryOwnerFilter.None].
+     * In this case, licenses will always be returned.
+     */
+    fun alwaysFetchLicenses(value: Boolean) = apply {
+        alwaysFetchLicenses = value
+    }
+
+    /**
+     * If true, this query will always populate [bruhcollective.itaysonlab.ksteam.models.app.OwnedSteamApplication.playTime].
+     *
+     * Note that this value will be ignored if [ECollectionPlayState] is set to any value.
+     * In this case, play time will always be returned.
+     */
+    fun alwaysFetchPlayTime(value: Boolean) = apply {
+        alwaysFetchPlayTime = value
+    }
+
+    /**
      * Sets a sorting direction and order.
      */
     fun sortBy(order: KsLibraryQuerySortBy, direction: KsLibraryQuerySortByDirection) = apply {
@@ -210,7 +253,10 @@ class KsLibraryQueryBuilder constructor() {
             storeTags = storeTags,
             steamDeckMinimumSupport = steamDeckMinimumSupport,
             sortBy = sortBy,
-            sortByDirection = sortByDirection
+            sortByDirection = sortByDirection,
+            fetchFullInformation = fetchFullInformation,
+            alwaysFetchLicenses = alwaysFetchLicenses,
+            alwaysFetchPlayTime = alwaysFetchPlayTime,
         )
     }
 }

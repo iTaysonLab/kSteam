@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r41"
+version = "r43"
 
 kotlin {
     multiplatformSetup()
@@ -22,7 +22,13 @@ wire {
 }
 
 dependencies {
-    commonMainApi(libs.wire.grpc)
+    commonMainApi(libs.wire.grpc) {
+        exclude(group = "com.squareup.okhttp3", module = "okhttp")
+    }
+}
+
+configurations.all {
+    exclude(group = "com.squareup.okhttp3", module = "okhttp")
 }
 
 androidLibrary("bruhcollective.itaysonlab.ksteam.proto")

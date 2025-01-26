@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "cd915b9cd3aa29188f29c696132e63ec",
+    "identityHash": "a316982b7784f2d6c987bb9df9b76c53",
     "entities": [
       {
         "tableName": "entry_app",
@@ -66,7 +66,7 @@
       },
       {
         "tableName": "app_info",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `type` TEXT NOT NULL, `master_sub` INTEGER, `deck_compat` INTEGER NOT NULL, `controller` TEXT NOT NULL, `steam_release_date` INTEGER NOT NULL, `metacritic_score` INTEGER, `review_score` INTEGER NOT NULL, `icon` TEXT, `logo` TEXT, `clienticon` TEXT, `dlcforappid` INTEGER, `community_visible_stats` INTEGER NOT NULL, `community_hub_visible` INTEGER NOT NULL, `releasestate` TEXT NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry_app`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, `sortas` TEXT NOT NULL, `type` TEXT NOT NULL, `master_sub` INTEGER, `deck_compat` INTEGER NOT NULL, `controller` TEXT NOT NULL, `steam_release_date` INTEGER NOT NULL, `original_release_date` INTEGER NOT NULL, `metacritic_score` INTEGER, `review_score` INTEGER NOT NULL, `icon` TEXT, `logo` TEXT, `clienticon` TEXT, `dlcforappid` INTEGER, `community_visible_stats` INTEGER NOT NULL, `community_hub_visible` INTEGER NOT NULL, `releasestate` TEXT NOT NULL, `metacritic_url` TEXT, `review_percentage` INTEGER NOT NULL, `homepage` TEXT, `gamemanualurl` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`id`) REFERENCES `entry_app`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -77,6 +77,12 @@
           {
             "fieldPath": "name",
             "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortAs",
+            "columnName": "sortas",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -106,6 +112,12 @@
           {
             "fieldPath": "steamReleaseDate",
             "columnName": "steam_release_date",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalReleaseDate",
+            "columnName": "original_release_date",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -157,6 +169,27 @@
             "columnName": "releasestate",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "metacriticUrl",
+            "columnName": "metacritic_url",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "reviewPercentage",
+            "columnName": "review_percentage",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "homepage",
+            "columnName": "homepage",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "manualUrl",
+            "columnName": "gamemanualurl",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -416,28 +449,118 @@
         ]
       },
       {
-        "tableName": "app_info_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` INTEGER NOT NULL, `data` BLOB NOT NULL, PRIMARY KEY(`app_id`), FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "tableName": "app_info_associations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `app_id` INTEGER NOT NULL, `type` TEXT NOT NULL, `name` TEXT NOT NULL, FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "appid",
+            "fieldPath": "internalId",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appId",
             "columnName": "app_id",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "data",
-            "columnName": "data",
-            "affinity": "BLOB",
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_app_info_associations_app_id",
+            "unique": false,
+            "columnNames": [
+              "app_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_associations_app_id` ON `${TABLE_NAME}` (`app_id`)"
+          },
+          {
+            "name": "index_app_info_associations_type",
+            "unique": false,
+            "columnNames": [
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_associations_type` ON `${TABLE_NAME}` (`type`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "app_info",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "app_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "app_info_descriptors",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`app_id` INTEGER NOT NULL, `descriptor` INTEGER NOT NULL, PRIMARY KEY(`app_id`, `descriptor`), FOREIGN KEY(`app_id`) REFERENCES `app_info`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "appId",
+            "columnName": "app_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descriptor",
+            "columnName": "descriptor",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
         "primaryKey": {
           "autoGenerate": false,
           "columnNames": [
-            "app_id"
+            "app_id",
+            "descriptor"
           ]
         },
+        "indices": [
+          {
+            "name": "index_app_info_descriptors_app_id",
+            "unique": false,
+            "columnNames": [
+              "app_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_descriptors_app_id` ON `${TABLE_NAME}` (`app_id`)"
+          },
+          {
+            "name": "index_app_info_descriptors_descriptor",
+            "unique": false,
+            "columnNames": [
+              "descriptor"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_app_info_descriptors_descriptor` ON `${TABLE_NAME}` (`descriptor`)"
+          }
+        ],
         "foreignKeys": [
           {
             "table": "app_info",
@@ -742,7 +865,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cd915b9cd3aa29188f29c696132e63ec')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a316982b7784f2d6c987bb9df9b76c53')"
     ]
   }
 }

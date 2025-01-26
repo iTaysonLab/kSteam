@@ -18,7 +18,10 @@ data class KsLibraryQuery (
     val storeTags: List<Int>,
     val steamDeckMinimumSupport: ESteamDeckSupport,
     val sortBy: KsLibraryQuerySortBy,
-    val sortByDirection: KsLibraryQuerySortByDirection
+    val sortByDirection: KsLibraryQuerySortByDirection,
+    val fetchFullInformation: Boolean,
+    val alwaysFetchLicenses: Boolean,
+    val alwaysFetchPlayTime: Boolean,
 ) {
     fun newBuilder(): KsLibraryQueryBuilder {
         return KsLibraryQueryBuilder(this)

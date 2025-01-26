@@ -34,7 +34,7 @@ class Library internal constructor(
     internal val steamClient: ExtendedSteamClient
 ) {
     companion object {
-        private const val LOG_TAG = "PicsExt:Library"
+        private const val TAG = "LibraryHandler"
         const val FavoriteCollection = "favorite"
         const val HiddenCollection = "hidden"
     }
@@ -78,7 +78,7 @@ class Library internal constructor(
      *
      * @return a [Flow] of [OwnedSteamApplication] which is changed by collection editing
      */
-    fun getAppsInCollection(id: String, limit: Int = 0): Flow<List<OwnedSteamApplication>> {
+    fun getAppsInCollection(id: String, full: Boolean, limit: Int = 0): Flow<List<OwnedSteamApplication>> {
         val collectionFlow = when (id) {
             FavoriteCollection -> favoriteCollection
             HiddenCollection -> hiddenCollection
@@ -86,12 +86,16 @@ class Library internal constructor(
         }
 
         return collectionFlow.map { collection ->
-            getAppsInCollection(collection, limit)
+            getAppsInCollection(collection, full, limit)
         }
     }
 
-    fun getAppsInCollection(collectionFlow: Flow<LibraryCollection>, limit: Int = 0): Flow<List<OwnedSteamApplication>> = collectionFlow.map { collection ->
-        getAppsInCollection(collection, limit)
+    fun getAppsInCollection(
+        collectionFlow: Flow<LibraryCollection>,
+        full: Boolean,
+        limit: Int = 0
+    ): Flow<List<OwnedSteamApplication>> = collectionFlow.map { collection ->
+        getAppsInCollection(collection, full, limit)
     }
 
     /**
@@ -111,11 +115,18 @@ class Library internal constructor(
      *
      * @return a list of [AppInfo]
      */
-    suspend fun getAppsInCollection(collection: LibraryCollection, limit: Int = 0): List<OwnedSteamApplication> {
+    suspend fun getAppsInCollection(
+        collection: LibraryCollection,
+        full: Boolean,
+        limit: Int = 0
+    ): List<OwnedSteamApplication> {
         return when (collection) {
             is LibraryCollection.Simple -> {
                 // Filter out non-Steam games that can be accidentally added to cloud Steam collections
-                steamClient.pics.getSteamApplications(collection.added.filter { it > 0 && it < Int.MAX_VALUE }.map(Long::toInt))
+                steamClient.pics.getSteamApplications(
+                    full = full,
+                    collection.added.filter { it > 0 && it < Int.MAX_VALUE }.map(Long::toInt)
+                )
                     .let {
                         if (limit > 0) {
                             it.take(limit)
@@ -127,7 +138,10 @@ class Library internal constructor(
             }
 
             is LibraryCollection.Dynamic -> {
-                execute(collection.toKsLibraryQuery().newBuilder().withLimit(limit).build())
+                execute(
+                    collection.toKsLibraryQuery().newBuilder().withLimit(limit).fetchFullInformation(full)
+                        .alwaysFetchPlayTime(full).alwaysFetchLicenses(full).build()
+                )
             }
         }
     }
@@ -144,20 +158,21 @@ class Library internal constructor(
     /**
      * Fetch a live-updated (every 30 minutes) list of at max 5 games, sorted by last launch date.
      */
-    fun getRecentApps(): Flow<List<OwnedSteamApplication>> {
+    fun getRecentApps(full: Boolean): Flow<List<OwnedSteamApplication>> {
         return _playtime.map {
-            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> a.appid }.take(5).toList()
+            it.values.asSequence().sortedByDescending { a -> a.last_playtime ?: 0 }.mapNotNull { a -> a.appid }.take(5)
+                .toList()
         }.map { ids ->
-            steamClient.pics.getSteamApplications(ids).map { app -> augmentSteamApplication(app) }
+            steamClient.pics.getSteamApplications(full, ids).map { app -> augmentSteamApplication(app) }
         }
     }
 
-    fun getFavoriteApps(limit: Int = 0): Flow<List<OwnedSteamApplication>> {
-        return getAppsInCollection(favoriteCollection, limit)
+    fun getFavoriteApps(full: Boolean, limit: Int = 0): Flow<List<OwnedSteamApplication>> {
+        return getAppsInCollection(favoriteCollection, full, limit)
     }
 
-    fun getHiddenApps(limit: Int = 0): Flow<List<OwnedSteamApplication>> {
-        return getAppsInCollection(hiddenCollection, limit)
+    fun getHiddenApps(full: Boolean, limit: Int = 0): Flow<List<OwnedSteamApplication>> {
+        return getAppsInCollection(hiddenCollection, full, limit)
     }
 
     /**
@@ -249,7 +264,8 @@ class Library internal constructor(
         }
 
         // -- User Collections --
-        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull { entry ->
+        entries.asSequence().filterNot { it.is_deleted == true }
+            .filter { it.key.orEmpty().startsWith("user-collections") }.mapNotNull { entry ->
             val entryObject = try {
                 json.decodeFromString<RemoteCollectionModel>(entry.value_ ?: return@mapNotNull null)
             } catch (e: Exception) {
@@ -258,7 +274,11 @@ class Library internal constructor(
                 return@mapNotNull null
             }
 
-            LibraryCollection.fromJsonCollection(entryObject, entry.timestamp ?: return@mapNotNull null, entry.version ?: return@mapNotNull null).also { c ->
+            LibraryCollection.fromJsonCollection(
+                entryObject,
+                entry.timestamp ?: return@mapNotNull null,
+                entry.version ?: return@mapNotNull null
+            ).also { c ->
                 steamClient.logger.logVerbose("Library:Collection") { c.toString() }
             }
         }.filter {
@@ -282,19 +302,20 @@ class Library internal constructor(
         }
 
         // -- User Shelves --
-        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("showcase") }.mapNotNull {
-            val entry = json.decodeFromString<LibraryShelf.LibraryShelfRemote>(it.value_ ?: return@mapNotNull null)
+        entries.asSequence().filterNot { it.is_deleted == true }.filter { it.key.orEmpty().startsWith("showcase") }
+            .mapNotNull {
+                val entry = json.decodeFromString<LibraryShelf.LibraryShelfRemote>(it.value_ ?: return@mapNotNull null)
 
-            LibraryShelf(
-                id = it.key ?: return@mapNotNull null,
-                linkedCollection = entry.linkedCollection,
-                sortBy = entry.sortBy,
-                lastChangedMs = entry.lastChangedMs,
-                orderTimestamp = entry.orderTimestamp ?: 0.0,
-                version = it.version ?: 0,
-                remoteTimestamp = it.timestamp ?: 0
-            )
-        }.filter {
+                LibraryShelf(
+                    id = it.key ?: return@mapNotNull null,
+                    linkedCollection = entry.linkedCollection,
+                    sortBy = entry.sortBy,
+                    lastChangedMs = entry.lastChangedMs,
+                    orderTimestamp = entry.orderTimestamp ?: 0.0,
+                    version = it.version ?: 0,
+                    remoteTimestamp = it.timestamp ?: 0
+                )
+            }.filter {
             it.linkedCollection.isNotEmpty()
         }.sortedByDescending {
             if (it.orderTimestamp != 0.0) {
@@ -314,7 +335,7 @@ class Library internal constructor(
      */
     private suspend fun awaitInfrastructure() {
         _isLoadingLibrary.first { it }
-        steamClient.pics.isPicsAvailable.first { it == Pics.PicsState.Ready }
+        steamClient.pics.awaitPicsInitialization()
     }
 
     private suspend fun requestOwnedGames() {
@@ -337,8 +358,11 @@ class Library internal constructor(
             userPlayTimesCollector?.cancel()
         }
 
-        steamClient.onTypedRpc("PlayerClient.NotifyLastPlayedTimes#1", CPlayer_LastPlayedTimes_Notification.ADAPTER) { notification ->
-            steamClient.logger.logDebug(LOG_TAG) { "Received last played times notification: $notification" }
+        steamClient.onTypedRpc(
+            "PlayerClient.NotifyLastPlayedTimes#1",
+            CPlayer_LastPlayedTimes_Notification.ADAPTER
+        ) { notification ->
+            steamClient.logger.logDebug(TAG) { "Received last played times notification: $notification" }
 
             _playtime.update {
                 it.toMutableMap().apply {
@@ -399,16 +423,32 @@ class Library internal constructor(
      * @return a [kotlinx.coroutines.flow.Flow] of [OwnedSteamApplication]
      */
     suspend fun execute(query: KsLibraryQuery): List<OwnedSteamApplication> {
-        val initialQueryResults = steamClient.database.sharedDatabase.picsApplications().rawFilteredApplications(
-            query = compileKsLibraryQueryToSql(query)
-        )
+        val sql = compileKsLibraryQueryToSql(query)
+
+        steamClient.logger.logVerbose(TAG) { sql.sql }
+
+        val initialQueryResults = if (query.fetchFullInformation) {
+            steamClient.database.sharedDatabase.picsApplications().rawFilteredApplicationsFull(sql)
+                .map(SteamApplication::fromDatabase)
+        } else {
+            steamClient.database.sharedDatabase.picsApplications().rawFilteredApplications(sql)
+                .map(SteamApplication::fromDatabase)
+        }
 
         // Augment with license and playtime information
-        var ownedSteamApplications = initialQueryResults.map { dbInfo ->
+        var ownedSteamApplications = initialQueryResults.map { steamApplication ->
             OwnedSteamApplication(
-                application = SteamApplication.fromDatabase(dbInfo),
-                licenses = steamClient.pics.findLicensesForCurrentUser(AppId(dbInfo.appInfo.id)),
-                playTime = steamClient.library.getApplicationPlaytime(AppId(dbInfo.appInfo.id))
+                application = steamApplication,
+                licenses = if (query.alwaysFetchLicenses || query.ownerTypeFilter != KsLibraryQueryOwnerFilter.None) {
+                    steamClient.pics.findLicensesForCurrentUser(steamApplication.id)
+                } else {
+                    emptyList()
+                },
+                playTime = if (query.alwaysFetchPlayTime || query.playState == ECollectionPlayState.PlayedNever || query.playState == ECollectionPlayState.PlayedPreviously || query.sortBy == KsLibraryQuerySortBy.PlayedTime || query.sortBy == KsLibraryQuerySortBy.LastPlayed) {
+                    steamClient.library.getApplicationPlaytime(steamApplication.id)
+                } else {
+                    null
+                }
             )
         }
 

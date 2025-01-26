@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsPackageEntry
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.packages.RoomPicsPackageInfo
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.packages.RoomPicsPackageInfoGrantedApp
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.packages.RoomPicsPackageInfoGrantedDepot
@@ -13,7 +14,8 @@ import bruhcollective.itaysonlab.ksteam.models.pics.PackageInfo
 internal interface RoomPicsPackageDao {
     @Upsert
     suspend fun upsertPackageInfo(
-        entry: RoomPicsPackageInfo,
+        entries: List<RoomPicsPackageEntry>,
+        infos: List<RoomPicsPackageInfo>,
         grantedApps: List<RoomPicsPackageInfoGrantedApp>,
         grantedDepots: List<RoomPicsPackageInfoGrantedDepot>
     )
@@ -28,11 +30,30 @@ internal interface RoomPicsPackageDao {
     suspend fun getGrantedAppConnection(appId: Int): Int?
 
     @Transaction
-    suspend fun upsertPicsPackage(entry: PackageInfo) {
+    suspend fun upsertPicsPackage(entry: PendingPackageEntry) {
         upsertPackageInfo(
-            entry = RoomPicsPackageInfo(entry),
-            grantedApps = entry.appIds.map { RoomPicsPackageInfoGrantedApp(id = entry.packageId, appId = it) },
-            grantedDepots = entry.depotIds.map { RoomPicsPackageInfoGrantedDepot(id = entry.packageId, depotId = it) }
+            entries = entry.entries,
+            infos = entry.infos,
+            grantedApps = entry.grantedApps,
+            grantedDepots = entry.grantedDepots
         )
+    }
+
+    class PendingPackageEntry {
+        val entries: MutableList<RoomPicsPackageEntry> = mutableListOf()
+        val infos: MutableList<RoomPicsPackageInfo> = mutableListOf()
+        val grantedApps: MutableList<RoomPicsPackageInfoGrantedApp> = mutableListOf()
+        val grantedDepots: MutableList<RoomPicsPackageInfoGrantedDepot> = mutableListOf()
+
+        operator fun plusAssign(entry: RoomPicsPackageEntry) {
+            entries.add(entry)
+        }
+
+        operator fun plusAssign(entry: PackageInfo) {
+            infos.add(RoomPicsPackageInfo(entry))
+
+            grantedApps += entry.appIds.map { RoomPicsPackageInfoGrantedApp(id = entry.packageId, appId = it) }
+            grantedDepots += entry.depotIds.map { RoomPicsPackageInfoGrantedDepot(id = entry.packageId, depotId = it) }
+        }
     }
 }
