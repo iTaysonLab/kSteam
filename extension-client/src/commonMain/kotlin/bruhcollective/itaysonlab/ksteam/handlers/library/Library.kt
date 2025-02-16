@@ -5,6 +5,7 @@ import bruhcollective.itaysonlab.ksteam.database.sql.compileKsLibraryQueryToSql
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.OwnedSteamApplication
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationFactory
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationPlaytime
 import bruhcollective.itaysonlab.ksteam.models.enums.ECollectionPlayState
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
@@ -429,10 +430,10 @@ class Library internal constructor(
 
         val initialQueryResults = if (query.fetchFullInformation) {
             steamClient.database.sharedDatabase.picsApplications().rawFilteredApplicationsFull(sql)
-                .map(SteamApplication::fromDatabase)
+                .map(SteamApplicationFactory::fromDatabase)
         } else {
             steamClient.database.sharedDatabase.picsApplications().rawFilteredApplications(sql)
-                .map(SteamApplication::fromDatabase)
+                .map(SteamApplicationFactory::fromDatabase)
         }
 
         // Augment with license and playtime information

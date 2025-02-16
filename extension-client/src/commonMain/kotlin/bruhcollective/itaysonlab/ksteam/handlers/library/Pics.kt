@@ -10,6 +10,7 @@ import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsPackag
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationFactory
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationLicense
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
@@ -62,9 +63,9 @@ class Pics internal constructor(
      */
     suspend fun getSteamApplication(full: Boolean, id: Int): SteamApplication? {
         return if (full) {
-            SteamApplication.fromDatabase(database.sharedDatabase.picsApplications().getFullApplicationById(id) ?: return null)
+            SteamApplicationFactory.fromDatabase(database.sharedDatabase.picsApplications().getFullApplicationById(id) ?: return null)
         } else {
-            SteamApplication.fromDatabase(database.sharedDatabase.picsApplications().getApplicationById(id) ?: return null)
+            SteamApplicationFactory.fromDatabase(database.sharedDatabase.picsApplications().getApplicationById(id) ?: return null)
         }
     }
 
@@ -84,9 +85,9 @@ class Pics internal constructor(
      */
     suspend fun getSteamApplications(full: Boolean, ids: List<Int>): List<SteamApplication> {
         return if (full) {
-            database.sharedDatabase.picsApplications().getFullApplicationByIds(ids).map(SteamApplication::fromDatabase)
+            database.sharedDatabase.picsApplications().getFullApplicationByIds(ids).map(SteamApplicationFactory::fromDatabase)
         } else {
-            database.sharedDatabase.picsApplications().getApplicationByIds(ids).map(SteamApplication::fromDatabase)
+            database.sharedDatabase.picsApplications().getApplicationByIds(ids).map(SteamApplicationFactory::fromDatabase)
         }
     }
 

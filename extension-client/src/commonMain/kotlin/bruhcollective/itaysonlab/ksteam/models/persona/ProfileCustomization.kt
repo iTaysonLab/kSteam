@@ -26,8 +26,8 @@ data class ProfileCustomizationEntry (
     internal constructor(proto: steam.webui.player.ProfileCustomization): this(
         customizationType = EProfileCustomizationType.fromValue(proto.customization_type ?: -1) ?: error("Unknown CustomizationType"),
         level = proto.level ?: 0,
-        active = proto.active ?: false,
-        large = proto.large ?: false,
+        active = proto.active == true,
+        large = proto.large == true,
         style = EProfileCustomizationStyle.fromValue(proto.customization_style ?: 0) ?: EProfileCustomizationStyle.k_EProfileCustomizationStyleDefault,
         slots = proto.slots.map { ProfileCustomizationSlot(it) },
     )

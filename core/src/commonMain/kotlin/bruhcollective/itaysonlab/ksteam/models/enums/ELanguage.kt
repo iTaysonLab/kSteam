@@ -1,4 +1,7 @@
-package bruhcollective.itaysonlab.ksteam.models.enums;
+package bruhcollective.itaysonlab.ksteam.models.enums
+
+import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage.entries
+import bruhcollective.itaysonlab.ksteam.util.EnumCache
 
 // A placeholder to indicate for which languages we don't know shortened names
 private const val SHORTENED_NOT_AVAILABLE = "_"
@@ -36,7 +39,7 @@ enum class ELanguage(val vdfName: String, val shortened: String) {
     ScSimpleChinese("sc_schinese", SHORTENED_NOT_AVAILABLE);
 
     companion object {
-        fun byVdf(id: String): ELanguage? = entries.firstOrNull { it.vdfName == id }
+        fun byVdf(id: String): ELanguage? = EnumCache.eLanguage(id)
         fun byShortened(id: String): ELanguage? = entries.firstOrNull { it.shortened == id }
     }
 }

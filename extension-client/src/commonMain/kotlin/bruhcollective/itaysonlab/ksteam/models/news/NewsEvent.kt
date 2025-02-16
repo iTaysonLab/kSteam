@@ -1,9 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.models.news
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
-import bruhcollective.itaysonlab.ksteam.models.persona.Persona
-import kotlinx.coroutines.flow.Flow
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 
 /**
  * Describes an event on the Steam "News" page.
@@ -36,7 +34,7 @@ data class NewsEvent (
     /**
      * A short summary of a clan which posted this event.
      */
-    val clanSummary: Flow<Persona>,
+    val clanSummary: ClanSummary?,
 
     /**
      * The [SteamId] of a user who last updated the event.
@@ -121,7 +119,7 @@ data class NewsEvent (
     /**
      * A short description of an application linked to this event
      */
-    val relatedApp: AppSummary?,
+    val relatedApp: SteamApplication?,
 
     /**
      * A BB-Code like representation of a news content.

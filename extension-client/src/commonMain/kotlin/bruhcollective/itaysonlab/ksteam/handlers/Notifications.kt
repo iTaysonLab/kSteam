@@ -1,6 +1,7 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
+import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.notifications.Notification
 import bruhcollective.itaysonlab.ksteam.models.notifications.NotificationFeed
@@ -75,7 +76,7 @@ class Notifications internal constructor(
                             unread = not.read?.not() == true,
                             hidden = not.hidden == true,
                             appSummary = if (appId != 0) {
-                                steamClient.store.getAppSummaries(listOf(appId)).values.first()
+                                steamClient.store.querySteamApplications(listOf(AppId(appId))).first()
                             } else {
                                 null
                             }

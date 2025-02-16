@@ -48,22 +48,22 @@ enum class NewsEventType {
      */
     object Collections {
         // News
-        val OnlyNews = arrayOf(News)
+        val OnlyNews = listOf(News)
 
         // Events
-        val Events = arrayOf(Chat, IRL, InGameBonusXP, InGameLoot, InGamePerks, InGameChallenge, InGameContest, InGameEventGeneral)
+        val Events = listOf(Chat, IRL, InGameBonusXP, InGameLoot, InGamePerks, InGameChallenge, InGameContest, InGameEventGeneral)
 
         // Live-Streams
-        val Streaming = arrayOf(Broadcast)
+        val Streaming = listOf(Broadcast)
 
         // Content Updates
-        val Updates = arrayOf(SmallUpdate, PreAnnounceMajorUpdate, MajorUpdate)
+        val Updates = listOf(SmallUpdate, PreAnnounceMajorUpdate, MajorUpdate)
 
         // Releases
-        val Releases = arrayOf(GameRelease, BetaRelease, FutureRelease, DLCRelease, SeasonRelease)
+        val Releases = listOf(GameRelease, BetaRelease, FutureRelease, DLCRelease, SeasonRelease)
 
         // Sales
-        val Sales = arrayOf(GameSales, GameItemSales, FreeTrial, Crosspost)
+        val Sales = listOf(GameSales, GameItemSales, FreeTrial, Crosspost)
 
         val Everything = OnlyNews + Events + Streaming + Updates + Releases + Sales
     }

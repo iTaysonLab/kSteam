@@ -36,6 +36,6 @@ data class ProfileItem (
     )
 }
 
-fun steam.webui.player.ProfileItem?.toAppModel() = this?.let { ProfileItem(it) }
+fun steam.webui.player.ProfileItem?.toAppModel() = this?.let(::ProfileItem)
 
 private inline fun <R> String.ifNotEmpty(crossinline defaultValue: (String) -> R): R? = if (isNotEmpty()) defaultValue(this) else null

@@ -3,7 +3,7 @@ package bruhcollective.itaysonlab.ksteam.models.news
 /**
  * App types you can request from [News].
  */
-enum class AppType(
+enum class NewsAppType(
     internal val apiName: String
 ) {
     // Show posts from these sources...
@@ -18,6 +18,6 @@ enum class AppType(
 
     companion object {
         // Default values in SteamJS
-        val Default = arrayOf(Wishlist, Following, Recommended, Steam, Curator, Library)
+        val Default = listOf(Wishlist, Following, Recommended, Steam, Curator, Library)
     }
 }

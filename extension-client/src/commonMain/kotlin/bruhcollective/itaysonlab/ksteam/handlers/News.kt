@@ -1,8 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
-import bruhcollective.itaysonlab.ksteam.SteamClient
+import bruhcollective.itaysonlab.ksteam.handlers.Logger.Verbosity
+import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import bruhcollective.itaysonlab.ksteam.models.news.*
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
@@ -34,8 +36,8 @@ class News internal constructor(
      */
     suspend fun getUpcomingEvents(
         maxCount: Int = 250,
-        eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
-        appTypes: Array<AppType> = AppType.Default,
+        eventTypes: List<NewsEventType> = NewsEventType.Collections.Everything,
+        appTypes: List<NewsAppType> = NewsAppType.Default,
     ) = getEventsInCalendarRange(
         range = currentSeconds..0,
         maxCount = maxCount,
@@ -63,8 +65,8 @@ class News internal constructor(
         collectionId: String? = null,
         maxCount: Int = 250,
         ascending: Boolean = false,
-        eventTypes: Array<NewsEventType> = NewsEventType.Collections.Everything,
-        appTypes: Array<AppType> = AppType.Default,
+        eventTypes: List<NewsEventType> = NewsEventType.Collections.Everything,
+        appTypes: List<NewsAppType> = NewsAppType.Default,
         filterByAppIds: List<Int> = emptyList(),
         filterByClanIds: List<SteamId> = emptyList()
     ): List<NewsEvent> = measure("getEventsInCalendarRange") {
@@ -76,9 +78,9 @@ class News internal constructor(
                 "ascending" with ascending
                 "maxResults" with maxCount
 
-                "populateEvents" with "15" // research
+                "populateEvents" with "30" // the number of events that are returned in the batch, server max is 30
 
-                "appTypes" with appTypes.joinToString(separator = ",", transform = AppType::apiName)
+                "appTypes" with appTypes.joinToString(separator = ",", transform = NewsAppType::apiName)
                 "eventTypes" with eventTypes.joinToString(separator = ",") { it.ordinal.toString() }
 
                 "collectionID" with collectionId // featured, steam, press
@@ -90,12 +92,18 @@ class News internal constructor(
 
         steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting event entries, total: ${calendar.documents.size}" }
 
-        val alreadyReturned = calendar.events.map(NewsEntry::gid)
         val entries = calendar.events.toMutableList()
 
         measure("getEventsInCalendarRange:getAdditionalEventDetails") {
-            calendar.documents.filterNot { alreadyReturned.contains(it.uniqueId) }.chunked(30).forEach { docChunk ->
-                entries += getEventDetails(docChunk)
+            if (calendar.documents.size != calendar.events.size) {
+                val alreadyReturned = calendar.events.map(NewsEntry::gid)
+
+                calendar.documents
+                    .filterNot { alreadyReturned.contains(it.uniqueId) }
+                    .chunked(30)
+                    .forEach { docChunk ->
+                        entries += getEventDetails(docChunk)
+                    }
             }
         }
 
@@ -103,21 +111,24 @@ class News internal constructor(
 
         steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting apps, total: ${calendar.apps.size}" }
 
-        val appsMap = calendar.apps.associateBy { it.appId }
+        val appsMap = calendar.apps.associateBy { AppId(it.appId) }
+
         val apps = measure("getEventsInCalendarRange:getAppSummaries") {
-            steamClient.store.getAppSummaries(appsMap.keys.toList())
+            steamClient.store.getNetworkSteamApplications(appsMap.keys.toList()).associateBy(SteamApplication::id)
         }
 
         // Get clans summaries
 
         steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
 
-        measure<Unit>("getEventsInCalendarRange:requestClanPersonas") {
+        val clans = measure("getEventsInCalendarRange:requestClanPersonas") {
             entries.asSequence().filter { entry ->
                 entry.appid == 0 && entry.clanSteamid.isNotEmpty()
-            }.map { it.clanSteamid.toULongOrNull().toSteamId() }.toList().let {
-                steamClient.persona.requestPersonas(it)
-            }
+            }.map {
+                it.clanSteamid.toULongOrNull().toSteamId()
+            }.toList().map {
+                resolveClanInfo(it)
+            }.associateBy { it.steamId }
         }
 
         // Now we have all required data, we can parse them to NewsEvent's
@@ -151,7 +162,7 @@ class News internal constructor(
                 clanSteamId = SteamId(entry.clanSteamid.toULong()),
                 creatorSteamId = SteamId(entry.creatorSteamid.toULong()),
                 updaterSteamId = SteamId(entry.lastUpdateSteamid.toULong()),
-                clanSummary = steamClient.persona.persona(entry.clanSteamid.toULongOrNull().toSteamId()),
+                clanSummary = clans[entry.clanSteamid],
                 title = entry.eventName,
                 subtitle = jsonDescription.subtitles.firstOrNull().orEmpty(),
                 description = jsonDescription.summaries.firstOrNull().orEmpty(),
@@ -163,11 +174,11 @@ class News internal constructor(
                 forumTopicId = entry.forumTopicId,
                 publishedAt = entry.announcementBody.posttime,
                 lastUpdatedAt = entry.announcementBody.updatetime,
-                relatedApp = apps[entry.appid],
+                relatedApp = apps[AppId(entry.appid)],
                 content = entry.announcementBody.body,
                 eventStartDate = entry.rtime32StartTime,
                 eventEndDate = entry.rtime32EndTime,
-                recommended = ((appsMap[entry.appid]?.source ?: 0) and NewsCalendarResponseApp.SourceFlags.Recommended.bitmask) != 0
+                recommended = ((appsMap[AppId(entry.appid)]?.source ?: 0) and NewsCalendarResponseApp.SourceFlags.Recommended.bitmask) != 0
             )
         }
     }
@@ -222,9 +233,13 @@ class News internal constructor(
     //
 
     private inline fun <T> measure(label: String, func: () -> T): T {
-        return measureTimedValue(func).also {
-            steamClient.logger.logDebug(LOG_TAG) { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
-        }.value
+        return if (steamClient.logger.verbosity.atLeast(Verbosity.Debug)) {
+            measureTimedValue(func).also {
+                steamClient.logger.logDebug(LOG_TAG) { "[measure] $label done in ${it.duration.inWholeMilliseconds} ms" }
+            }.value
+        } else {
+            func()
+        }
     }
 
     object Collections {

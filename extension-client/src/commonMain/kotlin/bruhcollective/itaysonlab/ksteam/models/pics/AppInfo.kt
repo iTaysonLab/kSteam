@@ -1,7 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.models.pics
 
 import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatCommunityImageUrl
-import bruhcollective.itaysonlab.ksteam.EnvironmentConstants.formatStaticAppImageUrl
 import bruhcollective.itaysonlab.ksteam.models.enums.ECollectionAppType
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -328,11 +327,3 @@ internal class AppInfo {
 
 internal val AppInfo.type get() = ECollectionAppType.entries.firstOrNull { it.name.equals(common?.type, ignoreCase = true) } ?: ECollectionAppType.Invalid
 internal val AppInfo.icon get() = formatCommunityImageUrl(appId, "${common?.iconId}.jpg")
-internal val AppInfo.logo get() = formatCommunityImageUrl(appId, "${common?.logoId}.jpg")
-internal val AppInfo.header get() = formatStaticAppImageUrl(appId, "header.jpg")
-internal val AppInfo.capsuleSmall get() = formatStaticAppImageUrl(appId, "capsule_231x87.jpg")
-internal val AppInfo.capsuleLarge get() = formatStaticAppImageUrl(appId, "capsule_616x353.jpg")
-internal val AppInfo.pageBackground get() = formatStaticAppImageUrl(appId, "page_bg_raw.jpg")
-internal val AppInfo.logoLarge get() = formatStaticAppImageUrl(appId, "logo.png")
-internal val AppInfo.libraryEntry get() = formatStaticAppImageUrl(appId, "library_600x900.jpg")
-internal val AppInfo.libraryHeader get() = formatStaticAppImageUrl(appId, "library_hero.jpg")

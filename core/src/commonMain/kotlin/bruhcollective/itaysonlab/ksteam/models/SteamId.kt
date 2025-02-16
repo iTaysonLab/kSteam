@@ -4,7 +4,6 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EAccountType
 import bruhcollective.itaysonlab.ksteam.models.enums.EUniverse
 import bruhcollective.itaysonlab.ksteam.serialization.SteamIdSerializer
 import kotlinx.serialization.Serializable
-import kotlin.jvm.JvmInline
 
 /**
  * A SteamID defines the unique ID of any profile on the Steam network.
@@ -37,7 +36,7 @@ value class SteamId(val id: ULong) {
         }
     }
 
-    val debugDescription: String get() = "SteamId(id=$id, accountId=$accountId, accountInstance=$accountInstance, accountType=$accountType, accountUniverse=$accountUniverse)"
+    val debugDescription: String get() = "SteamId(id=$id, accountId=$accountId, accountInstance=$accountInstance, accountType=$accountType, accountUniverse=$accountUniverse) [user = ${isUser}, clan = ${isClan}, isEmpty = ${isEmpty}]"
 
     val longId get() = id.toLong()
     val accountId get() = (longId and 0xFFFFFFFF).toInt()

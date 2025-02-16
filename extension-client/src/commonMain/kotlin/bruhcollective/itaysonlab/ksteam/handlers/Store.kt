@@ -1,7 +1,10 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import androidx.collection.mutableScatterMapOf
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
-import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
+import bruhcollective.itaysonlab.ksteam.models.AppId
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationFactory
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import bruhcollective.itaysonlab.ksteam.util.executeSteamOrNull
@@ -37,64 +40,46 @@ class Store internal constructor(
         )?.token_lists?.firstOrNull()?.tokens?.associate { it.name.orEmpty() to it.value_.orEmpty() }
     }
 
-    suspend fun getAppSummaries(appIds: List<Int>): Map<Int, AppSummary> {
-        if (appIds.isEmpty()) return emptyMap()
+    /**
+     * Get [SteamApplication] by a list of [AppId], using the cache if possible.
+     */
+    suspend fun querySteamApplications(ids: List<AppId>): List<SteamApplication> {
+        if (ids.isEmpty()) return emptyList()
 
-        val picsSummaries = emptyMap<Int, AppSummary>() // steamClient.getImplementingHandlerOrNull<MetadataPlugin>()?.getMetadataFor(appIds) ?: emptyMap()
+        if (steamClient.enablePics) {
+            val cache = mutableScatterMapOf<AppId, SteamApplication>()
 
-        val netSummaries = if (picsSummaries.isNotEmpty()) {
-            getNetworkApps(appIds.filterNot { picsSummaries.containsKey(it) })
+            val (cached, notCached) = ids.partition { id ->
+                steamClient.pics.getSteamApplication(full = false, id = id.value)?.also { localApplication ->
+                    cache[id] = localApplication
+                } != null
+            }
+
+            return cached.map { id ->
+                cache[id] ?: error("Should not happen!")
+            } + getNetworkSteamApplications(notCached)
         } else {
-            getNetworkApps(appIds)
+            return getNetworkSteamApplications(ids)
         }
-
-        return netSummaries + picsSummaries
     }
 
     /**
      * Gets app summaries from the Steam Store.
      */
-    suspend fun getNetworkApps(ids: List<Int>): Map<Int, AppSummary> {
+    suspend fun getNetworkSteamApplications(ids: List<AppId>): List<SteamApplication> {
         return getStoreItemsTyped(
-            ids = ids.map { StoreItemID(appid = it) },
-            transformer = ::AppSummary
-        ).mapKeys {
-            it.key.appid ?: error("Store/GetAppSummaries: mapKeys key is null appid?")
-        }
+            ids = ids.map { StoreItemID(appid = it.value) },
+            transformer = SteamApplicationFactory::fromStoreItem
+        )
     }
-
-    suspend fun getNetworkApp(appId: Int): AppSummary = getNetworkApps(listOf(appId)).values.first()
-
-    suspend fun getNetworkPackages(ids: List<Int>): Map<Int, AppSummary> {
-        return getStoreItemsTyped(
-            ids = ids.map { StoreItemID(appid = it) },
-            transformer = ::AppSummary
-        ).mapKeys {
-            it.key.appid ?: error("Store/GetAppSummaries: mapKeys key is null appid?")
-        }
-    }
-
-    suspend fun getNetworkPackage(appId: Int): AppSummary = getNetworkApps(listOf(appId)).values.first()
 
     /**
      * Gets details from Store.
      *
      * This request will be cached in a temporary "DB" which will be reset at kSteam relaunch.
      */
-    suspend fun <T> getStoreItemsTyped(ids: List<StoreItemID>, transformer: (StoreItem) -> T): Map<StoreItemID, T> {
-        return getStoreItems(ids).mapValues { transformer(it.value) }
-    }
-
-    suspend fun getStoreItems(ids: List<StoreItemID>): Map<StoreItemID, StoreItem> {
-        if (ids.isEmpty()) {
-            return emptyMap() // short-circuit
-        }
-
-        browseOnlineStoreForIds(ids.filterNot(storeItemsMap::containsKey)).forEach { onlineStoreItem ->
-            storeItemsMap[storeItemToId(onlineStoreItem)] = onlineStoreItem
-        }
-
-        return ids.asSequence().filter(storeItemsMap::containsKey).associateWith(storeItemsMap::getValue)
+    suspend fun <T> getStoreItemsTyped(ids: List<StoreItemID>, transformer: (StoreItem) -> T): List<T> {
+        return browseOnlineStoreForIds(ids = ids).map(transformer)
     }
 
     private suspend fun browseOnlineStoreForIds(
@@ -121,7 +106,7 @@ class Store internal constructor(
         4 -> StoreItemID(tagid = item.id)
         5 -> StoreItemID(creatorid = item.id)
         6 -> StoreItemID(hubcategoryid = item.id)
-        else -> error("[storeItemToId] unsupported type ${item.item_type} for proto item ${item}")
+        else -> error("[storeItemToId] unsupported type ${item.item_type} for proto item $item")
     }
 
     private companion object {

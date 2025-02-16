@@ -4,7 +4,7 @@ import androidx.room.*
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.RoomPicsAppEntry
 import bruhcollective.itaysonlab.ksteam.database.room.entity.pics.apps.*
 import bruhcollective.itaysonlab.ksteam.database.room.entity.store.RoomStoreTag
-import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationFactory
 import bruhcollective.itaysonlab.ksteam.models.pics.AppInfo
 
 @Dao
@@ -82,7 +82,7 @@ internal interface RoomPicsApplicationDao {
                 it.removePrefix("category_").toIntOrNull()?.let { cid -> RoomPicsAppInfoCategory(appId = appInfo.appId, categoryId = cid) }
             }.orEmpty()
 
-            localizedAssets += SteamApplication.extractLocalizedAssetsFrom(appInfo, false).entries.map { (lang, pack) ->
+            localizedAssets += SteamApplicationFactory.extractLocalizedAssetsFrom(appInfo, false).entries.map { (lang, pack) ->
                 RoomPicsAppInfoLocalizedAssets(appInfo.appId, lang, pack)
             }
 

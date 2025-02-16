@@ -1,6 +1,8 @@
 package bruhcollective.itaysonlab.ksteam.grpc
 
 import bruhcollective.itaysonlab.ksteam.handlers.UnifiedMessages
+import steam.webui.achievements.AchievementsService
+import steam.webui.achievements.GrpcAchievementsService
 import steam.webui.authentication.AuthenticationService
 import steam.webui.authentication.GrpcAuthenticationService
 import steam.webui.clientcomm.ClientCommService
@@ -39,6 +41,8 @@ import steam.webui.usergamenotes.GrpcUserGameNotesService
 import steam.webui.usergamenotes.UserGameNotesService
 import steam.webui.usernews.GrpcUserNewsService
 import steam.webui.usernews.UserNewsService
+import steam.webui.userreviews.GrpcUserReviewsService
+import steam.webui.userreviews.UserReviewsService
 
 /**
  * Provides auto-generated gRPC clients for Steam Network API, based on dumped protobufs.
@@ -55,6 +59,7 @@ import steam.webui.usernews.UserNewsService
  * ```
  */
 interface SteamGrpcClients {
+    val achievements: AchievementsService
     val authentication: AuthenticationService
     val clientComm: ClientCommService
     val cloudConfigStore: CloudConfigStoreService
@@ -74,11 +79,13 @@ interface SteamGrpcClients {
     val userGameActivity: UserGameActivityService
     val userGameNotes: UserGameNotesService
     val userNews: UserNewsService
+    val userReviews: UserReviewsService
 }
 
 internal class SteamGrpcClientsImpl(
     unifiedMessages: UnifiedMessages
 ) : SteamGrpcClients {
+    override val achievements = GrpcAchievementsService(unifiedMessages)
     override val authentication = GrpcAuthenticationService(unifiedMessages)
     override val clientComm = GrpcClientCommService(unifiedMessages)
     override val cloudConfigStore = GrpcCloudConfigStoreService(unifiedMessages)
@@ -98,4 +105,5 @@ internal class SteamGrpcClientsImpl(
     override val userGameActivity = GrpcUserGameActivityService(unifiedMessages)
     override val userGameNotes = GrpcUserGameNotesService(unifiedMessages)
     override val userNews = GrpcUserNewsService(unifiedMessages)
+    override val userReviews = GrpcUserReviewsService(unifiedMessages)
 }

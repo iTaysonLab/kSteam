@@ -1,11 +1,11 @@
 package bruhcollective.itaysonlab.ksteam.models.persona
 
-import bruhcollective.itaysonlab.ksteam.models.apps.AppSummary
+import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
 import steam.enums.EProfileCustomizationType
 
 sealed interface ProfileWidget {
     data class FavoriteGame (
-        val app: AppSummary,
+        val app: SteamApplication,
         val achievementProgress: AchievementProgress,
         val playedSeconds: Int
     ): ProfileWidget {
@@ -17,7 +17,7 @@ sealed interface ProfileWidget {
     }
 
     data class GameCollector (
-        val featuredApps: List<AppSummary>,
+        val featuredApps: List<SteamApplication>,
         val ownedGamesCount: Int
     ): ProfileWidget
 

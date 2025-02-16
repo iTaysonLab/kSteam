@@ -2,6 +2,7 @@ package bruhcollective.itaysonlab.ksteam.handlers
 
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.database.KSteamRoomDatabase
+import bruhcollective.itaysonlab.ksteam.database.room.entity.persona.RoomFullPersona
 import bruhcollective.itaysonlab.ksteam.database.room.entity.persona.RoomPersona
 import bruhcollective.itaysonlab.ksteam.database.room.entity.persona.RoomPersonaRelationship
 import bruhcollective.itaysonlab.ksteam.database.room.entity.persona.RoomPersonaRpKvo
@@ -53,6 +54,15 @@ class Persona internal constructor(
     }
 
     /**
+     * Returns a local version of a [Persona] attached to a [SteamId].
+     *
+     * @return a local version of [Persona], or null if it is not present in local database.
+     */
+    suspend fun localPersona(id: SteamId): Persona? {
+        return database.currentUserDatabase.personas().getFullById(id.longId)?.let(RoomFullPersona::convert)
+    }
+
+    /**
      * Sets current user's online status.
      *
      * Note, that [EPersonaState.Offline] will make you appear "offline", but kSteam won't be able to receive [Persona] updates.
@@ -88,16 +98,24 @@ class Persona internal constructor(
 
         // 1. Request persona states
         requestPersonas(if (newList.bincremental == true) {
-            newList.friends.filterNot { f -> f.relationship == EFriendRelationship.None }
-                .map { f -> f.steamId }
+            newList.friends.filterNot { f ->
+                f.relationship == EFriendRelationship.None
+            }.map { f ->
+                f.steamId
+            }
         } else {
-            newList.friends.map { f -> f.steamId }
+            newList.friends.map { f ->
+                f.steamId
+            }
         })
 
         // 2. Update friend-list flow
         database.currentUserDatabase.personas().updateRelationships(
-            newList.friends.map { relationship ->
-                RoomPersonaRelationship(uid = relationship.ulfriendid!!, relationship = relationship.efriendrelationship ?: 0)
+            newList.friends.mapNotNull { relationship ->
+                RoomPersonaRelationship(
+                    uid = relationship.ulfriendid ?: return@mapNotNull null,
+                    relationship = relationship.efriendrelationship ?: 0
+                )
             }
         )
     }

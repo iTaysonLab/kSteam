@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "bruhcollective.itaysonlab.ksteam"
-version = "r43"
+version = "r46"
 
 kotlin {
     multiplatformSetup()

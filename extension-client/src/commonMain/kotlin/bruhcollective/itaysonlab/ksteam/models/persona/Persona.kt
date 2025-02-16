@@ -4,6 +4,8 @@ import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EFriendRelationship
 import bruhcollective.itaysonlab.ksteam.models.enums.EPersonaState
+import bruhcollective.itaysonlab.ksteam.models.persona.Persona.Status.Offline
+import bruhcollective.itaysonlab.ksteam.models.persona.Persona.Status.Online
 import steam.webui.common.CMsgClientPersonaState_Friend
 
 /**
@@ -42,13 +44,7 @@ data class Persona (
      */
     val relationship: EFriendRelationship = EFriendRelationship.None
 ) {
-    internal constructor(obj: CMsgClientPersonaState_Friend) : this(
-        id = SteamId(obj.friendid?.toULong() ?: 0u),
-        name = obj.player_name.orEmpty(),
-        avatar = AvatarHash(obj.avatar_hash?.hex() ?: ""),
-        lastSeen = LastSeen(lastLogOff = obj.last_logoff ?: 0, lastLogOn = obj.last_logon ?: 0, lastSeenOnline = obj.last_seen_online ?: 0),
-        status = Status.fromFriend(obj)
-    )
+    val stringId get() = id.toString()
 
     data class LastSeen (
         val lastLogOn: Int = 0,
@@ -178,15 +174,7 @@ data class Persona (
                         )
                     }
 
-                    else -> when (EPersonaState.byEncoded(friend.persona_state ?: 0)) {
-                        EPersonaState.Offline -> Offline
-                        EPersonaState.Online -> Online(additional = OnlineStatus.Online)
-                        EPersonaState.Busy -> Online(additional = OnlineStatus.Busy)
-                        EPersonaState.Away -> Online(additional = OnlineStatus.Away)
-                        EPersonaState.Snooze -> Online(additional = OnlineStatus.Snooze)
-                        EPersonaState.LookingToTrade -> Online(additional = OnlineStatus.LookingToTrade)
-                        EPersonaState.LookingToPlay -> Online(additional = OnlineStatus.LookingToPlay)
-                    }
+                    else -> ePersonaStateToStatus(friend.persona_state ?: 0)
                 }
             }
         }
@@ -197,5 +185,32 @@ data class Persona (
             id = SteamId.Empty,
             name = ""
         )
+
+        internal fun fromSummary(obj: PlayerSummary): Persona {
+            return Persona(
+                id = SteamId(obj.steamid.toULong()),
+                name = obj.personaname,
+                avatar = AvatarHash(obj.avatarhash.orEmpty()),
+                lastSeen = LastSeen(
+                    lastLogOff = obj.lastlogoff ?: 0,
+                    lastLogOn = obj.lastlogon ?: 0,
+                    lastSeenOnline = obj.lastseenonline ?: 0
+                ),
+                status = ePersonaStateToStatus(obj.personastate)
+                // Request relationship from database?
+            )
+        }
+
+        private fun ePersonaStateToStatus(state: Int): Status {
+            return when (EPersonaState.byEncoded(state)) {
+                EPersonaState.Offline -> Offline
+                EPersonaState.Online -> Online(additional = OnlineStatus.Online)
+                EPersonaState.Busy -> Online(additional = OnlineStatus.Busy)
+                EPersonaState.Away -> Online(additional = OnlineStatus.Away)
+                EPersonaState.Snooze -> Online(additional = OnlineStatus.Snooze)
+                EPersonaState.LookingToTrade -> Online(additional = OnlineStatus.LookingToTrade)
+                EPersonaState.LookingToPlay -> Online(additional = OnlineStatus.LookingToPlay)
+            }
+        }
     }
 }
