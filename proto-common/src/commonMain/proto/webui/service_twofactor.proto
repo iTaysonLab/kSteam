@@ -107,6 +107,7 @@ message CTwoFactor_SendEmail_Response {
 
 message CTwoFactor_Status_Request {
 	optional fixed64 steamid = 1;
+	optional int32 include = 2 [(.description) = "enum"];
 }
 
 message CTwoFactor_Status_Response {
@@ -124,6 +125,8 @@ message CTwoFactor_Status_Response {
 	optional bool allow_external_authenticator = 12;
 	optional uint32 time_transferred = 13;
 	optional uint32 version = 14;
+	optional fixed64 last_seen_auth_token_id = 15;
+	repeated .CTwoFactor_UsageEvent usages = 16;
 }
 
 message CTwoFactor_Time_Request {
@@ -151,22 +154,41 @@ message CTwoFactor_UpdateTokenVersion_Request {
 message CTwoFactor_UpdateTokenVersion_Response {
 }
 
+message CTwoFactor_UsageEvent {
+	optional uint32 time = 1;
+	optional int32 usage_type = 2 [(.description) = "enum"];
+	optional int32 confirmation_type = 3;
+	optional int32 confirmation_action = 4;
+}
+
 message CTwoFactor_ValidateToken_Response {
 	optional bool valid = 1;
 }
 
 service TwoFactor {
+	// ePrivilege=1
 	rpc AddAuthenticator (.CTwoFactor_AddAuthenticator_Request) returns (.CTwoFactor_AddAuthenticator_Response);
+	// ePrivilege=1
 	rpc CreateEmergencyCodes (.NotImplemented) returns (.CTwoFactor_CreateEmergencyCodes_Response);
+	// ePrivilege=1
 	rpc DestroyEmergencyCodes (.NotImplemented) returns (.CTwoFactor_DestroyEmergencyCodes_Response);
+	// ePrivilege=1
 	rpc FinalizeAddAuthenticator (.CTwoFactor_FinalizeAddAuthenticator_Request) returns (.CTwoFactor_FinalizeAddAuthenticator_Response);
+	// ePrivilege=1
 	rpc QueryStatus (.CTwoFactor_Status_Request) returns (.CTwoFactor_Status_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc QueryTime (.CTwoFactor_Time_Request) returns (.CTwoFactor_Time_Response);
+	// ePrivilege=9
 	rpc RemoveAuthenticator (.CTwoFactor_RemoveAuthenticator_Request) returns (.CTwoFactor_RemoveAuthenticator_Response);
+	// ePrivilege=9
 	rpc RemoveAuthenticatorViaChallengeContinue (.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Request) returns (.CTwoFactor_RemoveAuthenticatorViaChallengeContinue_Response);
+	// ePrivilege=9
 	rpc RemoveAuthenticatorViaChallengeStart (.CTwoFactor_RemoveAuthenticatorViaChallengeStart_Request) returns (.CTwoFactor_RemoveAuthenticatorViaChallengeStart_Response);
+	// ePrivilege=1
 	rpc SendEmail (.CTwoFactor_SendEmail_Request) returns (.CTwoFactor_SendEmail_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc UpdateTokenVersion (.CTwoFactor_UpdateTokenVersion_Request) returns (.CTwoFactor_UpdateTokenVersion_Response);
+	// ePrivilege=1
 	rpc ValidateToken (.NotImplemented) returns (.CTwoFactor_ValidateToken_Response);
 }
 

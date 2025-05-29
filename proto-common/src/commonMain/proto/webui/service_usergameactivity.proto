@@ -31,6 +31,7 @@ message CUserGameActivity_GetActivity_Response {
 }
 
 service UserGameActivity {
+	// ePrivilege=1
 	rpc GetActivity (.CUserGameActivity_GetActivity_Request) returns (.CUserGameActivity_GetActivity_Response);
 }
 

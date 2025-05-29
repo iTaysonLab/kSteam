@@ -163,6 +163,7 @@ message CAuthentication_PollAuthSessionStatus_Response {
 }
 
 message CAuthentication_RefreshToken_Enumerate_Request {
+	optional bool include_revoked = 1 [default = false];
 }
 
 message CAuthentication_RefreshToken_Enumerate_Response {
@@ -183,6 +184,7 @@ message CAuthentication_RefreshToken_Enumerate_Response_RefreshTokenDescription 
 	optional .CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent last_seen = 10;
 	optional int32 os_type = 11;
 	optional int32 authentication_type = 12 [(.description) = "enum"];
+	optional int32 effective_token_state = 13 [(.description) = "enum"];
 }
 
 message CAuthentication_RefreshToken_Enumerate_Response_TokenUsageEvent {
@@ -236,20 +238,35 @@ message CAuthentication_UpdateAuthSessionWithSteamGuardCode_Response {
 }
 
 service Authentication {
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc BeginAuthSessionViaCredentials (.CAuthentication_BeginAuthSessionViaCredentials_Request) returns (.CAuthentication_BeginAuthSessionViaCredentials_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc BeginAuthSessionViaQR (.CAuthentication_BeginAuthSessionViaQR_Request) returns (.CAuthentication_BeginAuthSessionViaQR_Response);
+	// ePrivilege=1
 	rpc EnumerateTokens (.CAuthentication_RefreshToken_Enumerate_Request) returns (.CAuthentication_RefreshToken_Enumerate_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc GenerateAccessTokenForApp (.CAuthentication_AccessToken_GenerateForApp_Request) returns (.CAuthentication_AccessToken_GenerateForApp_Response);
+	// ePrivilege=1
 	rpc GetAuthSessionInfo (.CAuthentication_GetAuthSessionInfo_Request) returns (.CAuthentication_GetAuthSessionInfo_Response);
+	// ePrivilege=1
 	rpc GetAuthSessionRiskInfo (.CAuthentication_GetAuthSessionRiskInfo_Request) returns (.CAuthentication_GetAuthSessionRiskInfo_Response);
+	// bConstMethod=true, ePrivilege=1
 	rpc GetAuthSessionsForAccount (.CAuthentication_GetAuthSessionsForAccount_Request) returns (.CAuthentication_GetAuthSessionsForAccount_Response);
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc GetPasswordRSAPublicKey (.CAuthentication_GetPasswordRSAPublicKey_Request) returns (.CAuthentication_GetPasswordRSAPublicKey_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc MigrateMobileSession (.CAuthentication_MigrateMobileSession_Request) returns (.CAuthentication_MigrateMobileSession_Response);
+	// ePrivilege=1
 	rpc NotifyRiskQuizResults (.CAuthentication_NotifyRiskQuizResults_Notification) returns (.NoResponse);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc PollAuthSessionStatus (.CAuthentication_PollAuthSessionStatus_Request) returns (.CAuthentication_PollAuthSessionStatus_Response);
+	// ePrivilege=2, eWebAPIKeyRequirement=1
 	rpc RevokeRefreshToken (.CAuthentication_RefreshToken_Revoke_Request) returns (.CAuthentication_RefreshToken_Revoke_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc RevokeToken (.CAuthentication_Token_Revoke_Request) returns (.CAuthentication_Token_Revoke_Response);
+	// ePrivilege=1
 	rpc UpdateAuthSessionWithMobileConfirmation (.CAuthentication_UpdateAuthSessionWithMobileConfirmation_Request) returns (.CAuthentication_UpdateAuthSessionWithMobileConfirmation_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc UpdateAuthSessionWithSteamGuardCode (.CAuthentication_UpdateAuthSessionWithSteamGuardCode_Request) returns (.CAuthentication_UpdateAuthSessionWithSteamGuardCode_Response);
 }
 

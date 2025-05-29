@@ -1,0 +1,70 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.storecatalog";
+
+message CDeveloperPageLink {
+	optional uint32 appid = 1;
+	optional fixed64 clan_steamid = 2;
+	optional int32 relation = 3 [(.description) = "enum"];
+	optional string linkname = 4;
+	optional string json = 5;
+}
+
+message CDeveloperPageToApps {
+	optional uint32 clan_account_id = 1;
+	repeated uint32 appid_list = 2;
+}
+
+message CStoreCatalog_GetDevPageAllAppsLinked_Request {
+	repeated uint32 clan_account_ids = 1;
+	optional bool ignore_dlc = 2;
+}
+
+message CStoreCatalog_GetDevPageAllAppsLinked_Response {
+	repeated .CDeveloperPageToApps results = 1;
+}
+
+message CStoreCatalog_GetDevPageLinks_Request {
+	optional uint32 appid = 1;
+}
+
+message CStoreCatalog_GetDevPageLinks_Response {
+	repeated .CDeveloperPageLink links = 1;
+}
+
+message CStoreCatalog_GetDevPagesForPartner_Request {
+	optional uint32 partnerid = 1;
+}
+
+message CStoreCatalog_GetDevPagesForPartner_Response {
+	repeated .CStoreCatalog_GetDevPagesForPartner_Response_CDevPageInfo results = 1;
+}
+
+message CStoreCatalog_GetDevPagesForPartner_Response_CDevPageInfo {
+	optional uint32 clan_accountid = 1;
+	repeated string linknames = 2;
+}
+
+message CStoreCatalog_SetDevPageLink_Request {
+	optional uint32 appid = 1;
+	optional .CDeveloperPageLink link = 2;
+	optional bool remove = 3 [default = false];
+	optional bool update_json_only = 4 [default = false];
+	optional bool skip_clan_permissions = 5 [default = false];
+	optional uint32 partner_id = 6;
+}
+
+message CStoreCatalog_SetDevPageLink_Response {
+}
+
+service StoreCatalog {
+	// ePrivilege=1
+	rpc GetDevPageAllAppsLinked (.CStoreCatalog_GetDevPageAllAppsLinked_Request) returns (.CStoreCatalog_GetDevPageAllAppsLinked_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=2
+	rpc GetDevPageLinks (.CStoreCatalog_GetDevPageLinks_Request) returns (.CStoreCatalog_GetDevPageLinks_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetDevPagesForPartner (.CStoreCatalog_GetDevPagesForPartner_Request) returns (.CStoreCatalog_GetDevPagesForPartner_Response);
+	// ePrivilege=1, eWebAPIKeyRequirement=2
+	rpc SetDevPageLink (.CStoreCatalog_SetDevPageLink_Request) returns (.CStoreCatalog_SetDevPageLink_Response);
+}
+

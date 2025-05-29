@@ -26,6 +26,7 @@ message CCDDBAppDetailCommon {
 	optional bool has_adult_content_sex = 15;
 	optional bool has_adult_content_violence = 16;
 	repeated uint32 content_descriptorids = 17;
+	repeated uint32 content_descriptorids_including_dlc = 18;
 }
 
 message CClanEventUserNewsTuple {
@@ -98,7 +99,7 @@ message CCommunity_DeleteCommentFromThread_Response {
 message CCommunity_FetchTranslationFromCrowdIn_Request {
 	optional fixed64 steamid = 1;
 	optional uint64 itemid = 2;
-	optional uint32 language = 3;
+	optional int32 language = 3;
 }
 
 message CCommunity_FetchTranslationFromCrowdIn_Response {
@@ -281,6 +282,20 @@ message CCommunity_GetUserPartnerEventViewStatus_Response_PartnerEvent {
 	optional uint32 clan_account_id = 4;
 }
 
+message CCommunity_HideAndReportComment_Request {
+	optional uint64 gidfeature = 1;
+	optional uint64 gidfeature2 = 2;
+	optional uint64 gidcomment = 3;
+	optional fixed64 steamid = 4;
+	optional string commentthreadtype = 5;
+	optional bool hide = 6;
+	optional int32 report_reason = 7 [(.description) = "enum"];
+	optional string report_text = 8;
+}
+
+message CCommunity_HideAndReportComment_Response {
+}
+
 message CCommunity_MarkPartnerEventsForUser_Request {
 	repeated .CCommunity_MarkPartnerEventsForUser_Request_PartnerEventMarking markings = 1;
 }
@@ -373,27 +388,51 @@ message CCommunity_RateCommentThread_Response {
 }
 
 service Community {
+	// ePrivilege=1
 	rpc ClearSinglePartnerEventsAppPriority (.CCommunity_ClearSinglePartnerEventsAppPriority_Request) returns (.CCommunity_ClearSinglePartnerEventsAppPriority_Response);
+	// ePrivilege=1
 	rpc ClearUserPartnerEventsAppPriorities (.CCommunity_ClearUserPartnerEventsAppPriorities_Request) returns (.CCommunity_ClearUserPartnerEventsAppPriorities_Response);
+	// ePrivilege=1
 	rpc DeleteCommentFromThread (.CCommunity_DeleteCommentFromThread_Request) returns (.CCommunity_DeleteCommentFromThread_Response);
+	// ePrivilege=1
 	rpc FetchTranslationFromCrowdIn (.CCommunity_FetchTranslationFromCrowdIn_Request) returns (.CCommunity_FetchTranslationFromCrowdIn_Response);
+	// ePrivilege=1
 	rpc GetAppRichPresenceLocalization (.CCommunity_GetAppRichPresenceLocalization_Request) returns (.CCommunity_GetAppRichPresenceLocalization_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
 	rpc GetApps (.CCommunity_GetApps_Request) returns (.CCommunity_GetApps_Response);
+	// ePrivilege=1
 	rpc GetAvatarHistory (.CCommunity_GetAvatarHistory_Request) returns (.CCommunity_GetAvatarHistory_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=2
 	rpc GetBestEventsForUser (.CCommunity_GetBestEventsForUser_Request) returns (.CCommunity_GetBestEventsForUser_Response);
+	// ePrivilege=1
 	rpc GetClanAnnouncementVoteForUser (.CCommunity_GetClanAnnouncementVoteForUser_Request) returns (.CCommunity_GetClanAnnouncementVoteForUser_Response);
+	// bConstMethod=true, ePrivilege=1
 	rpc GetClanCrowdInMetadata (.CCommunity_GetClanCrowdInMetadata_Request) returns (.CCommunity_GetClanCrowdInMetadata_Response);
+	// bConstMethod=true, ePrivilege=1
 	rpc GetClanEventCrowdInMetadata (.CCommunity_GetClanEventCrowdInMetadata_Request) returns (.CCommunity_GetClanEventCrowdInMetadata_Response);
+	// ePrivilege=2, eWebAPIKeyRequirement=1
 	rpc GetCommentThread (.CCommunity_GetCommentThread_Request) returns (.CCommunity_GetCommentThread_Response);
+	// ePrivilege=2
 	rpc GetCommentThreadRatings (.CCommunity_GetCommentThreadRatings_Request) returns (.CCommunity_GetCommentThreadRatings_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=2
 	rpc GetUserPartnerEventNews (.CCommunity_GetUserPartnerEventNews_Request) returns (.CCommunity_GetUserPartnerEventNews_Response);
+	// ePrivilege=1
 	rpc GetUserPartnerEventsAppPriorities (.CCommunity_GetUserPartnerEventsAppPriorities_Request) returns (.CCommunity_GetUserPartnerEventsAppPriorities_Response);
+	// bConstMethod=true, ePrivilege=1
 	rpc GetUserPartnerEventViewStatus (.CCommunity_GetUserPartnerEventViewStatus_Request) returns (.CCommunity_GetUserPartnerEventViewStatus_Response);
+	// ePrivilege=3
+	rpc HideAndReportComment (.CCommunity_HideAndReportComment_Request) returns (.CCommunity_HideAndReportComment_Response);
+	// ePrivilege=1
 	rpc MarkPartnerEventsForUser (.CCommunity_MarkPartnerEventsForUser_Request) returns (.CCommunity_MarkPartnerEventsForUser_Response);
+	// ePrivilege=1
 	rpc PartnerEventsShowLessForApp (.CCommunity_PartnerEventsShowLessForApp_Request) returns (.CCommunity_PartnerEventsShowLessForApp_Response);
+	// ePrivilege=1
 	rpc PartnerEventsShowMoreForApp (.CCommunity_PartnerEventsShowMoreForApp_Request) returns (.CCommunity_PartnerEventsShowMoreForApp_Response);
+	// ePrivilege=3
 	rpc PostCommentToThread (.CCommunity_PostCommentToThread_Request) returns (.CCommunity_PostCommentToThread_Response);
+	// ePrivilege=3
 	rpc RateClanAnnouncement (.CCommunity_RateClanAnnouncement_Request) returns (.CCommunity_RateClanAnnouncement_Response);
+	// ePrivilege=3
 	rpc RateCommentThread (.CCommunity_RateCommentThread_Request) returns (.CCommunity_RateCommentThread_Response);
 }
 
