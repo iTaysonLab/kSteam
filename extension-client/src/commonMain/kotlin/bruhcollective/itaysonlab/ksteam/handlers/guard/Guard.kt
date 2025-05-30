@@ -3,12 +3,12 @@ package bruhcollective.itaysonlab.ksteam.handlers.guard
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.guard.GuardInstance
 import bruhcollective.itaysonlab.ksteam.guard.clock.GuardClockContextImpl
+import bruhcollective.itaysonlab.ksteam.models.SteamId
+import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.models.guard.GuardStructure
 import bruhcollective.itaysonlab.ksteam.models.guard.SgCreationResult
 import bruhcollective.itaysonlab.ksteam.models.guard.SgDeletionResult
 import bruhcollective.itaysonlab.ksteam.models.guard.toConfig
-import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
 import steam.webui.twofactor.*
@@ -52,15 +52,27 @@ class Guard(
                     authenticator_type = 1,
                     version = 2,
                     device_identifier = steamClient.configuration.getUuid()
-                )
+                ), web = true
             )
 
-            SgCreationResult.AwaitingConfirmation(
-                hint = response.phone_number_hint.orEmpty(),
-                moving = false,
-                guardConfiguration = response.toConfig(),
-                isEmail = response.confirm_type != 0
-            )
+            when (response.status) {
+                EResult.OK.encoded -> {
+                    SgCreationResult.AwaitingConfirmation(
+                        hint = response.phone_number_hint.orEmpty(),
+                        moving = false,
+                        guardConfiguration = response.toConfig(),
+                        isEmail = response.confirm_type != 0
+                    )
+                }
+
+                EResult.DuplicateRequest.encoded -> {
+                    SgCreationResult.AlreadyHasGuard
+                }
+
+                else -> {
+                    SgCreationResult.Error(EResult.byEncoded(response.status ?: EResult.Fail.encoded))
+                }
+            }
         } catch (sre: CMJobRemoteException) {
             if (sre.result == EResult.DuplicateRequest) {
                 SgCreationResult.AlreadyHasGuard
