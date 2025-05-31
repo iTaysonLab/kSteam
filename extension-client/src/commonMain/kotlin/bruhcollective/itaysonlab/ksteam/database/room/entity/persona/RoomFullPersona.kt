@@ -18,7 +18,7 @@ internal data class RoomFullPersona(
         parentColumn = "uid",
         entityColumn = "uid",
     )
-    val relationship: RoomPersonaRelationship,
+    val relationship: RoomPersonaRelationship?,
 
     @Relation(
         parentColumn = "uid",
@@ -38,7 +38,7 @@ internal data class RoomFullPersona(
                 lastSeenOnline = persona.lastSeenLogOnline
             ),
             status = convertToStatus(),
-            relationship = EFriendRelationship.byEncoded(relationship.relationship)
+            relationship = EFriendRelationship.byEncoded(relationship?.relationship)
         )
     }
 
