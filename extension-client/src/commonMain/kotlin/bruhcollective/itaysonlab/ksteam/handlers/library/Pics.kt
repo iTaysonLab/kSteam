@@ -53,7 +53,7 @@ class Pics internal constructor(
      * Suspends execution until PICS subsystem is ready to be used (all packages/apps verified and inserted into DB).
      */
     suspend fun awaitPicsInitialization() {
-        _isPicsAvailable.first { it == true }
+        _isPicsAvailable.first { it }
     }
 
     /**
@@ -141,12 +141,16 @@ class Pics internal constructor(
 
         _picsInitializationProgress.value = 0f
         if (changesResponse.force_full_update == true || changesResponse.force_full_app_update == true || changesResponse.force_full_app_update == true) {
+            steamClient.logger.logDebug(TAG) { "-> API requested forced full update" }
+
             // Short-circuit to full database update
             requestAndWritePackageChunks(tokens = licenses.associate { it.package_id!! to it.access_token }, 0.5f)
 
             _picsInitializationProgress.value = 0.5f
             requestTokensAndUpdate(appIds = licenses.mapNotNull { it.package_id }.let { database.sharedDatabase.picsPackages().getGrantedAppsForPackages(it) }, 0.5f)
         } else {
+            steamClient.logger.logDebug(TAG) { "-> doing partial update" }
+
             // Update known packages by using PICS response
             changesResponse.package_changes.associate { appChange ->
                 (appChange.packageid!! to database.sharedDatabase.picsEntries().getAccessTokenForPackage(appChange.packageid!!))
@@ -172,6 +176,7 @@ class Pics internal constructor(
         writeAccountSpecificLicenseInformation(licenses)
         _picsInitializationProgress.value = 1f
         _isPicsAvailable.value = true
+        steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] OK" }
     }
 
     private suspend fun checkForMissingEntries(licenses: List<CMsgClientLicenseList_License>) {

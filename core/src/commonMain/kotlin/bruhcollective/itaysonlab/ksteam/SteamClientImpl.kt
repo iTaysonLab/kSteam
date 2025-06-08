@@ -85,15 +85,15 @@ internal class SteamClientImpl internal constructor(
     }
 
     override suspend fun start() {
-        logger.logVerbose("SteamClientImpl") { "[start]" }
+        logger.logDebug("SteamClientImpl") { "[start] proto git hash = ${ProtoCommon.GIT_HASH}" }
 
         if (cmNetworkEnabled()) {
             if (serverList.isEmpty()) {
-                logger.logVerbose("SteamClientImpl") { "-> refreshServerList" }
+                logger.logVerbose("SteamClientImpl") { "[start] refreshServerList" }
                 serverList.refreshServerList()
             }
 
-            logger.logVerbose("SteamClientImpl") { "-> tryConnect" }
+            logger.logVerbose("SteamClientImpl") { "[start] tryConnect" }
             cmClient.tryConnect()
         }
     }

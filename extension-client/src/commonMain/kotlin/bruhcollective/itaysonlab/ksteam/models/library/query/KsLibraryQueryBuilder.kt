@@ -86,6 +86,9 @@ class KsLibraryQueryBuilder constructor() {
         storeCategories.add(categories)
     }
 
+    /**
+     * @see withStoreCategories
+     */
     fun withStoreCategories(vararg categories: EStoreCategory) = withStoreCategories(categories.toList())
 
     /**

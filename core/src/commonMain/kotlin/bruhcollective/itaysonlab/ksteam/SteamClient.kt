@@ -122,6 +122,22 @@ interface SteamClient {
     fun stop()
 
     /**
+     * Gracefully stops the client instance. This is used for mobile applications.
+     *
+     * When this is called:
+     * - kSteam waits for all pending jobs to finish
+     * - after, connection to Steam Network is stopped, preserving the server list and listeners
+     * - calls to [awaitPacket], [awaitProto], [awaitMultipleProto] and [awaitStreamedMultipleProto] immediately throw [CMJobDroppedException]
+     * - calls to [execute] are ignored
+     */
+    fun pause()
+
+    /**
+     * Resumes the client instance. This is used for mobile applications.
+     */
+    fun resume()
+
+    /**
      * Subscribes to a change of [CMClientState].
      *
      * @param status what status is required to have
@@ -194,26 +210,6 @@ interface SteamClient {
      * Execute a [SteamPacket] without waiting for a response.
      */
     suspend fun execute(packet: SteamPacket)
-
-    /**
-     * Pauses the client instance. This is used for mobile applications.
-     *
-     * When this is called:
-     * - Steam Network connection will be finished after completing all pending jobs
-     * - new jobs from [async], [asyncProto] and [asyncMultipleProto] calls will immediately result in [bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException]
-     * - new [execute] calls will be ignored
-     */
-    fun pause()
-
-    /**
-     * Resumes the client instance. This is used for mobile applications.
-     *
-     * When this is called:
-     * - Steam Network connection will be attempted
-     * - new jobs from [async], [asyncProto] and [asyncMultipleProto] calls will execute as usual
-     * - new [execute] calls will execute as usual
-     */
-    fun resume()
 
     /**
      * Returns if the client allows the use of CM sockets.
