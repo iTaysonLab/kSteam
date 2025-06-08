@@ -1,0 +1,159 @@
+import "webui/common.proto";
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.storequery";
+
+message CStoreQuery_GetItemByUserCombinedTagsPriority_Request {
+	optional int32 sort = 1 [default = 0, (.description) = "enum"];
+	optional uint32 max_items = 2;
+	optional bool randomize = 3;
+	optional bool include_packages = 4 [default = false];
+	optional bool include_bundles = 5 [default = false];
+	optional .CStorePageFilter filters = 6;
+	optional .StoreBrowseContext context = 7;
+}
+
+message CStoreQuery_GetItemByUserCombinedTagsPriority_Response {
+	repeated uint32 tagid = 1;
+	repeated .StoreItemID store_item_ids = 2;
+	repeated string tag_name = 3;
+}
+
+message CStoreQuery_GetItemsByUserRecommendedTags_Request {
+	optional .CStorePageFilter filters = 2;
+	optional .StoreBrowseContext context = 5;
+	repeated .CStoreQuery_GetItemsByUserRecommendedTags_Request_Section sections = 6;
+}
+
+message CStoreQuery_GetItemsByUserRecommendedTags_Request_Section {
+	optional int32 sort = 1 [default = 0, (.description) = "enum"];
+	optional uint32 min_items = 2;
+	optional bool randomize = 3;
+	optional bool include_packages = 4 [default = false];
+	optional bool include_bundles = 5 [default = false];
+}
+
+message CStoreQuery_GetItemsByUserRecommendedTags_Response {
+	repeated .CStoreQuery_GetItemsByUserRecommendedTags_Response_Section sections = 1;
+}
+
+message CStoreQuery_GetItemsByUserRecommendedTags_Response_Section {
+	optional uint32 tagid = 1;
+	repeated .StoreItemID store_item_ids = 2;
+	optional string tag_name = 3;
+}
+
+message CStoreQuery_Query_Request {
+	optional string query_name = 1;
+	optional .CStoreQueryParams query = 2;
+	optional .StoreBrowseContext context = 3;
+	optional .StoreBrowseItemDataRequest data_request = 4;
+	optional string override_country_code = 5;
+}
+
+message CStoreQuery_Query_Response {
+	optional .CStoreQueryResultMetadata metadata = 1;
+	repeated .StoreItemID ids = 2;
+	repeated .StoreItem store_items = 3;
+}
+
+message CStoreQuery_SearchSuggestions_Request {
+	optional string query_name = 1;
+	optional .StoreBrowseContext context = 2;
+	optional string search_term = 3;
+	optional uint32 max_results = 4;
+	optional .CStoreQueryFilters filters = 5;
+	optional .StoreBrowseItemDataRequest data_request = 6;
+	optional bool use_spellcheck = 7;
+	optional bool search_tags = 8;
+	optional bool search_creators = 9;
+	optional bool prefilter_creators = 10;
+}
+
+message CStoreQuery_SearchSuggestions_Response {
+	optional .CStoreQueryResultMetadata metadata = 1;
+	repeated .StoreItemID ids = 2;
+	repeated .StoreItem store_items = 3;
+}
+
+message CStoreQueryFilters {
+	optional bool released_only = 1;
+	optional bool coming_soon_only = 2;
+	optional .CStoreQueryFilters_TypeFilters type_filters = 3;
+	repeated int32 exclude_from = 4 [(.description) = "enum"];
+	optional .CStoreQueryFilters_PredefinedFilter predefined_filter = 5;
+	repeated .CStoreQueryFilters_TagFilter tagids_must_match = 10;
+	repeated int32 tagids_exclude = 11;
+	optional .CStoreQueryFilters_PriceFilters price_filters = 12;
+	repeated int32 content_descriptors_must_match = 15 [(.description) = "enum"];
+	repeated int32 content_descriptors_excluded = 16 [(.description) = "enum"];
+	optional int32 regional_top_n_sellers = 40;
+	optional int32 global_top_n_sellers = 41;
+	optional int32 regional_long_term_top_n_sellers = 42;
+	optional int32 global_long_term_top_n_sellers = 43;
+	optional .CStorePageFilter store_page_filter = 44;
+	repeated uint32 parent_appids = 45;
+}
+
+message CStoreQueryFilters_PredefinedFilter {
+	optional int32 filter_type = 1 [(.description) = "enum"];
+	repeated int32 language_preferences = 2;
+}
+
+message CStoreQueryFilters_PriceFilters {
+	optional bool only_free_items = 1;
+	optional bool exclude_free_items = 2;
+	optional int32 min_discount_percent = 3;
+}
+
+message CStoreQueryFilters_TagFilter {
+	repeated int32 tagids = 1;
+}
+
+message CStoreQueryFilters_TypeFilters {
+	optional bool include_apps = 1;
+	optional bool include_packages = 2;
+	optional bool include_bundles = 3;
+	optional bool include_games = 10;
+	optional bool include_demos = 11;
+	optional bool include_mods = 12;
+	optional bool include_dlc = 13;
+	optional bool include_software = 14;
+	optional bool include_video = 15;
+	optional bool include_hardware = 16;
+	optional bool include_series = 17;
+	optional bool include_music = 18;
+}
+
+message CStoreQueryParams {
+	optional int32 start = 1 [default = 0];
+	optional int32 count = 2 [default = 10];
+	optional int32 sort = 10 [default = 0, (.description) = "enum"];
+	optional .CStoreQueryFilters filters = 20;
+}
+
+message CStoreQueryPerResultMetadata {
+	optional .StoreItemID id = 1;
+	optional double score = 2;
+	optional bool spellcheck_generated_result = 3;
+}
+
+message CStoreQueryResultMetadata {
+	optional int32 total_matching_records = 1;
+	optional int32 start = 2;
+	optional int32 count = 3;
+	repeated .CStoreQueryPerResultMetadata per_result_metadata = 4;
+	repeated string spellcheck_suggestions = 5;
+}
+
+service StoreQuery {
+	// bConstMethod=true, ePrivilege=1
+	rpc GetItemByUserCombinedTagsPriority (.CStoreQuery_GetItemByUserCombinedTagsPriority_Request) returns (.CStoreQuery_GetItemByUserCombinedTagsPriority_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetItemsByUserRecommendedTags (.CStoreQuery_GetItemsByUserRecommendedTags_Request) returns (.CStoreQuery_GetItemsByUserRecommendedTags_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=1
+	rpc Query (.CStoreQuery_Query_Request) returns (.CStoreQuery_Query_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc SearchSuggestions (.CStoreQuery_SearchSuggestions_Request) returns (.CStoreQuery_SearchSuggestions_Response);
+}
+

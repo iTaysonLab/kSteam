@@ -1,0 +1,9 @@
+import "webui/common.proto";
+
+option java_package = "steam.webui.test_transporterror";
+
+service Test_TransportError {
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc InvalidService (.CTransportValidation_AppendToString_Request) returns (.CTransportValidation_AppendToString_Response);
+}
+

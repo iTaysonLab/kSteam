@@ -1,0 +1,96 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.playtest";
+
+message CPlaytest_GetInviteHistory_Request {
+	optional uint32 limit = 1;
+	optional uint32 time_before = 2;
+}
+
+message CPlaytest_GetInviteHistory_Response {
+	repeated .CPlaytest_GetInviteHistory_Response_Invite invites = 1;
+}
+
+message CPlaytest_GetInviteHistory_Response_Invite {
+	optional uint32 appid = 1;
+	optional fixed64 steamid_invited = 2;
+	optional uint32 time_created = 3;
+	optional string app_name = 4;
+}
+
+message CPlaytest_GetInviteOptions_Request {
+	optional uint32 appid = 1;
+}
+
+message CPlaytest_GetInviteOptions_Response {
+	repeated uint32 ineligible_friends = 1;
+}
+
+message CPlaytest_GetInvites_Request {
+	optional uint64 invite_id = 1;
+}
+
+message CPlaytest_GetInvites_Response {
+	repeated .CPlaytest_GetInvites_Response_Invite invites = 1;
+}
+
+message CPlaytest_GetInvites_Response_Invite {
+	optional uint64 invite_id = 1;
+	optional uint32 appid = 2;
+	optional fixed64 steamid_inviter = 3;
+	optional int32 status = 4 [(.description) = "enum"];
+	optional uint32 time_created = 5;
+	optional string app_name = 6;
+}
+
+message CPlaytest_GetUserStatus_Request {
+	optional uint32 appid = 1;
+}
+
+message CPlaytest_GetUserStatus_Response {
+	repeated .CPlaytest_GetUserStatus_Response_AppStatus results = 1;
+}
+
+message CPlaytest_GetUserStatus_Response_AppStatus {
+	optional uint32 appid = 1;
+	optional int32 status = 2 [(.description) = "enum"];
+	optional int32 invites_remaining = 3;
+	optional uint32 time_joined = 4;
+	optional uint32 packageid = 5;
+	optional int32 invites_sent = 6;
+}
+
+message CPlaytest_RequestInvite_Request {
+	optional uint32 appid = 1;
+	optional fixed64 steamid = 2;
+}
+
+message CPlaytest_RequestInvite_Response {
+	optional int32 invites_remaining = 1;
+	optional int32 status = 2 [(.description) = "enum"];
+}
+
+message CPlaytest_UpdateInvites_Request {
+	repeated uint64 invite_ids = 1;
+	optional int32 status = 2 [(.description) = "enum"];
+}
+
+message CPlaytest_UpdateInvites_Response {
+	optional uint32 invites_updated = 1;
+}
+
+service Playtest {
+	// ePrivilege=1
+	rpc GetInviteHistory (.CPlaytest_GetInviteHistory_Request) returns (.CPlaytest_GetInviteHistory_Response);
+	// ePrivilege=1
+	rpc GetInviteOptions (.CPlaytest_GetInviteOptions_Request) returns (.CPlaytest_GetInviteOptions_Response);
+	// ePrivilege=1
+	rpc GetInvites (.CPlaytest_GetInvites_Request) returns (.CPlaytest_GetInvites_Response);
+	// ePrivilege=1
+	rpc GetUserStatus (.CPlaytest_GetUserStatus_Request) returns (.CPlaytest_GetUserStatus_Response);
+	// ePrivilege=1
+	rpc RequestInvite (.CPlaytest_RequestInvite_Request) returns (.CPlaytest_RequestInvite_Response);
+	// ePrivilege=1
+	rpc UpdateInvites (.CPlaytest_UpdateInvites_Request) returns (.CPlaytest_UpdateInvites_Response);
+}
+

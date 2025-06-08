@@ -1,0 +1,18 @@
+option java_package = "steam.webui.helprequestlogs";
+
+message CHelpRequestLogs_UploadUserApplicationLog_Request {
+	optional uint32 appid = 1;
+	optional string log_type = 2;
+	optional string version_string = 3;
+	optional string log_contents = 4;
+}
+
+message CHelpRequestLogs_UploadUserApplicationLog_Response {
+	optional uint64 id = 1;
+}
+
+service HelpRequestLogs {
+	// ePrivilege=1
+	rpc UploadUserApplicationLog (.CHelpRequestLogs_UploadUserApplicationLog_Request) returns (.CHelpRequestLogs_UploadUserApplicationLog_Response);
+}
+

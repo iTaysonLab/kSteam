@@ -1,0 +1,55 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.video";
+
+message CVideo_ClientGetVideoURL_Request {
+	optional uint64 video_id = 1;
+	optional uint32 client_cellid = 2;
+}
+
+message CVideo_ClientGetVideoURL_Response {
+	optional uint64 video_id = 1;
+	optional string video_url = 2;
+}
+
+message CVideo_GetVideoBookmarks_Request {
+	repeated uint32 appids = 1;
+	optional uint32 updated_since = 2;
+}
+
+message CVideo_GetVideoBookmarks_Response {
+	repeated .VideoBookmark bookmarks = 1;
+}
+
+message CVideo_SetVideoBookmark_Notification {
+	repeated .VideoBookmark bookmarks = 1;
+}
+
+message CVideo_UnlockedH264_Notification {
+	optional bytes encryption_key = 1;
+}
+
+message VideoBookmark {
+	optional uint32 app_id = 1;
+	optional uint32 playback_position_in_seconds = 2;
+	optional uint64 video_track_id = 3;
+	optional uint64 audio_track_id = 4;
+	optional uint64 timedtext_track_id = 5;
+	optional uint32 last_modified = 6;
+	optional bool hide_from_watch_history = 7 [default = false];
+	optional bool hide_from_library = 8 [default = false];
+}
+
+service Video {
+	// ePrivilege=1
+	rpc ClientGetVideoURL (.CVideo_ClientGetVideoURL_Request) returns (.CVideo_ClientGetVideoURL_Response);
+	// ePrivilege=1
+	rpc GetVideoBookmarks (.CVideo_GetVideoBookmarks_Request) returns (.CVideo_GetVideoBookmarks_Response);
+	// ePrivilege=1
+	rpc SetVideoBookmark (.CVideo_SetVideoBookmark_Notification) returns (.NoResponse);
+}
+
+service VideoClient {
+	rpc NotifyUnlockedH264 (.CVideo_UnlockedH264_Notification) returns (.NoResponse);
+}
+

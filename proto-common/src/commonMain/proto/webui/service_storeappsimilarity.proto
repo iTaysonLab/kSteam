@@ -1,0 +1,81 @@
+import "webui/common_base.proto";
+import "webui/common.proto";
+
+option java_package = "steam.webui.storeappsimilarity";
+
+message CStoreAppSimilarity_IdentifyClustersFromPlaytime_Request {
+	optional fixed64 steamid = 1;
+	optional int32 sort = 2 [default = 1, (.description) = "enum"];
+	optional int32 clusters_to_return = 3;
+	optional int32 cluster_index = 4;
+	optional .StoreBrowseContext context = 10;
+	optional .StoreBrowseItemDataRequest data_request = 11;
+}
+
+message CStoreAppSimilarity_IdentifyClustersFromPlaytime_Response {
+	repeated .CStoreAppSimilarity_IdentifyClustersFromPlaytime_Response_Cluster clusters = 1;
+}
+
+message CStoreAppSimilarity_IdentifyClustersFromPlaytime_Response_Cluster {
+	optional int32 cluster_id = 1;
+	optional int32 playtime_forever = 2;
+	optional int32 playtime_2weeks = 3;
+	optional uint32 last_played = 4;
+	repeated int32 played_appids = 5;
+	repeated int32 similar_items_appids = 6;
+	repeated .StoreItem similar_items = 7;
+	optional double similar_item_popularity_score = 8;
+}
+
+message CStoreAppSimilarity_PrioritizeAppsForUser_Request {
+	optional fixed64 steamid = 1;
+	optional string country_code = 2;
+	repeated .StoreItemID ids = 3;
+	optional .StoreAppSimilarityPriorityOptions options = 4;
+	optional bool debug = 5;
+	optional bool include_owned_games = 6;
+}
+
+message CStoreAppSimilarity_PrioritizeAppsForUser_Response {
+	repeated .CStoreAppSimilarity_PrioritizeAppsForUser_Response_ResultItem items = 1;
+}
+
+message CStoreAppSimilarity_PrioritizeAppsForUser_Response_ResultItem {
+	optional .StoreItemID id = 1;
+	optional bool already_owned = 2;
+	optional double weight = 3;
+	optional double weight_before_dedupe = 4;
+	repeated .CStoreAppSimilarity_PrioritizeAppsForUser_Response_ResultItem_MatchDebugInfo debug_matches = 50;
+	optional .CStoreAppSimilarity_PrioritizeAppsForUser_Response_ResultItem_PopularityDebugInfo debug_popularity = 51;
+}
+
+message CStoreAppSimilarity_PrioritizeAppsForUser_Response_ResultItem_MatchDebugInfo {
+	optional int32 source_app = 1;
+	optional double weight = 2;
+	optional double similarity = 3;
+}
+
+message CStoreAppSimilarity_PrioritizeAppsForUser_Response_ResultItem_PopularityDebugInfo {
+	optional uint32 rank = 1;
+	optional double popularity_factor = 2;
+	optional double weight_before_popularity = 3;
+}
+
+message StoreAppSimilarityPriorityOptions {
+	optional double tag_score_factor = 1 [default = 1];
+	optional int32 playtime_max_seconds = 10 [default = 360000];
+	optional int32 playtime_max_games = 11 [default = 3];
+	optional double playtime_score_factor = 12 [default = 0.9];
+	optional int32 popularity_factor = 20 [default = 5, (.description) = "enum"];
+	optional int32 popularity_reciprocal = 21 [default = 10000];
+	optional int64 popularity_base_score = 22 [default = 5000000];
+	optional uint32 played_since = 23;
+}
+
+service StoreAppSimilarity {
+	// ePrivilege=2, eWebAPIKeyRequirement=2
+	rpc IdentifyClustersFromPlaytime (.CStoreAppSimilarity_IdentifyClustersFromPlaytime_Request) returns (.CStoreAppSimilarity_IdentifyClustersFromPlaytime_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=2
+	rpc PrioritizeAppsForUser (.CStoreAppSimilarity_PrioritizeAppsForUser_Request) returns (.CStoreAppSimilarity_PrioritizeAppsForUser_Response);
+}
+

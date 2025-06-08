@@ -1,0 +1,80 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.steamosmanager";
+
+message CMsgFactoryResetState {
+	optional bool is_running = 1;
+	optional int32 progress = 2;
+	optional bool is_restart_pending = 3;
+	optional fixed32 rtime_estimated_completion = 4;
+}
+
+message CSteamOSManager_ApplyMandatoryUpdate_Request {
+}
+
+message CSteamOSManager_ApplyMandatoryUpdate_Response {
+}
+
+message CSteamOSManager_FactoryReset_Request {
+	optional bool reset_os = 1;
+	optional bool reset_user_data = 2;
+}
+
+message CSteamOSManager_FactoryReset_Response {
+}
+
+message CSteamOSManager_GetState_Request {
+}
+
+message CSteamOSManager_GetState_Response {
+	optional .CSteamOSManagerState state = 1;
+}
+
+message CSteamOSManager_OptOutOfSideloadedClient_Request {
+}
+
+message CSteamOSManager_OptOutOfSideloadedClient_Response {
+}
+
+message CSteamOSManager_StateChanged_Notification {
+}
+
+message CSteamOSManagerState {
+	optional bool is_service_available = 1;
+	optional string os_version = 2;
+	optional bool is_mandatory_update_available = 3;
+	optional int32 startup_movie_variant = 4 [(.description) = "enum"];
+	optional bool is_status_led_control_available = 5;
+	optional .CMsgFactoryResetState factory_reset_state = 6;
+	optional bool is_tdp_limit_available = 7;
+	optional int32 tdp_limit_min = 8;
+	optional int32 tdp_limit_max = 9;
+	optional bool is_cec_available = 10;
+	optional bool is_wifi_debug_supported = 11;
+	optional bool is_wifi_debug_force_disabled = 12;
+	optional bool is_wifi_force_wpa_supplicant_supported = 13;
+	optional bool is_manual_gpu_clock_available = 14;
+	optional int32 manual_gpu_clock_min = 15;
+	optional int32 manual_gpu_clock_max = 16;
+	repeated string platform_performance_profiles_available = 17;
+	optional string platform_performance_profile_default = 18;
+	optional string platform_performance_profile = 19;
+	optional bool is_charge_limit_available = 20;
+	optional int32 charge_limit_min = 21;
+	optional int32 charge_limit_max = 22;
+	optional int32 charge_limit_default = 23;
+}
+
+service SteamOSManager {
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc ApplyMandatoryUpdate (.CSteamOSManager_ApplyMandatoryUpdate_Request) returns (.CSteamOSManager_ApplyMandatoryUpdate_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc FactoryReset (.CSteamOSManager_FactoryReset_Request) returns (.CSteamOSManager_FactoryReset_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc GetState (.CSteamOSManager_GetState_Request) returns (.CSteamOSManager_GetState_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc NotifyStateChanged (.CSteamOSManager_StateChanged_Notification) returns (.NoResponse);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc OptOutOfSideloadedClient (.CSteamOSManager_OptOutOfSideloadedClient_Request) returns (.CSteamOSManager_OptOutOfSideloadedClient_Response);
+}
+

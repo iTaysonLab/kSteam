@@ -1,0 +1,67 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.clan";
+
+message CClan_GetDraftAndRecentPartnerEventSnippet_Request {
+	optional fixed64 steamid = 1;
+	optional uint32 rtime_oldest_date = 2;
+}
+
+message CClan_GetDraftAndRecentPartnerEventSnippet_Response {
+	repeated .CClan_GetDraftAndRecentPartnerEventSnippet_Response_CEventSnippetData snippets = 1;
+}
+
+message CClan_GetDraftAndRecentPartnerEventSnippet_Response_CEventSnippetData {
+	optional fixed64 gid = 1;
+	optional fixed64 announcement_gid = 2;
+	optional bool hidden = 3;
+	optional bool published = 4;
+	optional uint32 rtime32_start_time = 5;
+	optional string event_name = 6;
+	optional int32 event_type = 7 [(.description) = "enum"];
+}
+
+message CClan_GetPartnerEventsByBuildIDRange_Request {
+	repeated .CClan_GetPartnerEventsByBuildIDRange_Request_PatchNoteRange requests = 1;
+	optional string cursor = 2;
+	optional uint32 count = 3 [default = 100];
+}
+
+message CClan_GetPartnerEventsByBuildIDRange_Request_PatchNoteRange {
+	optional uint32 appid = 1;
+	optional uint32 start_build_id = 2;
+	optional uint32 end_build_id = 3;
+	optional string branch = 4;
+}
+
+message CClan_GetPartnerEventsByBuildIDRange_Response {
+	repeated .CClan_GetPartnerEventsByBuildIDRange_Response_PatchNotesDesc matches = 1;
+	optional uint32 num_total_results = 2;
+	optional string next_cursor = 3;
+}
+
+message CClan_GetPartnerEventsByBuildIDRange_Response_PatchNotesDesc {
+	optional uint32 appid = 1;
+	optional uint32 build_id = 2;
+	optional string branch = 3;
+	optional fixed64 clan_event_gid = 4;
+	optional uint32 clan_account_id = 5;
+}
+
+message CClan_RespondToClanInvite_Request {
+	optional fixed64 steamid = 1;
+	optional bool accept = 2;
+}
+
+message CClan_RespondToClanInvite_Response {
+}
+
+service Clan {
+	// bConstMethod=true, ePrivilege=1
+	rpc GetDraftAndRecentPartnerEventSnippet (.CClan_GetDraftAndRecentPartnerEventSnippet_Request) returns (.CClan_GetDraftAndRecentPartnerEventSnippet_Response);
+	// bConstMethod=true, ePrivilege=1, eWebAPIKeyRequirement=1
+	rpc GetPartnerEventsByBuildIDRange (.CClan_GetPartnerEventsByBuildIDRange_Request) returns (.CClan_GetPartnerEventsByBuildIDRange_Response);
+	// ePrivilege=1
+	rpc RespondToClanInvite (.CClan_RespondToClanInvite_Request) returns (.CClan_RespondToClanInvite_Response);
+}
+

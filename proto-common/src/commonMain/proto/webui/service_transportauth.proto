@@ -1,0 +1,21 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.transportauth";
+
+message CTransportAuth_Authenticate_Request {
+	optional string auth_key = 1;
+}
+
+message CTransportAuth_Authenticate_Response {
+}
+
+message CTransportAuth_StartShutdown_Notification {
+}
+
+service TransportAuth {
+	// ePrivilege=1, eClientExecutionSite=3
+	rpc Authenticate (.CTransportAuth_Authenticate_Request) returns (.CTransportAuth_Authenticate_Response);
+	// ePrivilege=1, eClientExecutionSite=3
+	rpc NotifyStartShutdown (.CTransportAuth_StartShutdown_Notification) returns (.NoResponse);
+}
+

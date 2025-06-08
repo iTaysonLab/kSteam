@@ -1,0 +1,108 @@
+import "webui/common.proto";
+
+option java_package = "steam.webui.checkout";
+
+message CCheckout_AddFreeLicense_Request {
+	optional .StoreItemID item_id = 1;
+}
+
+message CCheckout_AddFreeLicense_Response {
+	repeated uint32 packageids_added = 1;
+	repeated uint32 appids_added = 2;
+	optional uint32 purchase_result_detail = 3;
+}
+
+message CCheckout_GetFriendOwnershipForGifting_Request {
+	repeated .StoreItemID item_ids = 1;
+}
+
+message CCheckout_GetFriendOwnershipForGifting_Response {
+	repeated .CCheckout_GetFriendOwnershipForGifting_Response_OwnershipInfo ownership_info = 1;
+}
+
+message CCheckout_GetFriendOwnershipForGifting_Response_FriendOwnership {
+	optional uint32 accountid = 1;
+	optional bool already_owns = 2;
+	optional bool wishes_for = 3;
+	repeated uint32 partial_owns_appids = 4;
+	repeated uint32 partial_wishes_for = 5;
+}
+
+message CCheckout_GetFriendOwnershipForGifting_Response_OwnershipInfo {
+	optional .StoreItemID item_id = 1;
+	repeated .CCheckout_GetFriendOwnershipForGifting_Response_FriendOwnership friend_ownership = 2;
+}
+
+message CCheckout_ValidateCart_Request {
+	optional int64 gidshoppingcart = 1;
+	optional .StoreBrowseContext context = 2;
+	optional .StoreBrowseItemDataRequest data_request = 3;
+	optional .CartGiftInfo gift_info = 4;
+	optional fixed64 gidreplayoftransid = 5;
+	optional bool for_init_purchase = 6;
+}
+
+message CCheckout_ValidateCart_Response {
+	repeated .CCheckout_ValidateCart_Response_CartItem cart_items = 1;
+	optional .CCheckout_ValidateCart_Response_EstimatedTotals estimated_totals = 5;
+}
+
+message CCheckout_ValidateCart_Response_CartItem {
+	optional uint64 line_item_id = 1;
+	optional .StoreItemID item_id = 2;
+	optional .StoreItem store_item = 3;
+	optional .CartGiftInfo gift_info = 4;
+	optional .CCheckout_ValidateCart_Response_CartItem_Errors errors = 5;
+	optional .CCheckout_ValidateCart_Response_CartItem_Warnings warnings = 6;
+	optional .CartAmount subtotal = 7;
+	optional .CartAmount price_when_added = 8;
+	optional .CartAmount original_price = 9;
+	optional .CartCoupon coupon_applied = 10;
+	optional .CartAmount coupon_discount = 11;
+	optional bool can_purchase_as_gift = 12;
+	optional bool restrict_add_additional_to_cart = 13;
+}
+
+message CCheckout_ValidateCart_Response_CartItem_Errors {
+	repeated int32 owned_appids = 1;
+	repeated int32 duplicate_appids_in_cart = 2;
+	optional bool unavailable_in_country = 3;
+	optional bool invalid_coupon = 4;
+	optional bool invalid_coupon_for_item = 5;
+	optional bool coupon_exclusive_promo = 6;
+	optional bool cannot_purchase_as_gift = 7;
+	optional bool invalid_item = 8;
+	optional bool too_many_in_cart = 9;
+	optional bool has_existing_billing_agreement = 10;
+	repeated int32 missing_must_own_appids = 11;
+}
+
+message CCheckout_ValidateCart_Response_CartItem_Warnings {
+	repeated int32 owned_appids = 1;
+	repeated int32 owned_appids_extra_copy = 2;
+	repeated .CCheckout_ValidateCart_Response_CartItem_Warnings_AppInMasterSub appids_in_mastersub = 3;
+	optional bool price_has_changed = 4;
+	optional bool non_refundable = 5;
+}
+
+message CCheckout_ValidateCart_Response_CartItem_Warnings_AppInMasterSub {
+	optional uint32 cart_appid = 1;
+	optional uint32 mastersub_appid = 2;
+}
+
+message CCheckout_ValidateCart_Response_EstimatedTotals {
+	optional .CartAmount subtotal = 1;
+	optional .CartAmount wallet_balance = 2;
+	optional .CartAmount exceeding_wallet_balance = 3;
+	optional .CartAmount remaining_wallet_balance = 4;
+}
+
+service Checkout {
+	// ePrivilege=1
+	rpc AddFreeLicense (.CCheckout_AddFreeLicense_Request) returns (.CCheckout_AddFreeLicense_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetFriendOwnershipForGifting (.CCheckout_GetFriendOwnershipForGifting_Request) returns (.CCheckout_GetFriendOwnershipForGifting_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc ValidateCart (.CCheckout_ValidateCart_Request) returns (.CCheckout_ValidateCart_Response);
+}
+

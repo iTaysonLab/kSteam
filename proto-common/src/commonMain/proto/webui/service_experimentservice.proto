@@ -1,0 +1,9 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.experimentservice";
+
+service ExperimentService {
+	// ePrivilege=1
+	rpc ReportProductImpressionsFromClient (.NotImplemented) returns (.NoResponse);
+}
+

@@ -1,0 +1,17 @@
+option java_package = "steam.webui.physicalgoods";
+
+message CPhysicalGoods_CheckInventoryAvailableByPackage_Request {
+	optional int32 packageid = 1;
+	optional string country_code = 2;
+}
+
+message CPhysicalGoods_CheckInventoryAvailableByPackage_Response {
+	optional bool inventory_available = 1;
+	optional bool high_pending_orders = 2;
+}
+
+service PhysicalGoods {
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
+	rpc CheckInventoryAvailableByPackage (.CPhysicalGoods_CheckInventoryAvailableByPackage_Request) returns (.CPhysicalGoods_CheckInventoryAvailableByPackage_Response);
+}
+

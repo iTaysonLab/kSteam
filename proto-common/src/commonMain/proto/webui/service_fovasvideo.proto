@@ -1,0 +1,17 @@
+option java_package = "steam.webui.fovasvideo";
+
+message CFovasVideo_ClientGetOPFSettings_Request {
+	optional uint32 app_id = 1;
+	optional uint32 client_cellid = 2;
+}
+
+message CFovasVideo_ClientGetOPFSettings_Response {
+	optional uint32 app_id = 1;
+	optional string opf_settings = 2;
+}
+
+service FovasVideo {
+	// ePrivilege=1
+	rpc ClientGetOPFSettings (.CFovasVideo_ClientGetOPFSettings_Request) returns (.CFovasVideo_ClientGetOPFSettings_Response);
+}
+

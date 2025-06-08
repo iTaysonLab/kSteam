@@ -1,0 +1,97 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.clientmetrics";
+
+message CClientMetrics_ReportClientArgs_Notification {
+	repeated string client_args = 1;
+	optional bool gpu_webview_regkey_disabled = 2;
+	optional bool suppress_gpu_chrome = 3;
+	optional bool browser_not_supported = 4;
+	optional bool hw_accel_video_regkey_disabled = 5;
+	optional bool mini_mode_enabled = 6;
+	optional bool fps_counter_enabled = 7;
+	optional bool library_low_bandwidth_mode_enabled = 8;
+	optional bool library_low_perf_mode_enabled = 9;
+	optional int32 gr_mode = 10;
+}
+
+message CClientMetrics_ReportClientError_Notification {
+	optional string product = 1;
+	optional string version = 2;
+	repeated .CClientMetrics_ReportClientError_Notification_Error errors = 3;
+}
+
+message CClientMetrics_ReportClientError_Notification_Error {
+	optional string identifier = 1;
+	optional string message = 2;
+	optional uint32 count = 3;
+	optional string context = 4;
+}
+
+message CClientMetrics_ReportLinuxStats_Notification {
+	optional int32 glibc_version_major = 1;
+	optional int32 glibc_version_minor = 2;
+	optional int32 account_type = 3;
+	optional int32 launcher_type = 4;
+	optional int32 game_server_appid = 5;
+	optional string process_name = 6;
+}
+
+message CClientMetrics_ReportReactUsage_Notification {
+	optional string product = 1;
+	optional string version = 2;
+	repeated .CClientMetrics_ReportReactUsage_Notification_RouteData routes = 3;
+	repeated .CClientMetrics_ReportReactUsage_Notification_ComponentData components = 4;
+	repeated .CClientMetrics_ReportReactUsage_Notification_ActionData actions = 5;
+}
+
+message CClientMetrics_ReportReactUsage_Notification_ActionData {
+	optional string action = 1;
+	optional uint32 count = 2;
+}
+
+message CClientMetrics_ReportReactUsage_Notification_ComponentData {
+	optional string component = 1;
+	optional uint32 count = 2;
+}
+
+message CClientMetrics_ReportReactUsage_Notification_RouteData {
+	optional string route = 1;
+	optional uint32 count = 2;
+}
+
+service ClientMetrics {
+	// ePrivilege=1
+	rpc ClientAppInterfaceStatsReport (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ClientBootstrapReport (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ClientCloudAppSyncStats (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ClientContentValidationReport (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ClientDownloadRatesReport (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ClientDownloadResponseCodeCounts (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ClientIPv6ConnectivityReport (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ReportClientArgs (.CClientMetrics_ReportClientArgs_Notification) returns (.NoResponse);
+	// ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc ReportClientError (.CClientMetrics_ReportClientError_Notification) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ReportClipRange (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ReportClipShare (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ReportEndGameRecording (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ReportGamePerformance (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ReportLinuxStats (.CClientMetrics_ReportLinuxStats_Notification) returns (.NoResponse);
+	// ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc ReportReactUsage (.CClientMetrics_ReportReactUsage_Notification) returns (.NoResponse);
+	// ePrivilege=1
+	rpc SteamPipeWorkStatsReport (.NotImplemented) returns (.NoResponse);
+}
+

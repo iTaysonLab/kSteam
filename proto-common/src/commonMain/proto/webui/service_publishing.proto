@@ -1,0 +1,226 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.publishing";
+
+message CPartnerAppOptInData {
+	optional uint32 appid = 1;
+	optional bool opt_in = 2;
+	optional string opt_in_name = 3;
+	optional string jsondata = 4;
+	optional int32 type = 5 [(.description) = "enum"];
+	optional uint32 accountid_add = 6;
+	optional uint32 time_opted_in = 7;
+	optional uint32 time_updated = 8;
+	optional uint32 accountid_lastmod = 9;
+	optional bool invited = 10;
+	optional uint32 accountid_remove = 11;
+	optional uint32 time_opted_out = 12;
+	optional bool pruned = 13;
+	optional uint32 accountid_prune = 14;
+	optional uint32 time_pruned = 15;
+	optional bool additional_featuring = 16;
+	optional uint32 feature_day = 17;
+	optional uint32 accountid_invited = 18;
+	optional bool no_planned_discount = 19;
+	optional uint32 pending_review = 20;
+	optional int32 appeal_state = 21 [(.description) = "enum"];
+	optional uint32 accountid_appeal = 22;
+	optional uint32 time_appeal_decision = 23;
+}
+
+message CPartnerAppOptInEmailDef {
+	optional string opt_in_name = 1;
+	optional fixed64 targeting_flag = 2;
+	optional fixed64 settings_flag = 3;
+	optional string email_templates = 4;
+	optional uint32 start_rtime = 5;
+	optional uint32 end_rtime = 6;
+	optional .CPartnerAppOptInEmailStats stats = 7;
+	optional uint32 creator_accountid = 8;
+	optional uint32 create_time = 9;
+	optional uint32 last_update_time = 10;
+	optional fixed64 email_def_id = 11;
+	optional bool completed = 12;
+	optional bool aborted = 13;
+	optional bool deleted = 14;
+	optional bool reviewed = 15;
+}
+
+message CPartnerAppOptInEmailStats {
+	optional uint32 accounts_examined = 1;
+	optional uint32 accounts_emailed = 2;
+	optional uint32 accounts_not_emailed_opted_out = 3;
+	optional uint32 accounts_email_failed = 4;
+	optional bool completed = 5;
+	optional uint32 rt_last_updated = 6;
+}
+
+message CPartnerOptInEmailTracking {
+	optional uint32 accountid = 1;
+	optional uint32 appid = 2;
+	optional uint32 partnerid = 3;
+	optional uint32 rtime_notified = 4;
+	optional bool ignored_unverified_email = 5;
+	optional bool ignored_email_optout = 6;
+	optional uint32 status = 7;
+	optional uint32 send_rtime = 8;
+}
+
+message CPublishing_CreatePartnerAppOptInEmail_Request {
+	optional string opt_in_name = 1;
+	optional fixed64 targeting_flag = 2;
+	optional fixed64 settings_flag = 3;
+	optional string email_templates = 4;
+	optional uint32 start_rtime = 5 [default = 0];
+	optional uint32 end_rtime = 6 [default = 0];
+}
+
+message CPublishing_CreatePartnerAppOptInEmail_Response {
+	optional fixed64 email_def_id = 1;
+}
+
+message CPublishing_GetEstimatePartnerAppOptInEmail_Request {
+	optional fixed64 email_def_id = 1;
+}
+
+message CPublishing_GetEstimatePartnerAppOptInEmail_Response {
+	optional .CPartnerAppOptInEmailStats stats = 1;
+}
+
+message CPublishing_GetOptInAppealsSummaryStats_Request {
+	repeated string opt_in_names = 1;
+}
+
+message CPublishing_GetOptInAppealsSummaryStats_Response {
+	repeated .CPublishing_GetOptInAppealsSummaryStats_Response_CSummary summary = 1;
+}
+
+message CPublishing_GetOptInAppealsSummaryStats_Response_CSummary {
+	optional string opt_in_name = 1;
+	optional uint32 open_appeals = 2;
+	optional uint32 reject_appeals = 3;
+	optional uint32 accepted_appeals = 4;
+	optional uint32 appeal_account_id = 5;
+}
+
+message CPublishing_GetOptInEmailTracking_Request {
+	optional fixed64 email_def_id = 1;
+}
+
+message CPublishing_GetOptInEmailTracking_Response {
+	optional fixed64 email_def_id = 1;
+	repeated .CPartnerOptInEmailTracking results = 2;
+}
+
+message CPublishing_GetPartnerAppOptInEmailDefAndStats_Request {
+	optional string opt_in_name = 1;
+}
+
+message CPublishing_GetPartnerAppOptInEmailDefAndStats_Response {
+	repeated .CPartnerAppOptInEmailDef defs = 1;
+}
+
+message CPublishing_GetPartnerAppOptInsIDs_Request {
+	optional string opt_in_name = 1;
+}
+
+message CPublishing_GetPartnerAppOptInsIDs_Response {
+	repeated uint32 opted_in_appids = 1;
+}
+
+message CPublishing_GetPartnerOptInInvites_Response {
+	repeated .CPartnerAppOptInData data = 1;
+}
+
+message CPublishing_GetPartnerPaidGivenPackageList_Request {
+	repeated uint32 packageids = 1;
+}
+
+message CPublishing_GetPartnerPaidGivenPackageList_Response {
+	repeated .CPublishing_GetPartnerPaidGivenPackageList_Response_CPackageAndPartnerPair paid = 1;
+}
+
+message CPublishing_GetPartnerPaidGivenPackageList_Response_CPackageAndPartnerPair {
+	optional uint32 partnerid = 1;
+	optional uint32 packageid = 2;
+}
+
+message CPublishing_GetSinglePartnerAppOptIns_Request {
+	optional uint32 appid = 1;
+	optional string opt_in_name = 2;
+}
+
+message CPublishing_GetSinglePartnerAppOptIns_Response {
+	repeated .CPartnerAppOptInData data = 1;
+}
+
+message CPublishing_SendPartnerAppOptInEmailAndWait_Request {
+	optional fixed64 email_def_id = 1;
+	optional bool force_resend = 2;
+}
+
+message CPublishing_SendPartnerAppOptInEmailAndWait_Response {
+	optional .CPartnerAppOptInEmailStats results = 1;
+}
+
+message CPublishing_SetFeaturingOnPartnerAppOptIn_Request {
+	repeated uint32 appids = 1;
+	optional bool additional_featuring = 2 [default = true];
+	optional string opt_in_name = 3;
+}
+
+message CPublishing_SetFeaturingOnPartnerAppOptIn_Response {
+	repeated uint32 appids = 1;
+}
+
+message CPublishing_TestFirePartnerAppOptInEmail_Request {
+	optional fixed64 email_def_id = 1;
+	optional uint32 appid = 2;
+	optional uint32 partnerid = 3;
+}
+
+message CPublishing_TestFirePartnerAppOptInEmail_Response {
+}
+
+message CPublishing_UpdatePartnerAppOptInEmail_Request {
+	optional fixed64 email_def_id = 1;
+	optional fixed64 targeting_flag = 2;
+	optional fixed64 settings_flag = 3;
+	optional string email_templates = 4;
+	optional uint32 start_rtime = 5 [default = 0];
+	optional uint32 end_rtime = 6 [default = 0];
+	optional bool reviewed = 7 [default = false];
+}
+
+message CPublishing_UpdatePartnerAppOptInEmail_Response {
+}
+
+service Publishing {
+	// ePrivilege=1
+	rpc CreatePartnerAppOptInEmails (.CPublishing_CreatePartnerAppOptInEmail_Request) returns (.CPublishing_CreatePartnerAppOptInEmail_Response);
+	// ePrivilege=1
+	rpc GetEstimatePartnerAppOptInEmail (.CPublishing_GetEstimatePartnerAppOptInEmail_Request) returns (.CPublishing_GetEstimatePartnerAppOptInEmail_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetOptInAppealsSummaryStats (.CPublishing_GetOptInAppealsSummaryStats_Request) returns (.CPublishing_GetOptInAppealsSummaryStats_Response);
+	// ePrivilege=1
+	rpc GetOptInEmailTracking (.CPublishing_GetOptInEmailTracking_Request) returns (.CPublishing_GetOptInEmailTracking_Response);
+	// ePrivilege=1
+	rpc GetPartnerAppOptInEmailDefAndStats (.CPublishing_GetPartnerAppOptInEmailDefAndStats_Request) returns (.CPublishing_GetPartnerAppOptInEmailDefAndStats_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetPartnerAppOptInsIDs (.CPublishing_GetPartnerAppOptInsIDs_Request) returns (.CPublishing_GetPartnerAppOptInsIDs_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetPartnerOptInInvites (.NotImplemented) returns (.CPublishing_GetPartnerOptInInvites_Response);
+	// bConstMethod=true, ePrivilege=4
+	rpc GetPartnerPaidGivenPackageList (.CPublishing_GetPartnerPaidGivenPackageList_Request) returns (.CPublishing_GetPartnerPaidGivenPackageList_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetSinglePartnerAppOptIn (.CPublishing_GetSinglePartnerAppOptIns_Request) returns (.CPublishing_GetSinglePartnerAppOptIns_Response);
+	// ePrivilege=1
+	rpc SendPartnerOptInEmailAndWait (.CPublishing_SendPartnerAppOptInEmailAndWait_Request) returns (.CPublishing_SendPartnerAppOptInEmailAndWait_Response);
+	// ePrivilege=1
+	rpc SetFeaturingOnPartnerAppOptIn (.CPublishing_SetFeaturingOnPartnerAppOptIn_Request) returns (.CPublishing_SetFeaturingOnPartnerAppOptIn_Response);
+	// ePrivilege=1
+	rpc TestFirePartnerAppOptInEmail (.CPublishing_TestFirePartnerAppOptInEmail_Request) returns (.CPublishing_TestFirePartnerAppOptInEmail_Response);
+	// ePrivilege=1
+	rpc UpdatePartnerAppOptInEmails (.CPublishing_UpdatePartnerAppOptInEmail_Request) returns (.CPublishing_UpdatePartnerAppOptInEmail_Response);
+}
+

@@ -1,0 +1,277 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.parental";
+
+message CParental_ApproveFeatureAccess_Request {
+	optional bool approve = 1;
+	optional fixed64 requestid = 2;
+	optional uint32 features = 3;
+	optional uint32 duration = 4;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_ApproveFeatureAccess_Response {
+}
+
+message CParental_ApprovePlaytime_Request {
+	optional bool approve = 1;
+	optional fixed64 requestid = 2;
+	optional .ParentalTemporaryPlaytimeRestrictions restrictions_approved = 3;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_ApprovePlaytime_Response {
+}
+
+message CParental_DisableParentalSettings_Request {
+	optional string password = 1;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_DisableParentalSettings_Response {
+}
+
+message CParental_DisableWithRecoveryCode_Request {
+	optional uint32 recovery_code = 1;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_DisableWithRecoveryCode_Response {
+}
+
+message CParental_EnableParentalSettings_Request {
+	optional string password = 1;
+	optional .ParentalSettings settings = 2;
+	optional string sessionid = 3;
+	optional uint32 enablecode = 4;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_EnableParentalSettings_Response {
+}
+
+message CParental_GetParentalSettings_Request {
+	optional fixed64 steamid = 10;
+}
+
+message CParental_GetParentalSettings_Response {
+	optional .ParentalSettings settings = 1;
+}
+
+message CParental_GetRequests_Request {
+	optional uint32 rt_include_completed_since = 1;
+	optional fixed64 family_groupid = 2;
+}
+
+message CParental_GetRequests_Response {
+	repeated .ParentalFeatureRequest feature_requests = 1;
+	repeated .ParentalPlaytimeRequest playtime_requests = 2;
+}
+
+message CParental_GetSignedParentalSettings_Request {
+	optional uint32 priority = 1;
+}
+
+message CParental_GetSignedParentalSettings_Response {
+	optional bytes serialized_settings = 1;
+	optional bytes signature = 2;
+}
+
+message CParental_LockClient_Request {
+	optional string session = 1;
+}
+
+message CParental_LockClient_Response {
+}
+
+message CParental_ParentalLock_Notification {
+	optional string sessionid = 1;
+}
+
+message CParental_ParentalSettingsChange_Notification {
+	optional bytes serialized_settings = 1;
+	optional bytes signature = 2;
+	optional string password = 3;
+	optional string sessionid = 4;
+}
+
+message CParental_ParentalUnlock_Notification {
+	optional string password = 1;
+	optional string sessionid = 2;
+}
+
+message CParental_PlaytimeUsed_Notification {
+	optional uint32 day_of_week = 1;
+	optional uint32 minutes_used = 2;
+}
+
+message CParental_ReportPlaytimeAndNotify_Request {
+	optional uint32 day_of_week = 1;
+	optional uint32 minutes_used = 2;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_ReportPlaytimeAndNotify_Response {
+}
+
+message CParental_RequestFeatureAccess_Request {
+	optional uint32 features = 1;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_RequestFeatureAccess_Response {
+	optional fixed64 requestid = 1;
+}
+
+message CParental_RequestPlaytime_Request {
+	optional uint32 time_expires = 1;
+	optional .ParentalPlaytimeDay current_playtime_restrictions = 2;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_RequestPlaytime_Response {
+	optional fixed64 requestid = 1;
+}
+
+message CParental_RequestRecoveryCode_Request {
+}
+
+message CParental_RequestRecoveryCode_Response {
+}
+
+message CParental_SetParentalSettings_Request {
+	optional string password = 1;
+	optional .ParentalSettings settings = 2;
+	optional string new_password = 3;
+	optional string sessionid = 4;
+	optional fixed64 steamid = 10;
+}
+
+message CParental_SetParentalSettings_Response {
+}
+
+message CParental_ValidatePassword_Request {
+	optional string password = 1;
+	optional string session = 2;
+	optional bool send_unlock_on_success = 3;
+}
+
+message CParental_ValidatePassword_Response {
+	optional string token = 1;
+}
+
+message CParental_ValidateToken_Request {
+	optional string unlock_token = 1;
+}
+
+message CParental_ValidateToken_Response {
+}
+
+message ParentalApp {
+	optional uint32 appid = 1;
+	optional bool is_allowed = 2;
+}
+
+message ParentalFeatureRequest {
+	optional fixed64 requestid = 1;
+	optional fixed64 family_groupid = 2;
+	optional fixed64 steamid = 3;
+	optional uint32 features = 4;
+	optional uint32 time_requested = 5;
+	optional bool approved = 6;
+	optional fixed64 steamid_responder = 7;
+	optional uint32 time_responded = 8;
+}
+
+message ParentalPlaytimeDay {
+	optional uint64 allowed_time_windows = 1;
+	optional uint32 allowed_daily_minutes = 2;
+}
+
+message ParentalPlaytimeRequest {
+	optional fixed64 requestid = 1;
+	optional fixed64 family_groupid = 2;
+	optional fixed64 steamid = 3;
+	optional .ParentalPlaytimeDay current_playtime_restrictions = 4;
+	optional uint32 time_expires = 5;
+	optional uint32 time_requested = 6;
+	optional bool approved = 7;
+	optional fixed64 steamid_responder = 8;
+	optional uint32 time_responded = 9;
+	optional .ParentalTemporaryPlaytimeRestrictions restrictions_approved = 10;
+}
+
+message ParentalPlaytimeRestrictions {
+	optional bool apply_playtime_restrictions = 2;
+	repeated .ParentalPlaytimeDay playtime_days = 15;
+}
+
+message ParentalSettings {
+	optional fixed64 steamid = 1;
+	optional uint32 applist_base_id = 2;
+	optional string applist_base_description = 3;
+	repeated .ParentalApp applist_base = 4;
+	repeated .ParentalApp applist_custom = 5;
+	optional uint32 passwordhashtype = 6;
+	optional bytes salt = 7;
+	optional bytes passwordhash = 8;
+	optional bool is_enabled = 9;
+	optional uint32 enabled_features = 10;
+	optional string recovery_email = 11;
+	optional bool is_site_license_lock = 12;
+	optional uint32 temporary_enabled_features = 13;
+	optional uint32 rtime_temporary_feature_expiration = 14;
+	optional .ParentalPlaytimeRestrictions playtime_restrictions = 15;
+	optional .ParentalTemporaryPlaytimeRestrictions temporary_playtime_restrictions = 16;
+	repeated uint32 excluded_store_content_descriptors = 17;
+	repeated uint32 excluded_community_content_descriptors = 18;
+	repeated uint32 utility_appids = 19;
+}
+
+message ParentalTemporaryPlaytimeRestrictions {
+	optional .ParentalPlaytimeDay restrictions = 1;
+	optional uint32 rtime_expires = 2;
+}
+
+service Parental {
+	// ePrivilege=1
+	rpc ApproveFeatureAccess (.CParental_ApproveFeatureAccess_Request) returns (.CParental_ApproveFeatureAccess_Response);
+	// ePrivilege=1
+	rpc ApprovePlaytime (.CParental_ApprovePlaytime_Request) returns (.CParental_ApprovePlaytime_Response);
+	// ePrivilege=1
+	rpc DisableParentalSettings (.CParental_DisableParentalSettings_Request) returns (.CParental_DisableParentalSettings_Response);
+	// ePrivilege=0
+	rpc DisableWithRecoveryCode (.CParental_DisableWithRecoveryCode_Request) returns (.CParental_DisableWithRecoveryCode_Response);
+	// ePrivilege=1
+	rpc EnableParentalSettings (.CParental_EnableParentalSettings_Request) returns (.CParental_EnableParentalSettings_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetParentalSettings (.CParental_GetParentalSettings_Request) returns (.CParental_GetParentalSettings_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetRequests (.CParental_GetRequests_Request) returns (.CParental_GetRequests_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetSignedParentalSettings (.CParental_GetSignedParentalSettings_Request) returns (.CParental_GetSignedParentalSettings_Response);
+	// ePrivilege=1
+	rpc LockClient (.CParental_LockClient_Request) returns (.CParental_LockClient_Response);
+	// ePrivilege=1
+	rpc ReportPlaytimeAndNotify (.CParental_ReportPlaytimeAndNotify_Request) returns (.CParental_ReportPlaytimeAndNotify_Response);
+	// ePrivilege=1
+	rpc RequestFeatureAccess (.CParental_RequestFeatureAccess_Request) returns (.CParental_RequestFeatureAccess_Response);
+	// ePrivilege=1
+	rpc RequestPlaytime (.CParental_RequestPlaytime_Request) returns (.CParental_RequestPlaytime_Response);
+	// ePrivilege=1
+	rpc RequestRecoveryCode (.CParental_RequestRecoveryCode_Request) returns (.CParental_RequestRecoveryCode_Response);
+	// ePrivilege=1
+	rpc SetParentalSettings (.CParental_SetParentalSettings_Request) returns (.CParental_SetParentalSettings_Response);
+	// ePrivilege=1
+	rpc ValidatePassword (.CParental_ValidatePassword_Request) returns (.CParental_ValidatePassword_Response);
+	// ePrivilege=1
+	rpc ValidateToken (.CParental_ValidateToken_Request) returns (.CParental_ValidateToken_Response);
+}
+
+service ParentalClient {
+	rpc NotifyLock (.CParental_ParentalLock_Notification) returns (.NoResponse);
+	rpc NotifyPlaytimeUsed (.CParental_PlaytimeUsed_Notification) returns (.NoResponse);
+	rpc NotifySettingsChange (.CParental_ParentalSettingsChange_Notification) returns (.NoResponse);
+	rpc NotifyUnlock (.CParental_ParentalUnlock_Notification) returns (.NoResponse);
+}
+
