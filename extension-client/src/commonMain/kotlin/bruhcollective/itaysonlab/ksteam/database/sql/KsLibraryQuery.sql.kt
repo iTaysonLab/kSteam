@@ -129,6 +129,11 @@ private fun StringBuilder.appendViewAppQuery(query: KsLibraryQuery, addBind: (Sq
 }
 
 private fun StringBuilder.appendViewAppQueryWhere(query: KsLibraryQuery, addBind: (SqlBindValue) -> Unit) {
+    if (query.appIds.isNotEmpty()) {
+        append("id IN ")
+        query.appIds.joinTo(buffer = this, separator = ", ", prefix = "(", postfix = ")")
+    }
+
     if (query.searchQuery != null) {
         // TODO: Localized?
         append("name LIKE '%' || ? || '%'")
@@ -141,15 +146,11 @@ private fun StringBuilder.appendViewAppQueryWhere(query: KsLibraryQuery, addBind
             append("type = ?")
             addBind(SqlBindValue.String(query.appType.first().vdfName.lowercase()))
         } else {
-            append("type IN (")
-
-            for (type in query.appType) {
-                append('?').append(',')
+            append("type IN ")
+            query.appType.joinTo(buffer = this, separator = ", ", prefix = "(", postfix = ")") { type ->
                 addBind(SqlBindValue.String(type.vdfName.lowercase()))
+                "?"
             }
-
-            deleteRange(lastIndex, lastIndex + 1)
-            append(')')
         }
 
         append(" AND ")
@@ -216,14 +217,9 @@ private fun StringBuilder.appendViewCategoryQuery(query: KsLibraryQuery, hasAppV
     append("WHERE ")
 
     fun StringBuilder.appendESC(categories: List<EStoreCategory>) {
-        append("app_id IN (SELECT app_id FROM app_info_categories WHERE category_id IN (")
-
-        categories.forEachIndexed { idx, category ->
-            append(category.ordinal)
-            if (idx != categories.lastIndex) append(',')
-        }
-
-        append(')').appendLine(')')
+        append("app_id IN (SELECT app_id FROM app_info_categories WHERE category_id IN ")
+        categories.joinTo(this, separator = ", ", prefix = "(", postfix = ")") { category -> category.ordinal.toString() }
+        appendLine(')')
     }
 
     if (query.controllerSupport == KsLibraryQueryControllerSupportFilter.Partial) {
@@ -249,12 +245,9 @@ private fun StringBuilder.appendViewTagsQuery(query: KsLibraryQuery, hasAppView:
     appendLine("SELECT app_id, tag_id, count(*) AS ${SqlConstants.COLUMN_COUNT_TAGS} FROM app_info_tags ait")
     if (hasAppView) appendLine("INNER JOIN ${SqlConstants.VIEW_APPS} ON ${SqlConstants.VIEW_APPS}.id = ait.app_id")
 
-    append("WHERE ait.tag_id IN (")
-    query.storeTags.forEachIndexed { index, tagId ->
-        append(tagId)
-        if (index != query.storeTags.lastIndex) append(',')
-    }
-    appendLine(')')
+    append("WHERE ait.tag_id IN ")
+    query.storeTags.joinTo(buffer = this, prefix = "(", postfix = ")", separator = ", ") { tagId -> tagId.toString() }
+    appendLine()
 
     appendLine("GROUP BY ait.app_id")
     append(')')

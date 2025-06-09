@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.*
  * Builds a [KsLibraryQuery] that can be used in [bruhcollective.itaysonlab.ksteam.handlers.library.Library].
  */
 class KsLibraryQueryBuilder constructor() {
+    private var appIds: MutableList<Int> = mutableListOf()
     private var appType: MutableList<ECollectionAppType> = mutableListOf()
     private var playState: ECollectionPlayState? = null
     private var storeCategories: MutableList<List<EStoreCategory>> = mutableListOf()
@@ -24,6 +25,7 @@ class KsLibraryQueryBuilder constructor() {
     private var alwaysFetchPlayTime: Boolean = false
 
     internal constructor(existing: KsLibraryQuery): this() {
+        appIds = existing.appIds.toMutableList()
         appType = existing.appType.toMutableList()
         playState = existing.playState
         storeCategories = existing.storeCategories.toMutableList()
@@ -240,10 +242,34 @@ class KsLibraryQueryBuilder constructor() {
     }
 
     /**
+     * Adds an App ID filter.
+     *
+     * If it is set - query will be restricted to the specified App IDs.
+     */
+    fun withAppId(id: Int) = apply {
+        appIds += id
+    }
+
+    /**
+     * @see withAppId
+     */
+    fun withAppId(vararg ids: Int) = apply {
+        appIds.addAll(ids.toList())
+    }
+
+    /**
+     * @see withAppId
+     */
+    fun withAppId(ids: List<Int>) = apply {
+        appIds.addAll(ids)
+    }
+
+    /**
      * Builds a [KsLibraryQuery] with specified parameters.
      */
     fun build(): KsLibraryQuery {
         return KsLibraryQuery(
+            appIds = appIds,
             appType = appType,
             playState = playState,
             storeCategories = storeCategories,

@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckSupport
 import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
 
 data class KsLibraryQuery (
+    val appIds: List<Int>,
     val appType: List<ECollectionAppType>,
     val playState: ECollectionPlayState?,
     val storeCategories: List<List<EStoreCategory>>,
