@@ -2,15 +2,20 @@ package bruhcollective.itaysonlab.ksteam.models.news
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import kotlinx.datetime.Instant
+import kotlinx.serialization.Serializable
+import kotlin.time.Duration
 
 /**
  * Describes an event on the Steam "News" page.
  */
+@Serializable
 data class NewsEvent (
     /**
      * The unique ID of an event.
      */
     val id: String,
+    val announcementId: String,
 
     /**
      * The type of the event
@@ -63,14 +68,14 @@ data class NewsEvent (
     val description: String,
 
     /**
-     * An URL to the post's header.
+     * A URL to the post's header.
      *
      * For now, only English localization is returned.
      */
     val header: String,
 
     /**
-     * An URL to the post's capsule.
+     * A URL to the post's capsule.
      *
      * For now, only English localization is returned.
      */
@@ -97,24 +102,24 @@ data class NewsEvent (
     val forumTopicId: String,
 
     /**
-     * Unix timestamp (in seconds) of date when the event was posted.
+     * Date when the event was posted.
      */
-    val publishedAt: Int,
+    val publishedAt: Instant,
 
     /**
-     * Unix timestamp (in seconds) of date when the event was updated.
+     * Date when the event was updated.
      */
-    val lastUpdatedAt: Int,
+    val lastUpdatedAt: Instant,
 
     /**
-     * Unix timestamp (in seconds) of date when the event should start.
+     * Date when the event should start.
      */
-    val eventStartDate: Int,
+    val eventStartDate: Instant,
 
     /**
-     * Unix timestamp (in seconds) of date when the event should end.
+     * Date when the event should end.
      */
-    val eventEndDate: Int,
+    val eventEndDate: Instant,
 
     /**
      * A short description of an application linked to this event
@@ -127,7 +132,27 @@ data class NewsEvent (
     val content: String,
 
     /**
-     * Indicates if this post was recommended.
+     * Source information.
      */
-    val recommended: Boolean
-)
+    val postSource: PostSource
+) {
+    @Serializable
+    data class PostSource (
+        val isFollowed: Boolean,
+        val isRecommended: Boolean,
+        val isRequired: Boolean,
+        val isFeatured: Boolean,
+        val isCurator: Boolean,
+        val isRepost: Boolean,
+
+        // Wishlist
+        val isInWishlist: Boolean,
+        val addedToWishlist: Instant?,
+
+        // Library
+        val isInLibrary: Boolean,
+        val playtimeTotal: Duration?,
+        val playtimeTwoWeeks: Duration?,
+        val lastPlayed: Instant?
+    )
+}

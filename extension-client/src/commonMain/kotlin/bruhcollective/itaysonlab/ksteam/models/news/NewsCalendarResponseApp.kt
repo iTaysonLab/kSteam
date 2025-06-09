@@ -8,18 +8,7 @@ internal data class NewsCalendarResponseApp (
     val source: Int,
     @SerialName("appid") val appId: Int,
     @SerialName("last_played") val lastPlayed: Int = 0,
-    val playtime: Int = 0,
-    @SerialName("playtime_2weeks") val playtimeTwoWeeks: Int = 0
-) {
-    internal enum class SourceFlags (val bitmask: Int) {
-        Library(1),
-        Wishlist(2),
-        Following(4),
-        Recommended(8),
-        Steam(16),
-        Required(32),
-        Featured(64),
-        Curator(128),
-        Reposted(256);
-    }
-}
+    @SerialName("playtime") val playtime: Int = 0,
+    @SerialName("playtime_2weeks") val playtimeTwoWeeks: Int = 0,
+    @SerialName("wishlist_added") val wishlistAdded: Int = 0,
+)

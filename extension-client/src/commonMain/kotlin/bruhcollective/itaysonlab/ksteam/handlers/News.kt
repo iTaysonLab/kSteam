@@ -1,17 +1,22 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import androidx.collection.mutableScatterMapOf
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.handlers.Logger.Verbosity
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
+import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.models.news.*
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
+import kotlin.time.DurationUnit
 import kotlin.time.measureTimedValue
+import kotlin.time.toDuration
 
 /**
  * Access Steam news using this handler.
@@ -21,6 +26,16 @@ class News internal constructor(
 ) {
     private companion object {
         private const val LOG_TAG = "CoreExt:News"
+
+        const val SOURCE_LIBRARY = 1
+        const val SOURCE_WISHLIST = 2
+        const val SOURCE_FOLLOWING = 4
+        const val SOURCE_RECOMMENDED = 8
+        const val SOURCE_STEAM = 16
+        const val SOURCE_REQUIRED = 32
+        const val SOURCE_FEATURED = 64
+        const val SOURCE_CURATOR = 128
+        const val SOURCE_REPOSTED = 256
     }
 
     private val json = Json {
@@ -63,12 +78,17 @@ class News internal constructor(
     suspend fun getEventsInCalendarRange(
         range: LongRange = 0..currentSeconds,
         collectionId: String? = null,
+        saleId: String? = null,
+        hubType: String? = null,
+        categoryOrLanguage: String? = null,
+        tagName: String? = null,
         maxCount: Int = 250,
         ascending: Boolean = false,
         eventTypes: List<NewsEventType> = NewsEventType.Collections.Everything,
         appTypes: List<NewsAppType> = NewsAppType.Default,
         filterByAppIds: List<Int> = emptyList(),
-        filterByClanIds: List<SteamId> = emptyList()
+        filterByClanIds: List<SteamId> = emptyList(),
+        filterByTags: List<Int> = emptyList()
     ): List<NewsEvent> = measure("getEventsInCalendarRange") {
         val calendar = measure("getEventsInCalendarRange:getCalendarRange") {
             steamClient.webApi.store.method("events/ajaxgetusereventcalendarrange/") {
@@ -83,7 +103,23 @@ class News internal constructor(
                 "appTypes" with appTypes.joinToString(separator = ",", transform = NewsAppType::apiName)
                 "eventTypes" with eventTypes.joinToString(separator = ",") { it.ordinal.toString() }
 
+                if (filterByAppIds.isNotEmpty()) {
+                    "appIdFilter" with filterByAppIds.sorted().joinToString(separator = ",")
+                }
+
+                if (filterByClanIds.isNotEmpty()) {
+                    "clanIdFilter" with filterByClanIds.sortedBy(SteamId::id).joinToString(separator = ",")
+                }
+
+                if (filterByTags.isNotEmpty()) {
+                    "tags" with filterByTags.sorted().joinToString(separator = ",")
+                }
+
                 "collectionID" with collectionId // featured, steam, press
+                "saleID" with saleId
+                "hubtype" with hubType
+                "category_or_language" with categoryOrLanguage
+                "tag_name" with tagName
             }.body<NewsCalendarResponse>()
         }
 
@@ -107,31 +143,98 @@ class News internal constructor(
             }
         }
 
-        // Get app summaries
+        steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] parsing entries: ${entries.size}" }
 
-        steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting apps, total: ${calendar.apps.size}" }
+        return parseNewsEntries(
+            entries = entries,
+            appsSourceMap = calendar.apps.associateBy { AppId(it.appId) },
+            clanSourceMap = calendar.clans.associateBy(NewsCalendarResponseClan::clanId),
+        )
+    }
 
-        val appsMap = calendar.apps.associateBy { AppId(it.appId) }
+    suspend fun getAdjacentPartnerEvents(
+        clanAccountId: Int,
+        appId: Int,
+        countBefore: Int,
+        countAfter: Int,
+        gidEvent: String,
+        gidAnnouncement: String,
+        languages: List<ELanguage>
+    ): List<NewsEvent> {
+        val calendar = steamClient.webApi.store.method("events/ajaxgetadjacentpartnerevents/") {
+            "clan_accountid" with clanAccountId
+            "appid" with appId
+            "count_before" with countBefore
+            "count_after" with countAfter
+            "gidevent" with gidEvent
+            "gidannouncement" with gidAnnouncement
+            "lang_list" with languages.ifEmpty { listOf(ELanguage.English) }.joinToString(separator = "_") { e -> e.ordinal.toString() }
+            "origin" with "https://store.steampowered.com"
+        }.body<NewsCalendarResponse>()
 
-        val apps = measure("getEventsInCalendarRange:getAppSummaries") {
-            steamClient.store.getNetworkSteamApplications(appsMap.keys.toList()).associateBy(SteamApplication::id)
+        return parseNewsEntries(
+            entries = calendar.events
+        )
+    }
+
+    suspend fun getMyVoteForAnnouncement(gid: String): NewsMyVote {
+        return steamClient.webApi.store.method("events/ajaxgetmyannouncementvote/") {
+            "gid" with gid
+        }.body<NewsVoteResponse>().let { result ->
+            NewsMyVote(
+                isVotedUp = result.votedUp == 1,
+                isVotedDown = result.votedDown == 1,
+            )
+        }
+    }
+
+    suspend fun setMyVoteForAnnouncement(gid: String, voteUp: Boolean) {
+        // TODO
+        // POST /updated/ajaxrateupdate/_ HTTP/1.1
+        // MIME Type: application/x-www-form-urlencoded;charset=utf-8
+        // sessionid: _
+        // voteup: 0/1
+        // clanid: _
+        // ajax: 1
+    }
+
+    private suspend fun parseNewsEntries(
+        entries: List<NewsEntry>,
+        appsSourceMap: Map<AppId, NewsCalendarResponseApp> = emptyMap(),
+        clanSourceMap: Map<Long, NewsCalendarResponseClan> = emptyMap(),
+    ): List<NewsEvent> {
+        val appsMap = mutableScatterMapOf<AppId, SteamApplication>()
+        val clansMap = mutableScatterMapOf<String, ClanSummary>()
+
+        val appsToLoad = mutableListOf<Int>()
+        val clansToLoad = mutableListOf<Long>()
+
+        if (appsSourceMap.isNotEmpty() && clanSourceMap.isNotEmpty()) {
+            appsToLoad += appsSourceMap.keys.map(AppId::value)
+            clansToLoad += clanSourceMap.keys
+        } else {
+            for (entry in entries) {
+                if (entry.appid != 0) {
+                    appsToLoad += entry.appid
+                }
+
+                if (entry.appid == 0 && entry.clanSteamid.isNotEmpty()) {
+                    clansToLoad += entry.clanSteamid.toLong()
+                }
+            }
         }
 
-        // Get clans summaries
-
-        steamClient.logger.logDebug(LOG_TAG) { "[getEventsInCalendarRange] requesting clans, total: ${calendar.clans.size}" }
-
-        val clans = measure("getEventsInCalendarRange:requestClanPersonas") {
-            entries.asSequence().filter { entry ->
-                entry.appid == 0 && entry.clanSteamid.isNotEmpty()
-            }.map {
-                it.clanSteamid.toULongOrNull().toSteamId()
-            }.toList().map {
-                resolveClanInfo(it)
-            }.associateBy { it.steamId }
+        measure("parseNewsEntries:requestSteamApplications") {
+            for (app in steamClient.store.querySteamApplications(appsToLoad.distinct().map(::AppId))) {
+                appsMap[app.id] = app
+            }
         }
 
-        // Now we have all required data, we can parse them to NewsEvent's
+        measure("parseNewsEntries:requestClanSummaries") {
+            clansToLoad.forEach { clanId ->
+                clansMap[clanId.toString()] = resolveClanInfo(clanId.toSteamId())
+            }
+        }
 
         return entries.map { entry ->
             val jsonDescription = json.decodeFromString<NewsJsonData>(entry.jsondata.let {
@@ -156,13 +259,31 @@ class News internal constructor(
                 }
             }
 
-            NewsEvent(
+            val newsApp = appsSourceMap[AppId(entry.appid)]
+            val newsPsMask = newsApp?.source ?: clanSourceMap[entry.clanSteamid.toLong()]?.source ?: 0
+
+            val postSource = NewsEvent.PostSource(
+                isFollowed = (newsPsMask and SOURCE_FOLLOWING) != 0,
+                isRecommended = (newsPsMask and SOURCE_RECOMMENDED) != 0,
+                isRequired = (newsPsMask and SOURCE_REQUIRED) != 0,
+                isFeatured = (newsPsMask and SOURCE_FEATURED) != 0,
+                isCurator = (newsPsMask and SOURCE_CURATOR) != 0,
+                isRepost = (newsPsMask and SOURCE_REPOSTED) != 0,
+                isInWishlist = (newsPsMask and SOURCE_WISHLIST) != 0,
+                addedToWishlist = newsApp?.wishlistAdded?.toLong()?.let(Instant::fromEpochSeconds),
+                isInLibrary = (newsPsMask and SOURCE_LIBRARY) != 0,
+                playtimeTotal = newsApp?.playtime?.toDuration(DurationUnit.SECONDS),
+                playtimeTwoWeeks = newsApp?.playtimeTwoWeeks?.toDuration(DurationUnit.SECONDS),
+                lastPlayed = newsApp?.lastPlayed?.toLong()?.let(Instant::fromEpochSeconds),
+            )
+
+            return@map NewsEvent(
                 id = entry.gid,
+                announcementId = entry.announcementBody.gid,
                 type = NewsEventType.entries.getOrElse(entry.eventType) { NewsEventType.Unknown },
                 clanSteamId = SteamId(entry.clanSteamid.toULong()),
                 creatorSteamId = SteamId(entry.creatorSteamid.toULong()),
                 updaterSteamId = SteamId(entry.lastUpdateSteamid.toULong()),
-                clanSummary = clans[entry.clanSteamid],
                 title = entry.eventName,
                 subtitle = jsonDescription.subtitles.firstOrNull().orEmpty(),
                 description = jsonDescription.summaries.firstOrNull().orEmpty(),
@@ -172,13 +293,14 @@ class News internal constructor(
                 dislikeCount = entry.votesDown,
                 commentCount = entry.commentCount,
                 forumTopicId = entry.forumTopicId,
-                publishedAt = entry.announcementBody.posttime,
-                lastUpdatedAt = entry.announcementBody.updatetime,
-                relatedApp = apps[AppId(entry.appid)],
+                publishedAt = Instant.fromEpochSeconds(entry.announcementBody.posttime.toLong()),
+                lastUpdatedAt = Instant.fromEpochSeconds(entry.announcementBody.updatetime.toLong()),
+                relatedApp = appsMap[AppId(entry.appid)],
+                clanSummary = clansMap[entry.clanSteamid],
                 content = entry.announcementBody.body,
-                eventStartDate = entry.rtime32StartTime,
-                eventEndDate = entry.rtime32EndTime,
-                recommended = ((appsMap[AppId(entry.appid)]?.source ?: 0) and NewsCalendarResponseApp.SourceFlags.Recommended.bitmask) != 0
+                eventStartDate = Instant.fromEpochSeconds(entry.rtime32StartTime.toLong()),
+                eventEndDate = Instant.fromEpochSeconds(entry.rtime32EndTime.toLong()),
+                postSource = postSource
             )
         }
     }
