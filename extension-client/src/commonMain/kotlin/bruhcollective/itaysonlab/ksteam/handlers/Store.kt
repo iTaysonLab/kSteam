@@ -1,6 +1,5 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
-import androidx.collection.mutableScatterMapOf
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
@@ -17,9 +16,6 @@ import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Request
 class Store internal constructor(
     private val steamClient: ExtendedSteamClient
 ) {
-    // TODO: make it "compressable" or store in some kind of LRU cache with on-disk
-    private val storeItemsMap = mutableMapOf<StoreItemID, StoreItem>()
-
     /**
      * Get the latest rich presence localization strings.
      *
@@ -41,48 +37,38 @@ class Store internal constructor(
     }
 
     /**
-     * Get [SteamApplication] by a list of [AppId], using the cache if possible.
+     * Get [SteamApplication] by a list of [AppId].
+     *
+     * If the client has PICS enabled - getting information from PICS will be prioritized.
+     *
+     * The order of returned list is not stable. Consider sorting or turning into a hashmap.
      */
     suspend fun querySteamApplications(ids: List<AppId>): List<SteamApplication> {
         if (ids.isEmpty()) return emptyList()
 
         if (steamClient.enablePics) {
-            val cache = mutableScatterMapOf<AppId, SteamApplication>()
+            val picsApplications = steamClient.pics.getSteamApplications(full = true, ids = ids.map(AppId::value))
+            val unloadedIds = ids.subtract(picsApplications.map(SteamApplication::id))
 
-            val (cached, notCached) = ids.partition { id ->
-                steamClient.pics.getSteamApplication(full = false, id = id.value)?.also { localApplication ->
-                    cache[id] = localApplication
-                } != null
-            }
-
-            return cached.map { id ->
-                cache[id] ?: error("Should not happen!")
-            } + getNetworkSteamApplications(notCached)
+            return picsApplications + getNetworkSteamApplications(unloadedIds.toList())
         } else {
             return getNetworkSteamApplications(ids)
         }
     }
 
     /**
-     * Gets app summaries from the Steam Store.
+     * Gets app summaries from the Steam Store. Behaves like [querySteamApplications], but bypasses PICS.
      */
     suspend fun getNetworkSteamApplications(ids: List<AppId>): List<SteamApplication> {
-        return getStoreItemsTyped(
+        return browseOnlineStoreForIds(
             ids = ids.map { StoreItemID(appid = it.value) },
-            transformer = SteamApplicationFactory::fromStoreItem
-        )
+        ).map(SteamApplicationFactory::fromStoreItem)
     }
 
     /**
-     * Gets details from Store.
-     *
-     * This request will be cached in a temporary "DB" which will be reset at kSteam relaunch.
+     * Browses the online Store for specific IDs and returns a list of raw StoreItems.
      */
-    suspend fun <T> getStoreItemsTyped(ids: List<StoreItemID>, transformer: (StoreItem) -> T): List<T> {
-        return browseOnlineStoreForIds(ids = ids).map(transformer)
-    }
-
-    private suspend fun browseOnlineStoreForIds(
+    suspend fun browseOnlineStoreForIds(
         ids: List<StoreItemID>,
         request: StoreBrowseItemDataRequest = DefaultStoreBrowseItemDataRequest
     ): List<StoreItem> {

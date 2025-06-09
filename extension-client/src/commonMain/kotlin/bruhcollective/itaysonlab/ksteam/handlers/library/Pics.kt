@@ -140,7 +140,7 @@ class Pics internal constructor(
         steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] changes: since = ${changesResponse.since_change_number} -> ${changesResponse.current_change_number}, full = ${changesResponse.force_full_update}, apps = ${changesResponse.app_changes.size} [${changesResponse.force_full_app_update}], packages = ${changesResponse.package_changes.size} [${changesResponse.force_full_package_update}]" }
 
         _picsInitializationProgress.value = 0f
-        if (changesResponse.force_full_update == true || changesResponse.force_full_app_update == true || changesResponse.force_full_app_update == true) {
+        if (changesResponse.force_full_update == true) {
             steamClient.logger.logDebug(TAG) { "-> API requested forced full update" }
 
             // Short-circuit to full database update
@@ -152,15 +152,28 @@ class Pics internal constructor(
             steamClient.logger.logDebug(TAG) { "-> doing partial update" }
 
             // Update known packages by using PICS response
-            changesResponse.package_changes.associate { appChange ->
-                (appChange.packageid!! to database.sharedDatabase.picsEntries().getAccessTokenForPackage(appChange.packageid!!))
-            }.filterValues { it != null }.let { packages -> requestAndWritePackageChunks(packages, progressFactor = 0.25f) }
+            if (changesResponse.force_full_package_update == true) {
+                steamClient.logger.logDebug(TAG) { "-> full pkg update" }
+                requestAndWritePackageChunks(tokens = licenses.associate { it.package_id!! to it.access_token }, 0.5f)
+            } else if (changesResponse.package_changes.isNotEmpty()) {
+                steamClient.logger.logDebug(TAG) { "-> partial pkg update" }
+                changesResponse.package_changes.associate { appChange ->
+                    (appChange.packageid!! to database.sharedDatabase.picsEntries().getAccessTokenForPackage(appChange.packageid!!))
+                }.filterValues { it != null }.let { packages -> requestAndWritePackageChunks(packages, progressFactor = 0.25f) }
+            }
 
             _picsInitializationProgress.value = 0.25f
+
             // Update known apps by using PICS response
-            changesResponse.app_changes.associate { appChange ->
-                appChange.appid!! to database.sharedDatabase.picsEntries().getAccessTokenForApp(appChange.appid!!)
-            }.filterValues { it != null }.let { apps -> requestAndWriteAppChunks(apps, progressFactor = 0.25f) }
+            if (changesResponse.force_full_app_update == true) {
+                steamClient.logger.logDebug(TAG) { "-> full app update" }
+                requestTokensAndUpdate(appIds = licenses.mapNotNull { it.package_id }.let { database.sharedDatabase.picsPackages().getGrantedAppsForPackages(it) }, 0.25f)
+            } else if (changesResponse.app_changes.isNotEmpty()) {
+                steamClient.logger.logDebug(TAG) { "-> partial app update" }
+                changesResponse.app_changes.associate { appChange ->
+                    appChange.appid!! to database.sharedDatabase.picsEntries().getAccessTokenForApp(appChange.appid!!)
+                }.filterValues { it != null }.let { apps -> requestAndWriteAppChunks(apps, progressFactor = 0.25f) }
+            }
 
             // If license size differs, also scan for unknown packages
             if (licenses.size != database.currentUserDatabase.packageLicenses().count()) {

@@ -6,6 +6,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckSupport
 import bruhcollective.itaysonlab.ksteam.models.enums.ESteamDeckTestResult
 import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
+import kotlinx.serialization.Serializable
 
 /**
  * Defines an application available on Steam. Returns most of the foreground information, except for descriptions/screenshots/reviews.
@@ -20,6 +21,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EStoreCategory
  * - music/video information is currently available only for purchased content via PICS results
  * - depot information is not yet available due to VDF parser incompatibility
  */
+@Serializable
 data class SteamApplication(
     /**
      * This will return true is the object is in "lite" state.
@@ -146,11 +148,13 @@ data class SteamApplication(
     /**
      * Steam Deck support information.
      */
+    @Serializable
     data class SteamDeckSupport(
         val category: ESteamDeckSupport,
         val tests: List<TestResult>,
         val testDate: Long
     ) {
+        @Serializable
         data class TestResult(
             val display: ESteamDeckTestResult,
             val token: String,
@@ -160,6 +164,7 @@ data class SteamApplication(
     /**
      * Image assets. kSteam automatically maps languages and replaces relative file names with CDN URLs.
      */
+    @Serializable
     data class Assets(
         /**
          * Path to 256x256 icon in ICO format.
@@ -208,6 +213,7 @@ data class SteamApplication(
         /**
          * A localized asset pack.
          */
+        @Serializable
         data class LocalizedAssetPack(
             val name: String?,
 
@@ -246,6 +252,7 @@ data class SteamApplication(
             /**
              * Retina-capable asset.
              */
+            @Serializable
             data class RetinaAsset(
                 /**
                  * Path to standard-sized image.
@@ -271,6 +278,7 @@ data class SteamApplication(
     /**
      * Application review information.
      */
+    @Serializable
     data class ReviewData(
         /**
          * Steam review score category (Mostly Positive, Mostly Negative...).
