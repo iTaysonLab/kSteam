@@ -67,6 +67,8 @@ message CAppOverview {
 	optional uint32 number_of_copies = 72 [default = 1];
 	optional uint32 steam_hw_compat_category_packed = 73 [default = 0];
 	optional string album_cover_hash = 74;
+	optional int32 display_name_elanguage = 75 [default = -1];
+	optional bool has_custom_sort_as = 76;
 }
 
 // Used by: common.proto
@@ -1739,6 +1741,7 @@ message CMsgClientLogon {
 	optional string machine_name_userchosen = 97;
 	optional string country_override = 98;
 	optional bool is_steam_box = 99;
+	//optional bool is_steam_box_deprecated = 99;
 	optional uint64 client_instance_id = 100;
 	optional string two_factor_code = 101;
 	optional bool supports_rate_limit_response = 102;
@@ -1747,9 +1750,12 @@ message CMsgClientLogon {
 	optional .CMsgClientSecret embedded_client_secret = 105;
 	optional bool disable_partner_autogrants = 106;
 	optional bool is_steam_deck = 107;
+	//optional bool is_steam_deck_deprecated = 107;
 	optional string access_token = 108;
 	optional bool is_chrome_os = 109;
 	optional bool is_tesla = 110;
+	//optional bool is_tesla_deprecated = 110;
+	optional uint32 gaming_device_type = 111;
 }
 
 message CMsgClientLogonResponse {
@@ -2635,6 +2641,14 @@ message CMsgClientSettings {
 	optional bool overlay_scale_interface = 4022;
 	optional bool overlay_restore_browser_tabs = 4023;
 	optional bool enable_avif_screenshots = 4024;
+	optional int32 overlay_fps_counter_detail_level = 4025;
+	optional float overlay_fps_counter_saturation_factor = 4026;
+	optional float overlay_fps_counter_bgopacity = 4027;
+	optional float overlay_fps_counter_scale_factor = 4028;
+	optional .CMsgHotkey overlay_fps_counter_key = 4029;
+	optional bool overlay_fps_counter_fps_graph = 4030;
+	optional bool overlay_fps_counter_cpu_graph = 4031;
+	optional bool overlay_fps_counter_allow_km_driver = 4032;
 	optional bool smooth_scroll_webviews = 5000;
 	optional bool enable_gpu_accelerated_webviews = 5001;
 	optional bool enable_hardware_video_decoding = 5003;
@@ -2707,17 +2721,16 @@ message CMsgClientSettings {
 	optional bool startup_movie_used_for_resume = 16003;
 	optional bool game_notes_enable_spellcheck = 17001;
 	optional int32 screenshot_items_per_row = 18000;
-	optional string g_background_path = 18201;
-	optional string g_background_max_keep = 18202;
-	optional int32 g_background_time_resolution = 18203;
-	optional .CMsgHotkey g_background_mk = 18207;
-	optional .CMsgHotkey g_background_tg = 18208;
-	optional bool g_background_a_m = 18209;
+	optional string gamerecording_background_path = 18201;
+	optional string gamerecording_background_max_keep = 18202;
+	optional int32 gamerecording_background_time_resolution = 18203;
+	optional .CMsgHotkey gamerecording_background_mk = 18207;
+	optional .CMsgHotkey gamerecording_background_tg = 18208;
+	optional bool gamerecording_background_a_m = 18209;
 	optional string gamerecording_video_bitrate = 18210;
-	optional bool g_background_a_s = 18211;
-	optional int32 g_background_mode = 18212 [(.description) = "enum"];
-	optional int32 g_background_audio = 18213 [(.description) = "enum"];
-	optional int32 g_max_fps = 18214;
+	optional int32 gamerecording_background_mode = 18212 [(.description) = "enum"];
+	optional int32 gamerecording_background_audio = 18213 [(.description) = "enum"];
+	optional int32 gamerecording_max_fps = 18214;
 	optional .CMsgHotkey gamerecording_hotkey_ic = 18215;
 	optional float gamerecording_ic_seconds = 18216;
 	optional int32 gamerecording_export_limit_type = 18217 [(.description) = "enum"];
@@ -2782,6 +2795,15 @@ message CMsgClientSettings {
 	optional bool hardware_updater_enabled = 24001;
 	optional bool vr_show_perf_graph_in_hmd = 25000;
 	optional bool accessibility_debug_visualizer = 26000;
+	optional bool accessibility_screen_reader_enabled = 26001;
+	optional float accessibility_screen_reader_rate = 26002;
+	optional float accessibility_screen_reader_pitch = 26003;
+	optional float accessibility_screen_reader_volume = 26004;
+	optional bool accessibility_high_contrast_mode = 26005;
+	optional bool accessibility_reduce_motion = 26006;
+	optional uint32 accessibility_minimum_font_size = 26008;
+	optional string accessibility_color_filter_name = 26009;
+	optional float accessibility_desktop_ui_scale = 26010;
 	optional bool controller_enable_chord = 140011;
 	optional bool controller_poll_rate = 140012;
 }
@@ -3528,7 +3550,7 @@ message CMsgControllerConfiguration {
 	optional string description = 3;
 	optional string creator = 4;
 	optional int32 controller_type = 5;
-	optional uint32 capability_bits = 6;
+	optional string capability_bits = 6;
 	optional int32 controller_style = 7;
 	repeated .CMsgGameActionSet sets = 8;
 	repeated .CMsgControllerMode modes = 9;
@@ -5419,6 +5441,11 @@ message CVRGamepadUIShared_PathProperty_PowerOptions {
 	optional bool can_exitvr = 4;
 }
 
+message CVRGamepadUIShared_PathProperty_VRVersionInfo {
+	optional string version = 1;
+	optional uint32 webpack_build_timestamp = 2;
+}
+
 // Used by: common.proto
 message EncryptedAppTicket {
 	optional uint32 ticket_version_no = 1;
@@ -5600,11 +5627,8 @@ message StoreItem_Assets {
 message StoreItem_BasicInfo {
 	optional string short_description = 1;
 	repeated .StoreItem_BasicInfo_CreatorHomeLink publishers = 2;
-	//repeated string publishers = 2;
 	repeated .StoreItem_BasicInfo_CreatorHomeLink developers = 3;
-	//repeated string developers = 3;
 	repeated .StoreItem_BasicInfo_CreatorHomeLink franchises = 4;
-	//repeated string franchises = 4;
 	optional string capsule_headline = 5;
 }
 
@@ -5645,8 +5669,7 @@ message StoreItem_Link {
 message StoreItem_Platforms {
 	optional bool windows = 1;
 	optional bool mac = 2;
-	optional bool linux = 3;
-	//optional bool steamos_linux = 3;
+	optional bool steamos_linux = 3;
 	optional .StoreItem_Platforms_VRSupport vr_support = 10;
 	optional int32 steam_deck_compat_category = 11 [(.description) = "enum"];
 	optional int32 steam_os_compat_category = 12 [(.description) = "enum"];

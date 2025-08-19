@@ -72,7 +72,6 @@ message RecommendationDetails {
 	optional bool received_compensation = 25;
 	optional bool unverified_purchase = 26;
 	repeated int32 review_qualities = 27 [(.description) = "enum"];
-	//optional int32 review_quality = 27 [(.description) = "enum"];
 	optional float weighted_vote_score = 28;
 	optional string moderation_note = 29;
 	optional int32 payment_method = 30;
@@ -95,6 +94,9 @@ message RecommendationDetails {
 	optional uint32 category_uninformative_pct = 47;
 	optional uint32 category_votefarming_pct = 48;
 	optional int32 deck_playtime_at_review = 49;
+	optional uint32 is_bot_review_pct = 50;
+	optional uint32 positivity_pct = 51;
+	repeated uint64 tags = 53;
 }
 
 service UserReviews {

@@ -2,6 +2,18 @@ import "webui/common_base.proto";
 
 option java_package = "steam.webui.steaminputmanager";
 
+message CControllerAccessibilityString {
+	optional .CControllerOriginKey key = 1;
+	optional string localized_string = 2;
+}
+
+message CControllerOriginKey {
+	optional int32 controller_type = 1;
+	optional int32 controller_style = 2;
+	optional int32 source = 3;
+	optional int32 input = 4;
+}
+
 message ControllerGyroEulerAngles {
 	optional float pitch = 1;
 	optional float yaw = 2;
@@ -24,6 +36,13 @@ message ControllerVector3 {
 	optional float x = 1;
 	optional float y = 2;
 	optional float z = 3;
+}
+
+message CSteamInputService_ControllerAccessibilityStrings_Request {
+}
+
+message CSteamInputService_ControllerAccessibilityStrings_Response {
+	repeated .CControllerAccessibilityString strings = 1;
 }
 
 message CSteamInputService_ControllerAxesStateChange_Notification {
@@ -107,7 +126,7 @@ message CSteamInputService_GyroQuaternionChanged_Notification {
 	optional .ControllerQuaternion gyro_raw_quaternion = 3;
 	optional .ControllerQuaternion gyro_filtered_quaternion = 4;
 	optional uint32 imu_sensor_delta_time = 5;
-	optional uint32 packet_number = 6;
+	optional uint32 estimated_packet_rate = 6;
 }
 
 message CSteamInputService_GyroSpeedChanged_Notification {
@@ -120,6 +139,8 @@ message CSteamInputService_GyroSpeedChanged_Notification {
 service SteamInputManager {
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc EndControllerStateFlow (.CSteamInputService_ControllerStateFlow_Request) returns (.CSteamInputService_ControllerStateFlow_Response);
+	// ePrivilege=1, eClientExecutionSite=2
+	rpc GetControllerAccessibilityStrings (.CSteamInputService_ControllerAccessibilityStrings_Request) returns (.CSteamInputService_ControllerAccessibilityStrings_Response);
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc NotifyAxesStateChanged (.CSteamInputService_ControllerAxesStateChange_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2

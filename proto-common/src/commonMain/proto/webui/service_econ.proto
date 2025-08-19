@@ -46,6 +46,7 @@ message CEcon_GetInventoryItemsWithDescriptions_Request {
 	optional uint64 start_assetid = 8;
 	optional int32 count = 9;
 	optional bool for_trade_offer_verification = 10;
+	optional bool get_asset_properties = 11;
 }
 
 message CEcon_GetInventoryItemsWithDescriptions_Request_FilterOptions {
@@ -62,6 +63,7 @@ message CEcon_GetInventoryItemsWithDescriptions_Response {
 	optional bool more_items = 4;
 	optional uint64 last_assetid = 5;
 	optional uint32 total_inventory_count = 6;
+	repeated .CEconItem_AssetProperties asset_properties = 7;
 }
 
 message CEcon_GetTradeOfferAccessToken_Request {
@@ -75,6 +77,19 @@ message CEcon_GetTradeOfferAccessToken_Response {
 message CEconItem_Action {
 	optional string link = 1;
 	optional string name = 2;
+}
+
+message CEconItem_AssetProperties {
+	optional uint32 appid = 1;
+	optional uint64 contextid = 2;
+	optional uint64 assetid = 3;
+	repeated .CEconItem_AssetProperty asset_properties = 4;
+}
+
+message CEconItem_AssetProperty {
+	optional uint32 propertyid = 1;
+	optional int64 int_value = 2;
+	optional float float_value = 3;
 }
 
 message CEconItem_Description {
@@ -109,8 +124,6 @@ message CEconItem_Description {
 	optional string market_buy_country_restriction = 30;
 	optional string market_sell_country_restriction = 31;
 	optional bool sealed = 32;
-	optional uint64 contextid = 33;
-	optional uint64 assetid = 34;
 }
 
 message CEconItem_DescriptionLine {
