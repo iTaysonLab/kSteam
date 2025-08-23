@@ -118,6 +118,7 @@ class PublishedFiles internal constructor(
                 appid = appId?.value ?: 0,
                 privacy = privacyBit,
                 filetype = fileType.ordinal,
+                page = page,
                 numperpage = count,
                 type = type,
                 sortmethod = sort,
