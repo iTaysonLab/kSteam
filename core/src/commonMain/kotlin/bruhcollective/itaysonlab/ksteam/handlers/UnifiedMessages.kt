@@ -64,6 +64,14 @@ class UnifiedMessages internal constructor(
         error("Streaming calls are not supported in kSteam Wire/gRPC client")
     }
 
+    override fun <S : Any, R : Any> newClientStreamingCall(method: GrpcMethod<S, R>): GrpcClientStreamingCall<S, R> {
+        error("Streaming calls are not supported in kSteam Wire/gRPC client")
+    }
+
+    override fun <S : Any, R : Any> newServerStreamingCall(method: GrpcMethod<S, R>): GrpcServerStreamingCall<S, R> {
+        error("Streaming calls are not supported in kSteam Wire/gRPC client")
+    }
+
     //
 
     class SteamGrpcCall <S: Any, R: Any> (

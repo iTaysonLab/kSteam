@@ -62,6 +62,10 @@ class Profile internal constructor(
         ).achievement_progress.associateBy { it.appid ?: 0 }
     }
 
+    suspend fun getAchievementsProgress(steamId: SteamId, appId: AppId): CPlayer_GetAchievementsProgress_Response_AchievementProgress? {
+        return getAchievementsProgress(steamId, listOf(appId)).values.firstOrNull()
+    }
+
     /**
      * Returns top achievements in a specific game.
      *
@@ -71,6 +75,21 @@ class Profile internal constructor(
         return steamClient.grpc.player.GetTopAchievementsForGames().executeSteam(
             data = CPlayer_GetTopAchievementsForGames_Request(steamid = steamId.longId, language = steamClient.language.vdfName, appids = appIds.map(AppId::value), max_achievements = count)
         ).games.associate { (it.appid ?: 0) to it.achievements }
+    }
+
+    suspend fun getTopAchievements(steamId: SteamId, appId: AppId, count: Int = 5): List<CPlayer_GetTopAchievementsForGames_Response_Achievement>? {
+        return getTopAchievements(steamId, listOf(appId), count).values.firstOrNull()
+    }
+
+    /**
+     * Returns achievements in a specific game.
+     *
+     * **NOTE:** returns raw proto data until a replacement API is made.
+     */
+    suspend fun getGameAchievements(appId: AppId): List<CPlayer_GetGameAchievements_Response_Achievement> {
+        return steamClient.grpc.player.GetGameAchievements().executeSteam(
+            data = CPlayer_GetGameAchievements_Request(appid = appId.value, language = steamClient.language.vdfName)
+        ).achievements
     }
 
     /**

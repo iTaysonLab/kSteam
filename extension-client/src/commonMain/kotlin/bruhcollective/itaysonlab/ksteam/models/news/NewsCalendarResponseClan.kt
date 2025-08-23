@@ -5,6 +5,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class NewsCalendarResponseClan (
-    val source: Int,
-    @SerialName("clanid") val clanId: Long
+    @SerialName("source") val source: Int,
+    @SerialName("clanid") val clanId: Int
 )

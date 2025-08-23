@@ -6,10 +6,11 @@ import bruhcollective.itaysonlab.ksteam.database.room.entity.apps.RoomRichPresen
 import bruhcollective.itaysonlab.ksteam.models.AppId
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import io.github.reactivecircus.cache4k.Cache
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response_Token
 import steam.webui.community.CCommunity_GetAppRichPresenceLocalization_Response_TokenList
 import kotlin.time.Duration.Companion.hours
+import kotlin.time.ExperimentalTime
 
 /**
  * Formats Steam rich presence response into a human-readable string, respecting all variables and chosen languages.
@@ -45,6 +46,7 @@ class RichPresenceFormatter internal constructor(
         }.orEmpty()
     }
 
+    @OptIn(ExperimentalTime::class)
     private suspend fun getLocalizedRichPresence(
         appId: AppId,
         language: ELanguage

@@ -11,6 +11,7 @@ import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.network.event.IncomingPacketManager
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobTimeoutException
+import bruhcollective.itaysonlab.ksteam.platform.ConnectivityStateDelayer
 import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
 import com.squareup.wire.ProtoAdapter
 import io.ktor.client.*
@@ -40,6 +41,7 @@ internal class CMClient(
     private val dumper: PacketDumper,
     private val logger: Logger,
     private val httpClient: HttpClient,
+    private val connectivityStateDelayer: ConnectivityStateDelayer,
     dispatcher: CoroutineDispatcher
 ) {
     /**
@@ -127,11 +129,11 @@ internal class CMClient(
         } catch (e: Exception) {
             e.printStackTrace()
             wsSessionReference.getAndSet(null)
-
             jobManager.dropAllJobs(CMJobDroppedException.Reason.WsConnectionDropped)
 
             if (coroutineContext.isActive) {
                 delay(1000L)
+                connectivityStateDelayer.awaitUntilInternetConnection()
                 connect()
             }
         } finally {

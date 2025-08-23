@@ -4,14 +4,15 @@ import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
 import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import kotlinx.atomicfu.atomic
-import kotlinx.datetime.Clock
 import okio.FileSystem
 import okio.Path
-import okio.SYSTEM
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * This is a simple dumper infrastructure which can save Steam3 packets in a NetHook-style files.
  */
+@OptIn(ExperimentalTime::class)
 class PacketDumper internal constructor(
     saveRootFolder: Path,
     private val logger: Logger

@@ -4,6 +4,7 @@ import bruhcollective.itaysonlab.ksteam.handlers.Logger
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.persistence.MemoryPersistenceDriver
+import bruhcollective.itaysonlab.ksteam.platform.ConnectivityStateDelayer
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import bruhcollective.itaysonlab.ksteam.platform.getDefaultWorkingDirectory
 import io.ktor.client.*
@@ -80,6 +81,13 @@ class KSteamConfiguration {
     var persistenceDriver: KsteamPersistenceDriver = MemoryPersistenceDriver
 
     /**
+     * Connectivity state delayer suspends connection until an Internet connection is established.
+     *
+     * This can help in avoiding requests spam when network is temporarily unavailable.
+     */
+    var connectivityStateDelayer: ConnectivityStateDelayer = ConnectivityStateDelayer.Noop
+
+    /**
      * Installs a custom Ktor [HttpClient]. Defaults to using cross-platform Ktor's CIO engine.
      *
      * Useful if you need additional tweaks or a different engine that is more applicable for your task/platform.
@@ -103,7 +111,8 @@ class KSteamConfiguration {
                 deviceInfo = deviceInfo,
                 language = language,
                 authPrivateIpLogic = authPrivateIpLogic,
-                persistenceDriver = persistenceDriver
+                persistenceDriver = persistenceDriver,
+                connectivityStateDelayer = connectivityStateDelayer,
             )
         ).apply {
             logger.transport = loggingTransport

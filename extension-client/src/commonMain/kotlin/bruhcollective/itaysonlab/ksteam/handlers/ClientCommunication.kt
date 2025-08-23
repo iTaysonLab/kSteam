@@ -8,13 +8,7 @@ import bruhcollective.itaysonlab.ksteam.models.clientcomm.RemoteDeviceId
 import bruhcollective.itaysonlab.ksteam.models.enums.EGamingDeviceType
 import bruhcollective.itaysonlab.ksteam.models.enums.EOSType
 import bruhcollective.itaysonlab.ksteam.util.executeSteam
-import steam.webui.clientcomm.CClientComm_EnableOrDisableDownloads_Request
-import steam.webui.clientcomm.CClientComm_GetAllClientLogonInfo_Request
-import steam.webui.clientcomm.CClientComm_GetClientAppList_Request
-import steam.webui.clientcomm.CClientComm_InstallClientApp_Request
-import steam.webui.clientcomm.CClientComm_LaunchClientApp_Request
-import steam.webui.clientcomm.CClientComm_SetClientAppUpdateState_Request
-import steam.webui.clientcomm.CClientComm_UninstallClientApp_Request
+import steam.webui.clientcomm.*
 
 /**
  * Allows controlling of other running Steam clients.
@@ -52,7 +46,7 @@ class ClientCommunication (
      * This is not the list of downloaded apps, but the whole "available" list with a flag indicating about it being downloaded.
      *
      * @param remoteId remote session ID
-     * @param filters [InstalledAppsFilter.Changing] will show "apps in progress" - installing/updating/removing
+     * @param filters filters
      */
     suspend fun getAppList(
         remoteId: RemoteDeviceId,
@@ -189,6 +183,14 @@ class ClientCommunication (
     }
 
     enum class InstalledAppsFilter {
-        None, Changing
+        /**
+         * Return everything, including not installed apps
+         */
+        None,
+
+        /**
+         * Return only apps that are "in progress" - downloading, updated, scheduled
+         */
+        Changing
     }
 }

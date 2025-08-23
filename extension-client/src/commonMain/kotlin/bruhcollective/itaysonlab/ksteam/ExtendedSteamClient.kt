@@ -33,6 +33,8 @@ class ExtendedSteamClient internal constructor (
     val store: Store = Store(this)
     val userNews: UserNews = UserNews(this)
     val clientCommunication = ClientCommunication(this)
+    val gameNotes = GameNotes(this)
+    val wishlist = Wishlist(this)
     internal val cloudConfiguration: CloudConfiguration = CloudConfiguration(this)
 
     // Subsystems (Guard)

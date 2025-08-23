@@ -1,5 +1,6 @@
 package bruhcollective.itaysonlab.ksteam.handlers
 
+import androidx.collection.mutableIntObjectMapOf
 import androidx.collection.mutableScatterMapOf
 import bruhcollective.itaysonlab.ksteam.ExtendedSteamClient
 import bruhcollective.itaysonlab.ksteam.handlers.Logger.Verbosity
@@ -11,16 +12,18 @@ import bruhcollective.itaysonlab.ksteam.models.news.*
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubPost
 import bruhcollective.itaysonlab.ksteam.models.news.community.CommunityHubResponse
 import bruhcollective.itaysonlab.ksteam.models.toSteamId
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import kotlinx.serialization.json.Json
+import kotlin.time.Clock
+import kotlin.time.Instant
 import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 import kotlin.time.toDuration
 
 /**
  * Access Steam news using this handler.
  */
+@OptIn(ExperimentalTime::class)
 class News internal constructor(
     private val steamClient: ExtendedSteamClient
 ) {
@@ -44,7 +47,7 @@ class News internal constructor(
     }
 
     private val currentSeconds get() = Clock.System.now().epochSeconds
-    private var clanCache = mutableMapOf<SteamId, ClanSummary>()
+    private var clanCache = mutableIntObjectMapOf<ClanSummary>()
 
     /**
      * Returns upcoming events.
@@ -201,13 +204,13 @@ class News internal constructor(
     private suspend fun parseNewsEntries(
         entries: List<NewsEntry>,
         appsSourceMap: Map<AppId, NewsCalendarResponseApp> = emptyMap(),
-        clanSourceMap: Map<Long, NewsCalendarResponseClan> = emptyMap(),
+        clanSourceMap: Map<Int, NewsCalendarResponseClan> = emptyMap(),
     ): List<NewsEvent> {
         val appsMap = mutableScatterMapOf<AppId, SteamApplication>()
-        val clansMap = mutableScatterMapOf<String, ClanSummary>()
+        val clansMap = mutableIntObjectMapOf<ClanSummary>()
 
         val appsToLoad = mutableListOf<Int>()
-        val clansToLoad = mutableListOf<Long>()
+        val clansToLoad = mutableListOf<Int>()
 
         if (appsSourceMap.isNotEmpty() && clanSourceMap.isNotEmpty()) {
             appsToLoad += appsSourceMap.keys.map(AppId::value)
@@ -219,7 +222,7 @@ class News internal constructor(
                 }
 
                 if (entry.appid == 0 && entry.clanSteamid.isNotEmpty()) {
-                    clansToLoad += entry.clanSteamid.toLong()
+                    clansToLoad += entry.clanSteamid.toULong().toSteamId().accountId
                 }
             }
         }
@@ -232,7 +235,7 @@ class News internal constructor(
 
         measure("parseNewsEntries:requestClanSummaries") {
             clansToLoad.forEach { clanId ->
-                clansMap[clanId.toString()] = resolveClanInfo(clanId.toSteamId())
+                clansMap[clanId.toInt()] = resolveClanInfo(clanId.toInt())
             }
         }
 
@@ -260,7 +263,7 @@ class News internal constructor(
             }
 
             val newsApp = appsSourceMap[AppId(entry.appid)]
-            val newsPsMask = newsApp?.source ?: clanSourceMap[entry.clanSteamid.toLong()]?.source ?: 0
+            val newsPsMask = newsApp?.source ?: clanSourceMap[clanSteamid.accountId]?.source ?: 0
 
             val postSource = NewsEvent.PostSource(
                 isFollowed = (newsPsMask and SOURCE_FOLLOWING) != 0,
@@ -296,7 +299,7 @@ class News internal constructor(
                 publishedAt = Instant.fromEpochSeconds(entry.announcementBody.posttime.toLong()),
                 lastUpdatedAt = Instant.fromEpochSeconds(entry.announcementBody.updatetime.toLong()),
                 relatedApp = appsMap[AppId(entry.appid)],
-                clanSummary = clansMap[entry.clanSteamid],
+                clanSummary = clansMap[clanSteamid.accountId],
                 content = entry.announcementBody.body,
                 eventStartDate = Instant.fromEpochSeconds(entry.rtime32StartTime.toLong()),
                 eventEndDate = Instant.fromEpochSeconds(entry.rtime32EndTime.toLong()),
@@ -345,10 +348,10 @@ class News internal constructor(
     }
 
     private suspend fun resolveClanInfo(
-        id: SteamId
+        accountId: Int
     ): ClanSummary {
-        return clanCache.getOrPut(id) {
-            steamClient.webApi.community.method("gid/$id/ajaxgetvanityandclanid/").body<ClanSummary>()
+        return clanCache.getOrPut(accountId) {
+            steamClient.webApi.community.method("gid/$accountId/ajaxgetvanityandclanid/").body<ClanSummary>()
         }
     }
 

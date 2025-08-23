@@ -117,7 +117,7 @@ class Guard(
                 authenticator_code = firstPair.codeString,
                 authenticator_time = firstPair.generationTime
             )
-        ).takeIf { it.success == true }?.let {
+        ).takeIf { it.success == true }/*?.let {
             if (it.want_more == true) {
                 val (secondCode, secondTime) = instance.generateCodeWithTime()
 
@@ -132,7 +132,7 @@ class Guard(
             } else {
                 it
             }
-        }?.let {
+        }*/?.let {
             tryAddConfig(steamClient.currentSessionSteamId, structure)
         }
     }

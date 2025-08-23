@@ -27,6 +27,8 @@ import steam.webui.player.CPlayer_GetLastPlayedTimes_Request
 import steam.webui.player.CPlayer_GetLastPlayedTimes_Response_Game
 import steam.webui.player.CPlayer_LastPlayedTimes_Notification
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * Provides access to user's owned app library.
@@ -380,31 +382,37 @@ class Library internal constructor(
     /**
      * Returns [SteamApplicationPlaytime].
      */
+    @OptIn(ExperimentalTime::class)
     fun getApplicationPlaytime(appId: AppId): SteamApplicationPlaytime? {
         return _playtime.value[appId.value]?.let { playTime ->
             SteamApplicationPlaytime(
-                firstLaunch = SteamApplicationPlaytime.PlatformTimes(
-                    total = playTime.first_playtime ?: 0,
-                    deck = playTime.first_deck_playtime ?: 0,
-                    windows = playTime.first_windows_playtime ?: 0,
-                    linux = playTime.first_linux_playtime ?: 0,
-                    mac = playTime.first_mac_playtime ?: 0
-                ), lastLaunch = SteamApplicationPlaytime.PlatformTimes(
-                    total = playTime.last_playtime ?: 0,
-                    deck = playTime.last_deck_playtime ?: 0,
-                    windows = playTime.last_windows_playtime ?: 0,
-                    linux = playTime.last_linux_playtime ?: 0,
-                    mac = playTime.last_mac_playtime ?: 0
-                ), playTime = SteamApplicationPlaytime.PlatformTimes(
-                    total = playTime.playtime_disconnected ?: 0,
-                    deck = playTime.playtime_deck_forever ?: 0,
-                    windows = playTime.playtime_windows_forever ?: 0,
-                    linux = playTime.playtime_linux_forever ?: 0,
-                    mac = playTime.playtime_windows_forever ?: 0
-                )
+                firstLaunch = SteamApplicationPlaytime.PlatformTimestamps(
+                    total = playTime.first_playtime.secondsAsInstant,
+                    deck = playTime.first_deck_playtime.secondsAsInstant,
+                    windows = playTime.first_windows_playtime.secondsAsInstant,
+                    linux = playTime.first_linux_playtime.secondsAsInstant,
+                    mac = playTime.first_mac_playtime.secondsAsInstant
+                ), lastLaunch = SteamApplicationPlaytime.PlatformTimestamps(
+                    total = playTime.last_playtime.secondsAsInstant,
+                    deck = playTime.last_deck_playtime.secondsAsInstant,
+                    windows = playTime.last_windows_playtime.secondsAsInstant,
+                    linux = playTime.last_linux_playtime.secondsAsInstant,
+                    mac = playTime.last_mac_playtime.secondsAsInstant
+                ), playTime = SteamApplicationPlaytime.PlatformDurations(
+                    total = (playTime.playtime_forever ?: 0).minutes,
+                    deck = (playTime.playtime_deck_forever ?: 0).minutes,
+                    windows = (playTime.playtime_windows_forever ?: 0).minutes,
+                    linux = (playTime.playtime_linux_forever ?: 0).minutes,
+                    mac = (playTime.playtime_mac_forever ?: 0).minutes
+                ),
+                disconnectedPlaytime = playTime.playtime_disconnected ?: 0,
+                playTimeRecent = playTime.playtime_2weeks ?: 0,
             )
         }
     }
+
+    @OptIn(ExperimentalTime::class)
+    private val Int?.secondsAsInstant get() = this?.takeIf { it > 0 }?.let { Instant.fromEpochSeconds(it.toLong()) }
 
     /**
      * Augments [SteamApplication] with playtime and license information.
@@ -423,6 +431,7 @@ class Library internal constructor(
      * @param query a compiled kSteam Library Query, use [KsLibraryQueryBuilder] to build them
      * @return a [kotlinx.coroutines.flow.Flow] of [OwnedSteamApplication]
      */
+    @OptIn(ExperimentalTime::class)
     suspend fun execute(query: KsLibraryQuery): List<OwnedSteamApplication> {
         val sql = compileKsLibraryQueryToSql(query)
 
@@ -457,13 +466,13 @@ class Library internal constructor(
         when (query.playState) {
             ECollectionPlayState.PlayedNever -> {
                 ownedSteamApplications = ownedSteamApplications.filter {
-                    it.playTime != null && it.playTime.firstLaunch.total == 0
+                    it.playTime != null && it.playTime.firstLaunch.total == null
                 }
             }
 
             ECollectionPlayState.PlayedPreviously -> {
                 ownedSteamApplications = ownedSteamApplications.filter {
-                    it.playTime != null && it.playTime.firstLaunch.total != 0
+                    it.playTime != null && it.playTime.firstLaunch.total != null
                 }
             }
 
@@ -475,13 +484,13 @@ class Library internal constructor(
             ownedSteamApplications = when (query.sortByDirection) {
                 KsLibraryQuerySortByDirection.Ascending -> {
                     ownedSteamApplications.sortedBy {
-                        it.playTime?.playTime?.total ?: 0
+                        it.playTime?.playTime?.total
                     }
                 }
 
                 KsLibraryQuerySortByDirection.Descending -> {
                     ownedSteamApplications.sortedByDescending {
-                        it.playTime?.playTime?.total ?: 0
+                        it.playTime?.playTime?.total
                     }
                 }
             }
@@ -489,13 +498,13 @@ class Library internal constructor(
             ownedSteamApplications = when (query.sortByDirection) {
                 KsLibraryQuerySortByDirection.Ascending -> {
                     ownedSteamApplications.sortedBy {
-                        it.playTime?.lastLaunch?.total ?: 0
+                        it.playTime?.lastLaunch?.total
                     }
                 }
 
                 KsLibraryQuerySortByDirection.Descending -> {
                     ownedSteamApplications.sortedByDescending {
-                        it.playTime?.lastLaunch?.total ?: 0
+                        it.playTime?.lastLaunch?.total
                     }
                 }
             }

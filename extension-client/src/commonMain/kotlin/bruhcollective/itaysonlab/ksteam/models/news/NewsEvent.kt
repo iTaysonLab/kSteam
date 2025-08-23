@@ -2,15 +2,17 @@ package bruhcollective.itaysonlab.ksteam.models.news
 
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplication
-import kotlinx.datetime.Instant
 import kotlinx.serialization.Serializable
 import kotlin.time.Duration
+import kotlin.time.Instant
+import kotlin.time.ExperimentalTime
 
 /**
  * Describes an event on the Steam "News" page.
  */
+@OptIn(ExperimentalTime::class)
 @Serializable
-data class NewsEvent (
+data class NewsEvent(
     /**
      * The unique ID of an event.
      */
@@ -137,7 +139,7 @@ data class NewsEvent (
     val postSource: PostSource
 ) {
     @Serializable
-    data class PostSource (
+    data class PostSource(
         val isFollowed: Boolean,
         val isRecommended: Boolean,
         val isRequired: Boolean,

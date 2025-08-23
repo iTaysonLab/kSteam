@@ -46,7 +46,8 @@ internal class SteamClientImpl internal constructor(
         dumper = dumper,
         logger = logger,
         dispatcher = config.coroutineDispatcher,
-        httpClient = config.networkClient
+        httpClient = config.networkClient,
+        connectivityStateDelayer = config.connectivityStateDelayer,
     )
 
     override val language get() = config.language

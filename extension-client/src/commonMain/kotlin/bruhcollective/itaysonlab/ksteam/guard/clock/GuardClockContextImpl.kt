@@ -1,8 +1,9 @@
 package bruhcollective.itaysonlab.ksteam.guard.clock
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import kotlinx.datetime.TimeZone
+import kotlin.time.ExperimentalTime
 
 /**
  * A [GuardClockContext] implementation using cross-platform KotlinX API.
@@ -37,6 +38,7 @@ class GuardClockContextImpl(
         return clockSyncDiff
     }
 
+    @OptIn(ExperimentalTime::class)
     private suspend fun requestServerDifference(steamClient: SteamClient) {
         // TODO: Use Protobuf API
         steamClient.webApi.getServerTime().let { data ->

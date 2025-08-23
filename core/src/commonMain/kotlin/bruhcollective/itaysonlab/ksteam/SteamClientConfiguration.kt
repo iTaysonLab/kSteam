@@ -3,6 +3,7 @@ package bruhcollective.itaysonlab.ksteam
 import bruhcollective.itaysonlab.ksteam.models.enums.ELanguage
 import bruhcollective.itaysonlab.ksteam.persistence.KsteamPersistenceDriver
 import bruhcollective.itaysonlab.ksteam.persistence.MemoryPersistenceDriver
+import bruhcollective.itaysonlab.ksteam.platform.ConnectivityStateDelayer
 import bruhcollective.itaysonlab.ksteam.platform.DeviceInformation
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
@@ -12,11 +13,9 @@ import io.ktor.client.plugins.websocket.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
 import kotlinx.serialization.json.Json
 import okio.FileSystem
 import okio.Path
-import okio.SYSTEM
 
 /**
  * Describes configuration used in kSteam instances.
@@ -60,7 +59,12 @@ class SteamClientConfiguration(
     /**
      * Coroutine dispatcher used for events or network operations
      */
-    internal val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO
+    internal val coroutineDispatcher: CoroutineDispatcher = Dispatchers.IO,
+
+    /**
+     * Connectivity state delayer used to delay connection until an Internet connection is established
+     */
+    internal val connectivityStateDelayer: ConnectivityStateDelayer = ConnectivityStateDelayer.Noop
 ) {
     init {
         FileSystem.SYSTEM.createDirectories(rootFolder, mustCreate = false)
