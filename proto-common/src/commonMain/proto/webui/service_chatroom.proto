@@ -176,10 +176,6 @@ message CChatRoom_GetChatRoomGroupState_Response {
 	optional .CChatRoomGroupState state = 1;
 }
 
-message CChatRoom_GetChatRoomGroupSummary_Request {
-	optional uint64 chat_group_id = 1;
-}
-
 message CChatRoom_GetInviteInfo_Request {
 	optional fixed64 steamid_invitee = 1;
 	optional uint64 chat_group_id = 2;
@@ -471,6 +467,20 @@ message CChatRoom_ReplaceRoleActions_Request {
 }
 
 message CChatRoom_ReplaceRoleActions_Response {
+}
+
+message CChatRoom_ReportMessage_Request {
+	optional uint64 chat_group_id = 1;
+	optional uint64 chat_id = 2;
+	optional fixed64 steamid_from = 3;
+	optional uint32 timestamp = 4;
+	optional uint32 ordinal = 5;
+	optional int32 report_reason = 6 [(.description) = "enum"];
+	optional string report_text = 7;
+	optional string language = 8;
+}
+
+message CChatRoom_ReportMessage_Response {
 }
 
 message CChatRoom_RevokeInvite_Request {
@@ -770,8 +780,6 @@ service ChatRoom {
 	rpc GetBanList (.CChatRoom_GetBanList_Request) returns (.CChatRoom_GetBanList_Response);
 	// ePrivilege=3
 	rpc GetChatRoomGroupState (.CChatRoom_GetChatRoomGroupState_Request) returns (.CChatRoom_GetChatRoomGroupState_Response);
-	// ePrivilege=2
-	rpc GetChatRoomGroupSummary (.CChatRoom_GetChatRoomGroupSummary_Request) returns (.CChatRoom_GetChatRoomGroupSummary_Response);
 	// ePrivilege=1
 	rpc GetInviteInfo (.CChatRoom_GetInviteInfo_Request) returns (.CChatRoom_GetInviteInfo_Response);
 	// ePrivilege=1
@@ -820,6 +828,8 @@ service ChatRoom {
 	rpc ReorderRole (.CChatRoom_ReorderRole_Request) returns (.CChatRoom_ReorderRole_Response);
 	// ePrivilege=3
 	rpc ReplaceRoleActions (.CChatRoom_ReplaceRoleActions_Request) returns (.CChatRoom_ReplaceRoleActions_Response);
+	// ePrivilege=3
+	rpc ReportMessage (.CChatRoom_ReportMessage_Request) returns (.CChatRoom_ReportMessage_Response);
 	// ePrivilege=1
 	rpc RevokeInviteToGroup (.CChatRoom_RevokeInvite_Request) returns (.CChatRoom_RevokeInvite_Response);
 	// ePrivilege=3

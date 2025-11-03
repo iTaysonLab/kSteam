@@ -1,5 +1,5 @@
-import "webui/common.proto";
 import "webui/common_base.proto";
+import "webui/common.proto";
 
 option java_package = "steam.webui.storebrowse";
 
@@ -24,6 +24,7 @@ message CHardwarePackageDetails {
 
 message CStoreBrowse_GetContentHubConfig_Request {
 	optional .StoreBrowseContext context = 1;
+	repeated int32 excluded_content_descriptorids = 2 [(.description) = "enum"];
 }
 
 message CStoreBrowse_GetContentHubConfig_Response {

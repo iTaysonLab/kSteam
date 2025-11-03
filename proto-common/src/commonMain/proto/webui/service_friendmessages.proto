@@ -7,6 +7,11 @@ message CFriendMessages_AckMessage_Notification {
 	optional uint32 timestamp = 2;
 }
 
+message CFriendMessages_DismissSessionNotice_Notification {
+	optional fixed64 steamid_friend = 1;
+	optional int32 notice_type = 2 [(.description) = "enum"];
+}
+
 message CFriendMessages_GetRecentMessages_Request {
 	optional fixed64 steamid1 = 1;
 	optional fixed64 steamid2 = 2;
@@ -69,6 +74,31 @@ message CFriendMessages_MessageReaction_Notification {
 	optional bool is_add = 7;
 }
 
+message CFriendMessages_ReportMessage_Request {
+	optional fixed64 steamid_from = 1;
+	optional fixed64 steamid_to = 2;
+	optional uint32 timestamp = 3;
+	optional uint32 ordinal = 4;
+	optional int32 report_reason = 5 [(.description) = "enum"];
+	optional string report_text = 6;
+	optional string language = 7;
+}
+
+message CFriendMessages_ReportMessage_Response {
+}
+
+message CFriendMessages_ResolveReport_Request {
+	optional fixed64 steamid_from = 1;
+	optional fixed64 steamid_to = 2;
+	optional uint64 subject_group_id = 3;
+	optional uint64 subject_id = 4;
+	optional int32 resolution = 5 [(.description) = "enum"];
+	optional int32 reason = 6 [(.description) = "enum"];
+}
+
+message CFriendMessages_ResolveReport_Response {
+}
+
 message CFriendMessages_SendMessage_Request {
 	optional fixed64 steamid = 1;
 	optional int32 chat_entry_type = 2;
@@ -76,9 +106,7 @@ message CFriendMessages_SendMessage_Request {
 	optional bool contains_bbcode = 4;
 	optional bool echo_to_sender = 5;
 	optional bool low_priority = 6;
-	optional bool override_limits = 7;
 	optional string client_message_id = 8;
-	optional bool blocked_in_china = 9;
 }
 
 message CFriendMessages_SendMessage_Response {
@@ -86,6 +114,12 @@ message CFriendMessages_SendMessage_Response {
 	optional uint32 server_timestamp = 2;
 	optional uint32 ordinal = 3;
 	optional string message_without_bb_code = 4;
+}
+
+message CFriendMessages_SessionNotice_Notification {
+	optional fixed64 steamid_friend = 1;
+	optional int32 notice_type = 2 [(.description) = "enum"];
+	optional bool active = 3;
 }
 
 message CFriendMessages_UpdateMessageReaction_Request {
@@ -116,17 +150,24 @@ message CFriendsMessages_GetActiveMessageSessions_Response_FriendMessageSession 
 	optional uint32 last_message = 2;
 	optional uint32 last_view = 3;
 	optional uint32 unread_message_count = 4;
+	repeated int32 notices = 5 [(.description) = "enum"];
 }
 
 service FriendMessages {
 	// ePrivilege=1
 	rpc AckMessage (.CFriendMessages_AckMessage_Notification) returns (.NoResponse);
+	// ePrivilege=1
+	rpc DismissSessionNotice (.CFriendMessages_DismissSessionNotice_Notification) returns (.NoResponse);
 	// bConstMethod=true, ePrivilege=1
 	rpc GetActiveMessageSessions (.CFriendsMessages_GetActiveMessageSessions_Request) returns (.CFriendsMessages_GetActiveMessageSessions_Response);
 	// bConstMethod=true, ePrivilege=1
 	rpc GetRecentMessages (.CFriendMessages_GetRecentMessages_Request) returns (.CFriendMessages_GetRecentMessages_Response);
 	// ePrivilege=1
 	rpc IsInFriendsUIBeta (.CFriendMessages_IsInFriendsUIBeta_Request) returns (.CFriendMessages_IsInFriendsUIBeta_Response);
+	// ePrivilege=1
+	rpc ReportMessage (.CFriendMessages_ReportMessage_Request) returns (.CFriendMessages_ReportMessage_Response);
+	// ePrivilege=1, eWebAPIKeyRequirement=2
+	rpc ResolveReport (.CFriendMessages_ResolveReport_Request) returns (.CFriendMessages_ResolveReport_Response);
 	// ePrivilege=1
 	rpc SendMessage (.CFriendMessages_SendMessage_Request) returns (.CFriendMessages_SendMessage_Response);
 	// ePrivilege=1
@@ -137,5 +178,6 @@ service FriendMessagesClient {
 	rpc IncomingMessage (.CFriendMessages_IncomingMessage_Notification) returns (.NoResponse);
 	rpc MessageReaction (.CFriendMessages_MessageReaction_Notification) returns (.NoResponse);
 	rpc NotifyAckMessageEcho (.CFriendMessages_AckMessage_Notification) returns (.NoResponse);
+	rpc SessionNotice (.CFriendMessages_SessionNotice_Notification) returns (.NoResponse);
 }
 

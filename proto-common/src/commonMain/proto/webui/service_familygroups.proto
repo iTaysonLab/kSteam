@@ -213,6 +213,7 @@ message CFamilyGroups_JoinFamilyGroup_Response {
 	optional int32 two_factor_method = 2 [(.description) = "enum"];
 	optional bool cooldown_skip_granted = 3;
 	optional bool invite_already_accepted = 4;
+	optional uint32 cooldown_seconds_remaining = 5;
 }
 
 message CFamilyGroups_ModifyFamilyGroupDetails_Request {
@@ -351,6 +352,7 @@ message FamilyGroupPendingInviteForUser {
 	optional int32 role = 2 [(.description) = "enum"];
 	optional fixed64 inviter_steamid = 3;
 	optional bool awaiting_2fa = 4;
+	optional uint64 invite_id = 5;
 }
 
 message PurchaseRequest {
