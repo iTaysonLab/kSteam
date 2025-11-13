@@ -1285,6 +1285,7 @@ message CMsgClientSettings {
 	optional bool steamos_system_tracing_enabled = 22014;
 	optional bool steamos_vrs_enabled = 22015;
 	optional bool steamos_separate_led_colors = 22016;
+	optional bool steamos_wifi_reload_wifi_driver_on_sleep = 22017;
 	optional bool setting_validation_bool = 23001;
 	optional int32 setting_validation_enum = 23002 [(.description) = "enum"];
 	optional int32 setting_validation_int32 = 23003;
@@ -1295,6 +1296,10 @@ message CMsgClientSettings {
 	optional .CMsgHotkey setting_validation_hotkey = 23008;
 	optional bool system_bluetooth_enabled = 24000;
 	optional bool hardware_updater_enabled = 24001;
+	optional int32 system_idle_suspend_battery_sec = 24003;
+	optional int32 system_idle_suspend_ac_sec = 24004;
+	optional bool system_enable_low_power_downloads = 24005;
+	optional bool system_allow_battery_low_power_downloads = 24006;
 	optional int32 game_framerate_report_enabled = 24007 [(.description) = "enum"];
 	optional bool vr_show_perf_graph_in_hmd = 25000;
 	optional bool accessibility_debug_visualizer = 26000;
@@ -2129,9 +2134,6 @@ message CMsgSystemDockUpdateState {
 message CMsgSystemManagerSettings {
 	optional float idle_backlight_dim_battery_seconds = 1;
 	optional float idle_backlight_dim_ac_seconds = 2;
-	optional float idle_suspend_battery_seconds = 3;
-	optional float idle_suspend_ac_seconds = 4;
-	optional bool idle_suspend_supressed = 5;
 	optional bool is_adaptive_brightness_available = 6;
 	optional bool display_adaptive_brightness_enabled = 7;
 	optional bool display_nightmode_enabled = 10;
@@ -2770,9 +2772,10 @@ message CVRGamepadUI_Message_DashboardTabClicked_Response {
 }
 
 message CVRGamepadUI_Message_Error_Response {
-	optional int32 error = 1 [(.description) = "enum"];
-	optional string description = 2;
+	optional int32 error_code = 1 [(.description) = "enum"];
+	optional string error_description = 2;
 	optional int32 origin = 3 [(.description) = "enum"];
+	optional bool was_transmitted = 4;
 }
 
 message CVRGamepadUI_Message_ExecuteSteamURL_Request {
@@ -2834,6 +2837,7 @@ message CVRGamepadUI_Message_ShowDashboardPopup_Request {
 	optional int32 sort_order = 14 [(.description) = "enum"];
 	optional int32 parent_enum = 15 [(.description) = "enum"];
 	optional int32 special_identifier = 16 [(.description) = "enum"];
+	optional .CVRGamepadUI_Message_ShowDashboardPopup_Request_Scale scale = 17;
 }
 
 // Used by: common.proto
@@ -2864,6 +2868,11 @@ message CVRGamepadUI_Message_ShowDashboardPopup_Request_Rect {
 message CVRGamepadUI_Message_ShowDashboardPopup_Request_Rotation {
 	optional float pitch_degrees = 1;
 	optional float yaw_degrees = 2;
+}
+
+// Used by: common.proto
+message CVRGamepadUI_Message_ShowDashboardPopup_Request_Scale {
+	optional float scaler_value = 1;
 }
 
 message CVRGamepadUI_Message_ShowDashboardPopup_Response {
