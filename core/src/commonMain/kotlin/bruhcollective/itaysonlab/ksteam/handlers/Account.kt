@@ -14,7 +14,10 @@ import bruhcollective.itaysonlab.ksteam.network.CMClientState
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobRemoteException
 import bruhcollective.itaysonlab.ksteam.platform.encryptWithRsa
 import bruhcollective.itaysonlab.ksteam.platform.getIpv4Address
-import bruhcollective.itaysonlab.ksteam.util.*
+import bruhcollective.itaysonlab.ksteam.util.CreateSupervisedCoroutineScope
+import bruhcollective.itaysonlab.ksteam.util.convertToCmIpV4
+import bruhcollective.itaysonlab.ksteam.util.executeSteam
+import bruhcollective.itaysonlab.ksteam.util.generateIpV4Int
 import io.ktor.util.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -29,7 +32,6 @@ import steam.enums.ESessionPersistence
 import steam.webui.authentication.*
 import steam.webui.common.CMsgClientLogon
 import steam.webui.common.CMsgClientLogonResponse
-import kotlin.jvm.JvmInline
 import kotlin.random.Random
 
 class Account internal constructor(
@@ -298,8 +300,6 @@ class Account internal constructor(
                 obfuscated_private_ip = currentIp,
                 deprecated_obfustucated_private_ip = currentIp?.v4,
                 steamguard_dont_remember_computer = false,
-                is_steam_deck = false,
-                is_steam_box = false,
                 client_instance_id = 0L,
                 supports_rate_limit_response = true,
                 access_token = token,
@@ -309,6 +309,7 @@ class Account internal constructor(
                     EResult.Fail.encoded
                 },
                 sha_sentryfile = sentryFileHash,
+                gaming_device_type = null // research
             )
         ).withHeader {
             this.sessionId = 0

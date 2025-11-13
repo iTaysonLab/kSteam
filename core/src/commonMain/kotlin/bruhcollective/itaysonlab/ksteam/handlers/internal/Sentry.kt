@@ -1,27 +1,17 @@
 package bruhcollective.itaysonlab.ksteam.handlers.internal
 
 import bruhcollective.itaysonlab.ksteam.SteamClient
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacket
-import bruhcollective.itaysonlab.ksteam.messages.SteamPacketHeader
 import bruhcollective.itaysonlab.ksteam.models.SteamId
-import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
-import bruhcollective.itaysonlab.ksteam.models.enums.EResult
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.IO
-import kotlinx.coroutines.withContext
-import okio.*
-import steam.webui.common.CMsgClientUpdateMachineAuth
-import steam.webui.common.CMsgClientUpdateMachineAuthResponse
+import okio.ByteString
+import okio.FileSystem
+import okio.Path
+
+//import steam.webui.common.CMsgClientUpdateMachineAuth
+//import steam.webui.common.CMsgClientUpdateMachineAuthResponse
 
 internal class Sentry(
     private val steamClient: SteamClient
 ) {
-    init {
-        steamClient.on(EMsg.k_EMsgClientUpdateMachineAuth) { packet ->
-            writeSentryFile(packet.header, CMsgClientUpdateMachineAuth.ADAPTER.decode(packet.payload))
-        }
-    }
-
     private fun persistKey(steamId: SteamId) = "sentries.${steamId}"
     private fun sentryFile(steamId: SteamId, fileName: String) = steamClient.workingDirectory / fileName
 
@@ -36,6 +26,12 @@ internal class Sentry(
     fun sentryHash(steamId: SteamId): ByteString? {
         return FileSystem.SYSTEM.read(sentryFile(steamId) ?: return null) {
             readByteString().sha1()
+        }
+    }
+
+    /*init {
+        steamClient.on(EMsg.k_EMsgClientUpdateMachineAuth) { packet ->
+            writeSentryFile(packet.header, CMsgClientUpdateMachineAuth.ADAPTER.decode(packet.payload))
         }
     }
 
@@ -70,5 +66,5 @@ internal class Sentry(
             ).withHeader {
                 targetJobId = packetHeader.sourceJobId
             })
-        }
+        }*/
 }

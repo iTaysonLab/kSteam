@@ -8,7 +8,7 @@ import bruhcollective.itaysonlab.ksteam.database.room.TableNames
 import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.app.SteamApplicationLicense
 import bruhcollective.itaysonlab.ksteam.models.enums.EPaymentMethod
-import steam.webui.common.CMsgClientLicenseList_License
+import steam.messages.clientserver.CMsgClientLicenseList
 
 @Entity(
     tableName = TableNames.PACKAGE_LICENSE,
@@ -36,7 +36,7 @@ internal data class RoomPackageLicense(
     @ColumnInfo("access_token") val accessToken: Long? = null,
     @ColumnInfo("master_package_id") val masterPackageId: Int? = null,
 ) {
-    constructor(protoLicense: CMsgClientLicenseList_License) : this(
+    constructor(protoLicense: CMsgClientLicenseList.License) : this(
         packageId = protoLicense.package_id ?: 0,
         timeCreated = protoLicense.time_created,
         timeNextProcess = protoLicense.time_next_process,

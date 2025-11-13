@@ -111,6 +111,8 @@ import steam.webui.storebrowse.GrpcStoreBrowseService
 import steam.webui.storebrowse.StoreBrowseService
 import steam.webui.storecatalog.GrpcStoreCatalogService
 import steam.webui.storecatalog.StoreCatalogService
+import steam.webui.storecuration.GrpcStoreCurationService
+import steam.webui.storecuration.StoreCurationService
 import steam.webui.storemarketing.GrpcStoreMarketingService
 import steam.webui.storemarketing.StoreMarketingService
 import steam.webui.storequery.GrpcStoreQueryService
@@ -214,6 +216,7 @@ interface SteamGrpcClients {
     val store: StoreService
     val storeAppsSimilarity: StoreAppSimilarityService
     val storeBrowse: StoreBrowseService
+    val storeCuration: StoreCurationService
     val storeCatalog: StoreCatalogService
     val storeMarketing: StoreMarketingService
     val storeQuery: StoreQueryService
@@ -291,6 +294,7 @@ internal class SteamGrpcClientsImpl(
     override val storeAppsSimilarity: StoreAppSimilarityService = GrpcStoreAppSimilarityService(unifiedMessages)
     override val storeBrowse = GrpcStoreBrowseService(unifiedMessages)
     override val storeCatalog: StoreCatalogService = GrpcStoreCatalogService(unifiedMessages)
+    override val storeCuration: StoreCurationService = GrpcStoreCurationService(unifiedMessages)
     override val storeMarketing: StoreMarketingService = GrpcStoreMarketingService(unifiedMessages)
     override val storeQuery: StoreQueryService = GrpcStoreQueryService(unifiedMessages)
     override val storeSales: StoreSalesService = GrpcStoreSalesService(unifiedMessages)

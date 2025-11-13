@@ -25,7 +25,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.serialization.ExperimentalSerializationApi
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
-import steam.webui.common.*
+import steam.messages.clientserver.CMsgClientLicenseList
+import steam.messages.clientserver_appinfo.*
 import kotlin.math.max
 
 /**
@@ -123,7 +124,7 @@ class Pics internal constructor(
         }
     }
 
-    private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList_License>) {
+    private suspend fun handleServerLicenseList(licenses: List<CMsgClientLicenseList.License>) {
         steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] received ${licenses.size} licenses" }
 
         val changesResponse = steamClient.awaitProto(
@@ -192,7 +193,7 @@ class Pics internal constructor(
         steamClient.logger.logDebug(TAG) { "[handleServerLicenseList] OK" }
     }
 
-    private suspend fun checkForMissingEntries(licenses: List<CMsgClientLicenseList_License>) {
+    private suspend fun checkForMissingEntries(licenses: List<CMsgClientLicenseList.License>) {
         steamClient.logger.logDebug(TAG) { "[checkForMissingEntries]" }
 
         val newPackages = licenses.filter { sLicense ->
@@ -228,7 +229,7 @@ class Pics internal constructor(
             request = CMsgClientPICSProductInfoRequest(
                 meta_data_only = false,
                 packages = tokens.entries.map { (id, token) ->
-                    CMsgClientPICSProductInfoRequest_PackageInfo(
+                    CMsgClientPICSProductInfoRequest.PackageInfo(
                         packageid = id,
                         access_token = token,
                     )
@@ -247,7 +248,7 @@ class Pics internal constructor(
             request = CMsgClientPICSProductInfoRequest(
                 meta_data_only = false,
                 apps = tokens.map { (appId, accessToken) ->
-                    CMsgClientPICSProductInfoRequest_AppInfo(appid = appId, access_token = accessToken)
+                    CMsgClientPICSProductInfoRequest.AppInfo(appid = appId, access_token = accessToken)
                 }
             ), selector = CMsgClientPICSProductInfoResponse::apps
         ) { chunk ->
@@ -258,7 +259,7 @@ class Pics internal constructor(
 
     private suspend fun writePicsPackageChunk(
         licenseMap: Map<Int, Long?>,
-        chunk: List<CMsgClientPICSProductInfoResponse_PackageInfo>
+        chunk: List<CMsgClientPICSProductInfoResponse.PackageInfo>
     ) {
         steamClient.logger.logVerbose(TAG) { "[writePicsPackageChunk] size = ${chunk.size}" }
 
@@ -278,7 +279,7 @@ class Pics internal constructor(
 
     private suspend fun writePicsAppChunk(
         licenseMap: Map<Int, Long?>,
-        chunk: List<CMsgClientPICSProductInfoResponse_AppInfo>
+        chunk: List<CMsgClientPICSProductInfoResponse.AppInfo>
     ) {
         steamClient.logger.logVerbose(TAG) { "[writePicsAppChunk] size = ${chunk.size}" }
 
@@ -316,7 +317,7 @@ class Pics internal constructor(
 
     // region Account-specific license information
 
-    private suspend fun writeAccountSpecificLicenseInformation(licenses: List<CMsgClientLicenseList_License>) {
+    private suspend fun writeAccountSpecificLicenseInformation(licenses: List<CMsgClientLicenseList.License>) {
         database.currentUserDatabase.packageLicenses().deleteAll()
         database.currentUserDatabase.packageLicenses().insert(licenses.map(::RoomPackageLicense))
     }
