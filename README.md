@@ -45,9 +45,11 @@ Tested on **IntelliJ IDEA 2024.3.1.1** with **JDK 17**.
 
 ### Which module set should I use?
 
-If you are planning to use kSteam only for basic Steam communication, consider using `core` and `core-persistance` (optional) modules. They provide authorization, credential management (optional) and raw Steam API connection (by using protobufs or binary messages).
+If you are planning to use kSteam only for basic Steam communication, consider using `core` and `core-persistance` (optional) modules. They provide authorization, `UnifiedMessage` interface for calling the API, credential management (optional) and raw Steam API connection (by using protobufs or binary messages).
 
-However, if you are going to create a GUI client, consider including the `extension-client` module as well (if your target platform is supported by the AndroidX Embedded SQLite). It provides a lot of useful Steam API mappings paired with automatic Kotlin Flow support for dynamic UI.
+Also, the core is relatively stable and all Steam protocol messages are covered, which means that you can use kSteam as your Steam API client without any complex "features" such as content database or newsfeed parsing.
+
+However, if you are going to create a GUI client, consider including the work-in-progress `extension-client` module as well (if your target platform is supported by the AndroidX Embedded SQLite). It provides a lot of useful Steam API mappings paired with automatic Kotlin Flow support for dynamic UI.
 
 The `kotlinx-vdf` module is already provided with the modules above, but you can import it separately in case of not requiring to use any of kSteam features.
 
