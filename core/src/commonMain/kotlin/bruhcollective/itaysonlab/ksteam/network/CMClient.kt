@@ -9,6 +9,7 @@ import bruhcollective.itaysonlab.ksteam.models.SteamId
 import bruhcollective.itaysonlab.ksteam.models.enums.EMsg
 import bruhcollective.itaysonlab.ksteam.models.enums.EResult
 import bruhcollective.itaysonlab.ksteam.network.event.IncomingPacketManager
+import bruhcollective.itaysonlab.ksteam.network.event.OutgoingPacketManager
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobDroppedException
 import bruhcollective.itaysonlab.ksteam.network.exception.CMJobTimeoutException
 import bruhcollective.itaysonlab.ksteam.platform.ConnectivityStateDelayer
@@ -17,7 +18,6 @@ import com.squareup.wire.ProtoAdapter
 import io.ktor.client.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.websocket.*
-import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +30,6 @@ import steam.messages.clientserver_login.CMsgClientHello
 import steam.webui.common.CMsgClientHeartBeat
 import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.common.CMsgMulti
-import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -60,9 +59,9 @@ internal class CMClient(
     internal val incomingPacketManager = IncomingPacketManager(logger)
 
     /**
-     * Reference of the current WebSocket session.
+     * Queue of prepared outgoing packets.
      */
-    private val wsSessionReference = atomic<WebSocketSession?>(null)
+    internal val outgoingPacketManager = OutgoingPacketManager(logger)
 
     private var cellId = 0
     internal var clientSessionId = 0
@@ -78,6 +77,7 @@ internal class CMClient(
      * Heartbeat state
      */
     private var heartbeatJob: Job? = null
+    private var connectionJob: Job? = null
 
     /**
      * Starts a coroutine which launches the WSS client. Also used to start the client if it's not started yet.
@@ -94,7 +94,23 @@ internal class CMClient(
      * You should not use this instance of [CMClient] after calling [stop].
      */
     fun stop() {
+        connectionJob?.cancel()
         internalScope.cancel()
+    }
+
+    /**
+     * Stops the current CM connection, but does not stop the underlying CoroutineScope, allowing to start the connection again.
+     */
+    fun stopConnection() {
+        mutableClientState.value = CMClientState.Offline
+        connectionJob?.cancel()
+    }
+
+    /**
+     * Starts the current CM connection in background.
+     */
+    fun startConnection() {
+        launchConnectionCoroutine()
     }
 
     private suspend fun awaitConnectionOrThrow(packet: SteamPacket, authRequired: Boolean) {
@@ -116,7 +132,7 @@ internal class CMClient(
     private fun launchConnectionCoroutine() {
         if (clientState.value != CMClientState.Offline) return
 
-        internalScope.launch {
+        connectionJob = internalScope.launch {
             connect()
         }
     }
@@ -126,18 +142,19 @@ internal class CMClient(
 
         try {
             connect(selectedServerEndpoint)
+            outgoingPacketManager.clean()
         } catch (e: Exception) {
+            logger.logError("CMClient:Connection") { "Connection aborted! [${e.message}]" }
             e.printStackTrace()
-            wsSessionReference.getAndSet(null)
+
+            outgoingPacketManager.clean()
             jobManager.dropAllJobs(CMJobDroppedException.Reason.WsConnectionDropped)
 
-            if (coroutineContext.isActive) {
+            if (currentCoroutineContext().isActive) {
                 delay(1000L)
                 connectivityStateDelayer.awaitUntilInternetConnection()
                 connect()
             }
-        } finally {
-            wsSessionReference.getAndSet(null)
         }
     }
 
@@ -151,8 +168,6 @@ internal class CMClient(
         httpClient.wss(urlString = "wss://$endpoint/cmsocket/") {
             logger.logDebug("CMClient:WsConnection") { "Connected to Steam3 network" }
 
-            wsSessionReference.getAndSet(this)
-
             send(
                 SteamPacket.newProto(
                     messageId = EMsg.k_EMsgClientHello,
@@ -161,6 +176,15 @@ internal class CMClient(
             )
 
             mutableClientState.value = CMClientState.AwaitingAuthorization
+
+            launch {
+                outgoingPacketManager.listenOutgoingPackets { packet ->
+                    logger.logVerbose("CMClient:WsConnection") { "Sending packet ${packet.messageId}" }
+                    send(packet.encode())
+                }
+
+                logger.logVerbose("CMClient:WsConnection") { "Finishing packet collection" }
+            }
 
             while (currentCoroutineContext().isActive) {
                 val packetToReceive = incoming.receive()
@@ -268,10 +292,8 @@ internal class CMClient(
     suspend fun execute(
         packet: SteamPacket
     ) {
-        wsSessionReference.value?.let { wsSession ->
-            dumper.onPacket(packet, true)
-            wsSession.send(packet.addClientData().encode())
-        }
+        outgoingPacketManager.enqueuePacket(packet.addClientData())
+        dumper.onPacket(packet, true)
     }
 
     /**
@@ -343,20 +365,20 @@ internal class CMClient(
     }
 
     private suspend fun <T> postJob(packet: SteamPacket, job: CMJob<T>): Deferred<T> {
-        val wsSession = wsSessionReference.value
+        if (clientState.value.hasActiveServerConnection) {
+            if (packet.messageId == EMsg.k_EMsgClientLogon) {
+                mutableClientState.value = CMClientState.Authorizing
+            }
 
-        packet.addClientData().also {
-            it.header.sourceJobId = job.information.id
-        }
+            packet.addClientData().also {
+                it.header.sourceJobId = job.information.id
+            }
 
-        if (wsSession != null) {
-            if (packet.messageId == EMsg.k_EMsgClientLogon) mutableClientState.value = CMClientState.Authorizing
             dumper.onPacket(packet, true)
-
             logger.logVerbose("CMClient") { "posting ${job.information}" }
 
             jobManager.postJob(job)
-            wsSession.send(packet.encode())
+            outgoingPacketManager.enqueuePacket(packet)
         } else {
             job.failDropped(CMJobDroppedException.Reason.WsSessionUnavailable)
         }
@@ -382,11 +404,11 @@ internal class CMClient(
                 logger.logVerbose("CMClient:Heartbeat") { "Adding heartbeat packet to queue" }
 
                 runCatching {
-                    wsSessionReference.value?.send(
+                    outgoingPacketManager.enqueuePacket(
                         SteamPacket.newProto(
                             messageId = EMsg.k_EMsgClientHeartBeat,
                             payload = CMsgClientHeartBeat()
-                        ).encode()
+                        )
                     )
                 }.onFailure {
                     logger.logWarning("CMClient:Heartbeat") { "Failed to send heartbeat: ${it.message}" }

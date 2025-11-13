@@ -143,15 +143,32 @@ internal class SteamClientImpl internal constructor(
     }
 
     override fun resume() {
-        TODO("Not yet implemented")
+        logger.logDebug("SteamClientImpl") { "[resume]" }
+
+        if (cmNetworkEnabled()) {
+            cmClient.startConnection()
+        }
     }
 
     override fun pause() {
-        TODO("Not yet implemented")
+        logger.logDebug("SteamClientImpl") { "[pause]" }
+
+        if (cmNetworkEnabled()) {
+            cmClient.stopConnection()
+        }
+    }
+
+    override fun restart() {
+        logger.logDebug("SteamClientImpl") { "[restart]" }
+
+        if (cmNetworkEnabled()) {
+            cmClient.stopConnection()
+            cmClient.startConnection()
+        }
     }
 
     override suspend fun execute(packet: SteamPacket) {
-        cmClient.execute(packet)
+        requireCmTransport { cmClient.execute(packet) }
     }
 
     override suspend fun awaitPacket(packet: SteamPacket): SteamPacket {

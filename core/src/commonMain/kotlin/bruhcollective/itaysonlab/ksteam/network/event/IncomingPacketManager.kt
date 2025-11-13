@@ -111,7 +111,7 @@ internal class IncomingPacketManager (
                     runCatching {
                         listener.onPayloadObjectReceived(message)
                     }.onFailure {
-                        logger.logWarning("IncomingPacketManager") { "Failed to deliver packet ${packet.messageId} to listener ${listener} due to exception: ${it.message}" }
+                        logger.logWarning("IncomingPacketManager") { "Failed to deliver packet ${packet.messageId} to listener $listener due to exception: ${it.message}" }
                         it.printStackTrace()
                     }
                 }

@@ -157,6 +157,10 @@ class SteamPacket (
      */
     fun isBinary() = header is SteamPacketHeader.Binary
 
+    override fun toString(): String {
+        return "SteamPacket(messageId=$messageId, payload=[${payload.size}], header=$header])"
+    }
+
     /**
      * [EResult] of a request. Only applicable to protobuf messages, otherwise returns [EResult.Fail].
      *

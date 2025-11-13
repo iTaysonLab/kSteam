@@ -39,5 +39,7 @@ enum class CMClientState {
     /**
      * An error occurred while connecting to the Steam network.
      */
-    Error
+    Error;
+
+    val hasActiveServerConnection: Boolean get() = this == AwaitingAuthorization || this == Authorizing || this == Connected
 }

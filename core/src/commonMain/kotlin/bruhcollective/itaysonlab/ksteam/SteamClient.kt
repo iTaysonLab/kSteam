@@ -138,6 +138,11 @@ interface SteamClient {
     fun resume()
 
     /**
+     * Restarts the client instance.
+     */
+    fun restart()
+
+    /**
      * Subscribes to a change of [CMClientState].
      *
      * @param status what status is required to have
