@@ -204,7 +204,8 @@ internal class CMClient(
         if (checkedPacket.error) return
 
         CMsgClientLogonResponse.ADAPTER.decode(checkedPacket.payload).also { payloadResult ->
-            if (payloadResult.eresult == EResult.Expired.encoded) {
+            if (payloadResult.eresult == EResult.Expired.encoded || payloadResult.eresult == EResult.AccessDenied.encoded) {
+                // Account will automatically delete it and restart CMClient
                 return // Expired session
             } else if (payloadResult.eresult != EResult.OK.encoded) {
                 return // Failed sign-in

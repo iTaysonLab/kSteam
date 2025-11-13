@@ -409,10 +409,11 @@ class Account internal constructor(
                 CMsgClientLogonResponse.ADAPTER.decode(packet.payload).also { response ->
                     steamClient.logger.logVerbose(TAG) { "Logon Response: $response" }
 
-                    if (response.eresult == EResult.Expired.encoded) {
+                    if (response.eresult == EResult.Expired.encoded || response.eresult == EResult.AccessDenied.encoded) {
                         // This authorization session is gone - we can wipe the regarding data
                         steamClient.configuration.deleteSecureAccount(logonSteamId)
                         steamClient.configuration.autologinSteamId = steamClient.configuration.getValidSecureAccountIds().firstOrNull() ?: SteamId.Empty
+                        steamClient.restart()
                         return@on
                     } else if (response.eresult != EResult.OK.encoded) {
                         return@on
