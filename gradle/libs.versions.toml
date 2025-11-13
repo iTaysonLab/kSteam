@@ -2,16 +2,16 @@
 kotlin = "2.2.10"
 kotlinx-coroutines = "1.10.2"
 kotlinx-json = "1.9.0"
-kotlinx-atomicfu = "0.29.0"
-ksp = "2.2.10-2.0.2"
-agp = "8.2.2"
-ktorClientVersion = "3.2.3"
-okio = "3.16.0"
-wire = "5.3.11"
+kotlinx-atomicfu = "0.30.0-beta"
+ksp = "2.3.0"
+agp = "8.13.0"
+ktorClientVersion = "3.3.1"
+okio = "3.16.2"
+wire = "5.4.0"
 dokka = "2.0.0"
-cache4k = "0.13.0"
-room = "2.7.1"
-sqlite = "2.5.1"
+cache4k = "0.14.0"
+room = "2.8.3"
+sqlite = "2.6.1"
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
@@ -28,7 +28,6 @@ dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 room = { id = "androidx.room", version.ref = "room" }
 
 [libraries]
-androidx-security-crypto = { module = "androidx.security:security-crypto", version = "1.1.0" }
 androidx-security-crypto-ktx = { module = "androidx.security:security-crypto-ktx", version = "1.1.0" }
 androidx-collection = { module = "androidx.collection:collection", version = "1.5.0" }
 

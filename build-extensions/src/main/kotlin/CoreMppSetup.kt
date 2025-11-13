@@ -24,7 +24,7 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
 
     // Enable Android support and use JVM 11 target
     androidTarget {
-        jvmToolchain(17)
+        // jvmToolchain(17)
 
         publishLibraryVariants("release")
         publishLibraryVariantsGroupedByFlavor = true
