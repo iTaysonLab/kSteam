@@ -1,7 +1,17 @@
-## r43
+## unreleased
 
+- **Outgoing packets are now properly enqueued, ensuring stability**
+- **Support for pausing, resuming and restarting `SteamClient`**
+- `AccessDenied` during logon now deletes the used account from persistence
+- `SteamClient` now restarts after `AccessDenied`/`Expired` errors during logon 
+- `Sentry` now does not accept new messages due to Steam removing related protobufs from both WebUI and Steam Client... probably deprecated them (JWT tokens can work as a replacement)
+- updated protobufs
+
+## r49
+
+- **Now kSteam implements all service methods!** The `proto-common` module now has a semi-automatic patcher that adapts SteamDB's dumped protobufs into Wire-compatible - and `SteamGrpcClients` now has all available services.
 - **Even faster library!** PICS chunk processing is now faster, decreasing initial startup time even more.
-- 
+- `Guard`: fixed adding Steam Guard
 
 ## r42
 
