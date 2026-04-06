@@ -1,9 +1,7 @@
 kSteam
 ---
 
-kSteam is a **JVM/Android Kotlin library** which allows you to connect to the Valve's [Steam](https://store.steampowered.com/) network.
-
-Its usage is mostly based on **Kotlin Coroutines** and **states** to better suit for modern application development.
+kSteam is a **multiplatform Kotlin library** which allows you to connect to the Valve's [Steam](https://store.steampowered.com/) network.
 
 > [!CAUTION]
 > This library is in very early state, so expect bugs and incomplete features. Also, releases are mostly not binary compatible between each other due to rapid development process.
@@ -15,15 +13,12 @@ Its usage is mostly based on **Kotlin Coroutines** and **states** to better suit
 ### Features
 - Access to the Steam network by using the modern WebSocket approach
 - Stable and async-first architecture with proper documentation
-- Providing Flows and suspending API for reactive UIs without any "callback hell"
 
 ### Goals
 - Provide an easy-to-use library for accessing the Steam network on JVM/Android
-- Make UI development easier by providing state-based approach without taking care of Protocol Buffers
 - Manage high performance and low memory/storage footprint by using well-tested modern technology such as Wire (for protobufs) and Ktor (for networking)
 - Provide full Steam Guard and new auth flow support
 - Removing the gap between WebAPI and Steam3 messages
-- Actively cache data for minimizing network usage and portability
 
 ### Usage
 
@@ -43,16 +38,6 @@ Because kSteam is still in a very early stage, you will need to compile it befor
 
 Tested on **IntelliJ IDEA 2024.3.1.1** with **JDK 17**.
 
-### Which module set should I use?
-
-If you are planning to use kSteam only for basic Steam communication, consider using `core` and `core-persistance` (optional) modules. They provide authorization, `UnifiedMessage` interface for calling the API, credential management (optional) and raw Steam API connection (by using protobufs or binary messages).
-
-Also, the core is relatively stable and all Steam protocol messages are covered, which means that you can use kSteam as your Steam API client without any complex "features" such as content database or newsfeed parsing.
-
-However, if you are going to create a GUI client, consider including the work-in-progress `extension-client` module as well (if your target platform is supported by the AndroidX Embedded SQLite). It provides a lot of useful Steam API mappings paired with automatic Kotlin Flow support for dynamic UI.
-
-The `kotlinx-vdf` module is already provided with the modules above, but you can import it separately in case of not requiring to use any of kSteam features.
-
 ### Modules
 
 ```kotlin
@@ -65,10 +50,6 @@ dependencies {
 
     // Steam Protobuf definitions compiled to Wire Kotlin. Not required to include if you include the core.
     implementation("bruhcollective.itaysonlab.ksteam:proto-common:$VERSION")
-
-    // A full-blown client based on kSteam core that provides user-friendly access to Steam API with active caching.
-    // Requires a platform with AndroidX Embedded SQLite driver support, which will be included as well.
-    implementation("bruhcollective.itaysonlab.ksteam:extension-client:$VERSION")
 
     // Experimental kotlinx.serialization VDF module
     implementation("bruhcollective.itaysonlab:kotlinx-vdf-android:$VERSION")

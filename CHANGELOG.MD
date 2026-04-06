@@ -1,5 +1,14 @@
 ## unreleased
 
+**IMPORTANT: Deprecation of extension-client**
+
+extension-client was a module that implemented "client" features into kSteam, providing easy access to features like library. However, for actively developing clients itself, this architecture is actually worse - you would need to rebuild kSteam in order for the client to receive changes.
+
+Basically, this module was a "domain" layer. But most apps already have their own "domain" layer!
+
+So, it is now recommended to build Steam API interactions directly in your application domain layer instead of using kSteam Client Extensions - just use the core.
+
+Other changes:
 - **Outgoing packets are now properly enqueued, ensuring stability**
 - **Support for pausing, resuming and restarting `SteamClient`**
 - `AccessDenied` during logon now deletes the used account from persistence

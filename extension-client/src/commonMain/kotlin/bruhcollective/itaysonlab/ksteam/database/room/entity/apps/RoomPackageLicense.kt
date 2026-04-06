@@ -16,7 +16,6 @@ import steam.messages.clientserver.CMsgClientLicenseList
 )
 internal data class RoomPackageLicense(
     @PrimaryKey(autoGenerate = true) @ColumnInfo("id") val id: Long = 0L,
-
     @ColumnInfo("package_id") val packageId: Int,
     @ColumnInfo("time_created") val timeCreated: Int? = null,
     @ColumnInfo("time_next_process") val timeNextProcess: Int? = null,

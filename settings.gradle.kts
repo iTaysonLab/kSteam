@@ -30,10 +30,9 @@ rootProject.name = "ksteam"
 includeBuild("build-extensions")
 
 include(":core")
-include(":cli-client")
+//include(":cli-client")
 include(":kotlinx-vdf")
-
 include(":proto-common")
 
-include(":extension-client")
+//include(":extension-client")
 include(":core-persistence")

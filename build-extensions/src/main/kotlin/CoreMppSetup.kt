@@ -1,5 +1,6 @@
 
 import org.gradle.kotlin.dsl.get
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinDependencyHandler
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget
@@ -15,10 +16,8 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
 
     // Enable JVM support
     jvm {
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "11"
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
         }
     }
 
@@ -29,10 +28,8 @@ fun KotlinMultiplatformExtension.multiplatformSetup(
         publishLibraryVariants("release")
         publishLibraryVariantsGroupedByFlavor = true
 
-        compilations.all {
-            kotlinOptions {
-                jvmTarget = "11"
-            }
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
         }
     }
 

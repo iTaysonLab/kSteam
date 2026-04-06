@@ -5,7 +5,7 @@ import org.gradle.api.Project
 fun Project.androidLibrary(moduleNamespace: String, extraConfiguration: LibraryExtension.() -> Unit = {}) {
     extensions.configure<LibraryExtension>("android") {
         namespace = moduleNamespace
-        compileSdk = 33
+        compileSdk = 36
 
         defaultConfig {
             minSdk = 21

@@ -30,6 +30,7 @@ import steam.messages.clientserver_login.CMsgClientHello
 import steam.webui.common.CMsgClientHeartBeat
 import steam.webui.common.CMsgClientLogonResponse
 import steam.webui.common.CMsgMulti
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -151,7 +152,7 @@ internal class CMClient(
             jobManager.dropAllJobs(CMJobDroppedException.Reason.WsConnectionDropped)
 
             if (currentCoroutineContext().isActive) {
-                delay(1000L)
+                delay(1.seconds)
                 connectivityStateDelayer.awaitUntilInternetConnection()
                 connect()
             }
@@ -400,7 +401,7 @@ internal class CMClient(
         val actorJob = Job()
 
         heartbeatJob = launch(actorJob + CoroutineName("kSteam-heartbeat")) {
-            while (currentCoroutineContext().isActive) {
+            while (currentCoroutineContext().isActive && clientState.value.hasActiveServerConnection) {
                 logger.logVerbose("CMClient:Heartbeat") { "Adding heartbeat packet to queue" }
 
                 runCatching {
@@ -414,7 +415,7 @@ internal class CMClient(
                     logger.logWarning("CMClient:Heartbeat") { "Failed to send heartbeat: ${it.message}" }
                 }
 
-                delay(intervalMs)
+                delay(intervalMs.milliseconds)
             }
         }
 
