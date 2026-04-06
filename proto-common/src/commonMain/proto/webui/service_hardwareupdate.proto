@@ -17,6 +17,13 @@ message CHardwareUpdate_GetState_Response {
 	optional bool has_seen_controllers = 2;
 }
 
+message CHardwareUpdate_PrepForUpdate_Request {
+	optional string serial_number = 1;
+}
+
+message CHardwareUpdate_PrepForUpdate_Response {
+}
+
 message CHardwareUpdate_StateChanged_Notification {
 }
 
@@ -40,6 +47,7 @@ message CMsgAvailableHardwareUpdate {
 	optional string serial_number = 3;
 	optional string current_ts = 4;
 	optional string update_ts = 5;
+	optional bool mandatory_update = 6;
 }
 
 service HardwareUpdate {
@@ -53,6 +61,8 @@ service HardwareUpdate {
 	rpc NotifyUpdateProgress (.CHardwareUpdate_UpdateProgress_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc NotifyUpdateStateChanged (.CHardwareUpdate_UpdateStateChanged_Notification) returns (.NoResponse);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc PrepForUpdate (.CHardwareUpdate_PrepForUpdate_Request) returns (.CHardwareUpdate_PrepForUpdate_Response);
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc Update (.CHardwareUpdate_Update_Request) returns (.CHardwareUpdate_Update_Response);
 }

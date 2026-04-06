@@ -55,6 +55,8 @@ message CAppOverview {
 	optional string album_cover_hash = 74;
 	optional int32 display_name_elanguage = 75 [default = -1];
 	optional bool has_custom_sort_as = 76;
+	optional uint64 bitfield_supported_languages = 77 [default = 0];
+	repeated .CAppOverview_PerClientData remote_per_client_data = 78;
 }
 
 message CAppOverview_Change {
@@ -343,21 +345,16 @@ message CClientMetrics_EndGameRecording_Notification {
 }
 
 message CClientMetrics_GamePerformance_Notification {
-	repeated .CClientMetrics_GamePerformance_Notification_FrameRateReport reports = 1;
+	repeated .CClientMetrics_GamePerformance_Notification_FrameRate frame_rates = 2;
+	optional .UserSystemInformation system_info = 3;
 }
 
 // Used by: common.proto
-message CClientMetrics_GamePerformance_Notification_FrameRateReport {
+message CClientMetrics_GamePerformance_Notification_FrameRate {
 	optional fixed64 gameid = 1;
 	optional uint32 frame_rate = 2;
-	optional string manufacturer = 3;
-	optional string model = 4;
-	optional string dx_video_card = 5;
-	optional int32 dx_vendorid = 6;
-	optional int32 dx_deviceid = 7;
-	optional uint32 num_gpu = 8;
-	optional uint64 system_ram = 9;
-	optional int32 session_seconds = 10;
+	optional int32 session_seconds = 3;
+	optional uint32 framegen_frame_rate = 4;
 }
 
 message CClientMetrics_IPv6Connectivity_Notification {
@@ -692,8 +689,6 @@ message CMsgClientAccountInfo {
 	optional string ip_country = 2;
 	optional int32 count_authed_computers = 5;
 	optional uint32 account_flags = 7;
-	optional uint64 facebook_id = 8;
-	optional string facebook_name = 9;
 	optional string steamguard_machine_name_user_chosen = 15;
 	optional bool is_phone_verified = 16;
 	optional uint32 two_factor_state = 17;
@@ -1096,7 +1091,6 @@ message CMsgClientServerTimestampResponse {
 
 message CMsgClientSettings {
 	optional bool no_save_personal_info = 1;
-	optional bool oobe_test_mode_enabled = 2;
 	optional bool in_client_beta = 3;
 	optional bool is_steam_sideloaded = 4;
 	optional string preferred_monitor = 5;
@@ -1147,6 +1141,8 @@ message CMsgClientSettings {
 	optional bool overlay_fps_counter_fps_graph = 4030;
 	optional bool overlay_fps_counter_cpu_graph = 4031;
 	optional bool overlay_fps_counter_allow_km_driver = 4032;
+	optional bool achievement_notification_toast = 4033;
+	optional bool achievement_notification_sound = 4034;
 	optional bool smooth_scroll_webviews = 5000;
 	optional bool enable_gpu_accelerated_webviews = 5001;
 	optional bool enable_hardware_video_decoding = 5003;
@@ -1158,6 +1154,8 @@ message CMsgClientSettings {
 	optional bool enable_ui_sounds = 5009;
 	optional bool enable_gamescope_composer = 5010;
 	optional bool enable_gamescope_composer_vr = 5011;
+	optional bool show_switch_to_desktop_at_login = 5012;
+	optional bool enable_steamrt64_client = 5013;
 	optional bool disable_all_toasts = 6000;
 	optional bool disable_toasts_in_game = 6001;
 	optional bool play_sound_on_toast = 6002;
@@ -1244,7 +1242,6 @@ message CMsgClientSettings {
 	optional bool gamerecording_force_mic_mono = 18226;
 	optional bool gamerecording_automatic_gain_control = 18227;
 	optional bool show_timestamps_in_console = 20000;
-	optional bool force_oobe = 20001;
 	optional int32 override_browser_composer_mode = 20002;
 	optional bool cef_remote_debugging_enabled = 20003;
 	optional bool force_deck_perf_tab = 20004;
@@ -1252,6 +1249,7 @@ message CMsgClientSettings {
 	optional bool hdr_compat_testing = 20006;
 	optional bool developer_mode_enabled = 20007;
 	optional bool show_advanced_update_channels = 20008;
+	optional bool browserview_underlays_allowed = 20009;
 	optional int32 gamescope_hdr_visualization = 21001 [(.description) = "enum"];
 	optional int32 gamescope_app_target_framerate = 21002;
 	optional bool gamescope_enable_app_target_framerate = 21003;
@@ -1300,8 +1298,11 @@ message CMsgClientSettings {
 	optional int32 system_idle_suspend_ac_sec = 24004;
 	optional bool system_enable_low_power_downloads = 24005;
 	optional bool system_allow_battery_low_power_downloads = 24006;
-	optional int32 game_framerate_report_enabled = 24007 [(.description) = "enum"];
+	optional int32 system_idle_screensaver_battery_sec = 24008;
+	optional int32 system_idle_screensaver_ac_sec = 24009;
 	optional bool vr_show_perf_graph_in_hmd = 25000;
+	optional bool vr_audio_spatialize = 25001;
+	optional bool vr_audio_spatialize_surround = 25002;
 	optional bool accessibility_debug_visualizer = 26000;
 	optional bool accessibility_screen_reader_enabled = 26001;
 	optional float accessibility_screen_reader_rate = 26002;
@@ -1313,9 +1314,36 @@ message CMsgClientSettings {
 	optional string accessibility_color_filter_name = 26009;
 	optional float accessibility_desktop_ui_scale = 26010;
 	optional string accessibility_screen_reader_locale = 26011;
+	optional bool accessibility_mono_audio = 26012;
+	optional bool remote_play_wifi_ap_enabled = 27000;
+	optional int32 remote_play_wifi_ap_channel_5ghz = 27001;
+	optional int32 remote_play_wifi_ap_channel_6ghz = 27002;
+	optional int32 remote_play_wifi_ap_channel_width = 27003;
+	optional bool remote_play_wifi_ap_hotspot_mode = 27004;
+	optional string remote_play_wifi_ap_hotspot_ssid = 27005;
+	optional string remote_play_wifi_ap_hotspot_password = 27006;
+	optional string remote_play_wifi_ap_hotspot_routing = 27007;
+	optional bool remote_play_wifi_ap_show_advanced = 27008;
+	optional string remote_play_wifi_ap_paired_ssid = 27009;
+	optional bool skip_steamframe_pairing_dialog = 27010;
+	optional bool oobe_completed = 28001;
+	optional bool oobe_test_mode_enabled = 28002;
+	optional bool force_oobe = 28003;
+	optional bool oobe_stage_2_completed = 28004;
+	optional bool oobe_stage_2_test_mode_enabled = 28005;
+	optional bool force_stage_2_oobe = 28006;
 	optional bool controller_enable_chord = 140011;
 	optional bool controller_poll_rate = 140012;
 	optional bool controller_siapi_config_author_mode = 140013;
+	optional bool controller_show_ibex_tour = 140014;
+	optional string controller_chat_radial_menu_option_0 = 140030;
+	optional string controller_chat_radial_menu_option_1 = 140031;
+	optional string controller_chat_radial_menu_option_2 = 140032;
+	optional string controller_chat_radial_menu_option_3 = 140033;
+	optional string controller_chat_radial_menu_option_4 = 140034;
+	optional string controller_chat_radial_menu_option_5 = 140035;
+	optional string controller_chat_radial_menu_option_6 = 140036;
+	optional string controller_chat_radial_menu_option_7 = 140037;
 }
 
 message CMsgCloudPendingRemoteOperations {
@@ -1334,7 +1362,6 @@ message CMsgControllerConfiguration {
 	optional string description = 3;
 	optional string creator = 4;
 	optional int32 controller_type = 5;
-	optional string capability_bits = 6;
 	optional int32 controller_style = 7;
 	repeated .CMsgGameActionSet sets = 8;
 	repeated .CMsgControllerMode modes = 9;
@@ -1615,7 +1642,7 @@ message CMsgIPAddress {
 }
 
 message CMsgMonitorInfo {
-	optional string selected_display_name = 1;
+	optional string selected_device_name = 1;
 	repeated .CMsgMonitorInfo_MonitorInfo monitors = 2;
 }
 
@@ -1637,6 +1664,7 @@ message CMsgNetworkDeviceConnect {
 	optional .CMsgNetworkDeviceConnect_Credentials credentials = 4;
 	optional .CMsgNetworkDeviceIP4Config ip4 = 5;
 	optional .CMsgNetworkDeviceIP6Config ip6 = 6;
+	optional .CMsgNetworkDeviceConnect_Wireless wireless = 7;
 }
 
 // Used by: common.proto
@@ -1654,6 +1682,11 @@ message CMsgNetworkDeviceConnect_CustomAP {
 // Used by: common.proto
 message CMsgNetworkDeviceConnect_KnownAP {
 	optional uint32 ap_id = 1;
+}
+
+// Used by: common.proto
+message CMsgNetworkDeviceConnect_Wireless {
+	optional string band_filter = 1;
 }
 
 // Used by: common.proto
@@ -1732,6 +1765,8 @@ message CMsgNetworkDevicesData_Device_Wireless_AP {
 	optional string password = 8;
 	optional int32 strength_raw = 9;
 	optional string band_filter = 10;
+	optional bool has_non_6ghz_channel = 11;
+	optional bool is_saved = 12;
 }
 
 message CMsgNetworkDeviceSetOptions {
@@ -2376,6 +2411,13 @@ message CSteamVR_Settings_SetValue_Request {
 	optional string string = 6;
 }
 
+// Used by: common.proto
+message CSteamVR_Vector3 {
+	optional float x = 1;
+	optional float y = 2;
+	optional float z = 3;
+}
+
 message CSteamVR_VoiceChat_Active_Notification {
 }
 
@@ -2469,6 +2511,17 @@ message CSteamVR_VoiceChat_SetPerUserVideo_Request {
 }
 
 message CSteamVR_VoiceChat_SetPerUserVideo_Response {
+}
+
+message CSteamVR_VoiceChat_SetSpatialAudioListener_Notification {
+	//optional .CSteamVR_Vector3 position = 1;
+	//optional .CSteamVR_Vector3 forward = 2;
+	//optional .CSteamVR_Vector3 up = 3;
+}
+
+message CSteamVR_VoiceChat_SetSpatialAudioSource_Notification {
+	optional fixed64 steamid = 1;
+	//optional .CSteamVR_Vector3 position = 2;
 }
 
 message CSteamVR_VRGamepadUI_Message {
@@ -2601,16 +2654,19 @@ message CStreamingClientConfig {
 }
 
 message CStreamingServerConfig {
-	optional bool change_desktop_resolution = 1;
-	optional bool dynamically_adjust_resolution_OBSOLETE = 2;
-	optional bool enable_capture_nvfbc = 3;
-	optional bool enable_hardware_encoding_nvidia_OBSOLETE = 4;
-	optional bool enable_hardware_encoding_amd_OBSOLETE = 5;
-	optional bool enable_hardware_encoding_intel_OBSOLETE = 6;
-	optional int32 software_encoding_threads = 7;
-	optional bool enable_traffic_priority = 8;
-	optional int32 host_play_audio = 9 [default = 0, (.description) = "enum"];
-	optional bool enable_hardware_encoding = 10;
+	optional int32 host_play_audio = 1 [(.description) = "enum"];
+	optional string custom_display_device = 2;
+	optional int32 display_resolution_setting = 3 [(.description) = "enum"];
+	optional int32 custom_display_resolution_x = 4;
+	optional int32 custom_display_resolution_y = 5;
+	optional int32 display_refresh_rate_setting = 6 [(.description) = "enum"];
+	optional string custom_display_refresh_rate = 7;
+	optional int32 display_hdr_setting = 8 [(.description) = "enum"];
+	optional bool custom_display_hdr = 9;
+	optional bool enable_capture_nvfbc = 10;
+	optional bool enable_hardware_encoding = 11;
+	optional int32 software_encoding_threads = 12;
+	optional bool enable_traffic_priority = 13;
 }
 
 // Used by: common.proto
@@ -2728,13 +2784,27 @@ message CVRGamepadUI_Frame {
 	optional uint32 frame_id = 1;
 	optional .CVRGamepadUI_Frame_FrameMenu menu = 2;
 	repeated .CVRGamepadUIShared_Action defined_actions = 3;
+	optional .CVRGamepadUI_Frame_FrameControls controls = 4;
+	optional bool is_vrlink_remote = 5;
 	optional string tmp_title = 1000;
+}
+
+// Used by: common.proto
+message CVRGamepadUI_Frame_FrameControls {
+	repeated .CVRGamepadUI_Frame_FrameControls_Item items_for_bottom_frame_controls = 1;
+	repeated .CVRGamepadUI_Frame_FrameControls_Item items_for_tab_hover_menu = 2;
+}
+
+// Used by: common.proto
+message CVRGamepadUI_Frame_FrameControls_Item {
+	optional int32 type = 1 [(.description) = "enum"];
+	optional uint32 action_id = 2;
 }
 
 // Used by: common.proto
 message CVRGamepadUI_Frame_FrameMenu {
 	repeated .CVRGamepadUI_Frame_FrameMenu_Item items_for_left_frame_menu = 1;
-	repeated .CVRGamepadUI_Frame_FrameMenu_Item items_for_tab_frame_menu = 2;
+	repeated .CVRGamepadUI_Frame_FrameMenu_Item items_for_tab_hover_menu = 2;
 }
 
 // Used by: common.proto
@@ -2742,6 +2812,18 @@ message CVRGamepadUI_Frame_FrameMenu_Item {
 	optional int32 type = 1 [(.description) = "enum"];
 	optional uint32 action_id = 2;
 	optional .CVRGamepadUI_Frame_FrameMenu_Item_SteamMainMenuOptions steam_main_menu_options = 3;
+	optional .CVRGamepadUI_Frame_FrameMenu_Item_SteamGameInfo steam_game_info = 4;
+	optional .CVRGamepadUI_Frame_FrameMenu_Item_SteamGameWindowItemsOptions steam_game_window_item_options = 5;
+}
+
+// Used by: common.proto
+message CVRGamepadUI_Frame_FrameMenu_Item_SteamGameInfo {
+	optional uint32 app_id = 1;
+}
+
+// Used by: common.proto
+message CVRGamepadUI_Frame_FrameMenu_Item_SteamGameWindowItemsOptions {
+	optional bool show_for_single_window = 1;
 }
 
 // Used by: common.proto
@@ -2811,6 +2893,13 @@ message CVRGamepadUI_Message_RemoteVideoStream_Request {
 }
 
 message CVRGamepadUI_Message_RemoteVideoStream_Response {
+}
+
+message CVRGamepadUI_Message_SetCurrentLanguage_Request {
+	optional string language = 1;
+}
+
+message CVRGamepadUI_Message_SetCurrentLanguage_Response {
 }
 
 message CVRGamepadUI_Message_SetDisplayBrightness_Request {
@@ -2964,6 +3053,7 @@ message CVRGamepadUIShared_PathProperty_DashboardBarActions {
 	repeated .CVRGamepadUIShared_Action defined_actions = 2;
 	repeated .CVRGamepadUIShared_PathProperty_DashboardBarActions_BarButton bar_buttons = 3;
 	repeated .CVRGamepadUIShared_PathProperty_DashboardBarActions_BarMenuItem bar_menu_items = 4;
+	repeated uint32 playspace_actions = 5;
 }
 
 // Used by: common.proto
@@ -3023,9 +3113,23 @@ message CVRGamepadUIShared_PathProperty_PowerOptions {
 	optional bool can_exitvr = 4;
 }
 
+message CVRGamepadUIShared_PathProperty_RunningApps {
+	repeated .CVRGamepadUIShared_PathProperty_RunningApps_App apps = 1;
+}
+
+// Used by: common.proto
+message CVRGamepadUIShared_PathProperty_RunningApps_App {
+	optional uint32 app_id = 1;
+	optional uint64 game_id = 2;
+	optional string display_name = 3;
+	optional int32 composition_state = 4 [(.description) = "enum"];
+	optional string app_overlay_overlay_key = 5;
+}
+
 message CVRGamepadUIShared_PathProperty_VRVersionInfo {
 	optional string version = 1;
 	optional uint32 webpack_build_timestamp = 2;
+	optional string hmd_tracking_info = 3;
 }
 
 // Used by: LoyaltyRewards, SaleItemRewards
@@ -3171,10 +3275,13 @@ message StoreItem {
 	optional uint32 game_count = 56;
 	optional string internal_name = 57;
 	optional string full_description = 58;
+	//optional string full_description_bbcode = 58;
 	optional bool is_free_temporarily = 59;
 	optional .StoreItem_Assets assets_without_overrides = 60;
 	optional .StoreBrowseFilterFailure user_filter_failure = 70;
 	repeated .StoreItem_Link links = 71;
+	optional string purchase_description_bbcode = 72;
+	repeated .StoreItem_PackageGroup package_groups = 74;
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
@@ -3195,6 +3302,10 @@ message StoreItem_Assets {
 	optional string clan_avatar = 14;
 	optional string page_background_path = 15;
 	optional string raw_page_background = 16;
+	optional string edition_comparison = 17;
+	optional string main_capsule_2x = 18;
+	optional string small_capsule_2x = 19;
+	optional string header_2x = 20;
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
@@ -3220,6 +3331,13 @@ message StoreItem_Categories {
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
+message StoreItem_Demo {
+	optional uint32 appid = 1;
+	optional string label = 2;
+	optional bool show_above_purchase = 3;
+}
+
+// Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
 message StoreItem_FreeWeekend {
 	optional uint32 start_time = 1;
 	optional uint32 end_time = 2;
@@ -3230,6 +3348,7 @@ message StoreItem_FreeWeekend {
 message StoreItem_IncludedItems {
 	repeated .StoreItem included_apps = 1;
 	repeated .StoreItem included_packages = 2;
+	repeated .StoreItem included_bundles = 3;
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
@@ -3237,6 +3356,15 @@ message StoreItem_Link {
 	optional int32 link_type = 1 [(.description) = "enum"];
 	optional string url = 2;
 	optional string text = 3;
+}
+
+// Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
+message StoreItem_PackageGroup {
+	optional string name = 1;
+	optional string heading = 2;
+	optional int32 display_type = 3 [(.description) = "enum"];
+	optional string dropdown_title = 4;
+	optional string dropdown_description_bbcode = 5;
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
@@ -3284,6 +3412,8 @@ message StoreItem_PurchaseOption {
 	optional .StoreItem_PurchaseOption_RecurrenceInfo recurrence_info = 46;
 	optional uint32 free_to_keep_ends = 47;
 	optional bool must_purchase_as_set = 48 [default = false];
+	optional string package_group = 49;
+	optional bool is_edition = 50;
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
@@ -3308,6 +3438,8 @@ message StoreItem_RelatedItems {
 	optional uint32 parent_appid = 1;
 	repeated uint32 demo_appid = 2;
 	repeated uint32 standalone_demo_appid = 3;
+	repeated .StoreItem_Demo demos = 4;
+	repeated .StoreItem_Demo standalone_demos = 5;
 }
 
 // Used by: Checkout, MarketingMessages, PartnerStoreBrowse, SteamCharts, Store, StoreAppSimilarity, StoreBrowse, StoreMarketing, StoreQuery, StoreTopSellers, UserStoreVisit, Wishlist
@@ -3321,6 +3453,8 @@ message StoreItem_ReleaseInfo {
 	optional bool is_abridged_release_date = 7;
 	optional string coming_soon_display = 8;
 	optional bool is_early_access = 10;
+	optional uint32 release_from_early_access_date = 11;
+	optional uint32 release_from_early_access_style = 12;
 	optional uint32 mac_release_date = 20;
 	optional uint32 linux_release_date = 21;
 	optional bool limited_launch_active = 22;
@@ -3420,5 +3554,25 @@ message UserContentDescriptorPreferences {
 message UserContentDescriptorPreferences_ContentDescriptor {
 	optional uint32 content_descriptorid = 1;
 	optional uint32 timestamp_added = 2;
+}
+
+// Used by: AccountHardware, User, common.proto
+message UserSystemInformation {
+	optional string manufacturer = 1;
+	optional string model = 2;
+	optional string dx_video_card = 3;
+	optional int32 dx_vendorid = 4;
+	optional int32 dx_deviceid = 5;
+	optional uint32 num_gpu = 6;
+	optional uint64 system_ram = 7;
+	optional string os = 8;
+	optional string cpu_vendor = 9;
+	optional string cpu_name = 10;
+	optional uint32 gaming_device_type = 11;
+	optional string dx_driver_version = 12;
+	optional string adapter_description = 14;
+	optional string driver_version = 15;
+	optional string driver_date = 16;
+	optional uint32 vram_size = 17;
 }
 

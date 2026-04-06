@@ -2,10 +2,17 @@ import "webui/common_base.proto";
 
 option java_package = "steam.webui.remoteclientsteam";
 
+message CRemoteClient_DisableSteamBroadcast_Notification {
+}
+
+message CRemoteClient_EnableSteamBroadcast_Notification {
+}
+
 message CRemoteClient_RegisterStatusUpdate_Notification {
 	optional fixed64 session_id = 1;
 	optional fixed64 steamid = 2;
 	optional fixed64 device_id = 3;
+	optional bool disable_polling = 4;
 }
 
 message CRemoteClient_RemotePacket_Notification {
@@ -82,6 +89,8 @@ message CRemotePlayTogether_Notification_Player {
 }
 
 service RemoteClientSteamClient {
+	rpc NotifyDisableSteamBroadcast (.CRemoteClient_DisableSteamBroadcast_Notification) returns (.NoResponse);
+	rpc NotifyEnableSteamBroadcast (.CRemoteClient_EnableSteamBroadcast_Notification) returns (.NoResponse);
 	rpc NotifyRegisterStatusUpdate (.CRemoteClient_RegisterStatusUpdate_Notification) returns (.NoResponse);
 	rpc NotifyRemotePacket (.CRemoteClient_RemotePacket_Notification) returns (.NoResponse);
 	rpc NotifyRemotePlayTogetherPacket (.CRemotePlayTogether_Notification) returns (.NoResponse);

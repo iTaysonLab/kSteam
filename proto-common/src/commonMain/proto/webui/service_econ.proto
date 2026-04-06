@@ -117,6 +117,7 @@ message CEconItem_AssetPropertySchema {
 	optional int64 int_min = 6;
 	optional int64 int_max = 7;
 	optional string localized_label = 8;
+	optional bool hide_from_description = 9;
 }
 
 message CEconItem_ClassIdentifiers {
@@ -162,6 +163,9 @@ message CEconItem_Description {
 	optional string market_sell_country_restriction = 31;
 	optional bool sealed = 32;
 	optional .CEconItem_ContainerProperties container_properties = 33;
+	optional string market_bucket_group_name = 34;
+	optional string market_bucket_group_id = 35;
+	optional uint32 sealed_type = 37;
 }
 
 message CEconItem_DescriptionLine {
