@@ -85,6 +85,7 @@ message CPromotionPlan_GetPromotionPlanSalesDaily_Response_PromotionSaleData {
 	repeated .CPromotionPlan_GetPromotionPlanSalesDaily_Response_DailyPromotionSales daily_promo_sales = 2;
 	optional .CPromotionPlan_SummarySaleResult summary_sales = 3;
 	repeated .CPromotionPlan_GetPromotionPlanSalesDaily_Response_Product products = 4;
+	optional uint32 products_missing_user_rights = 5;
 }
 
 message CPromotionPlan_SummarySaleResult {

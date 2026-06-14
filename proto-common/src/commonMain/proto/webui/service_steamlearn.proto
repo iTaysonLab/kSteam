@@ -390,7 +390,6 @@ message CMsgSteamLearn_InferenceMetadata_Response {
 	repeated .CMsgSteamLearn_InferenceMetadata_Response_KMeans kmeans = 6;
 	optional .CMsgSteamLearn_InferenceMetadata_Response_SnapshotHistogram snapshot_histogram = 7;
 	repeated .CMsgSteamLearn_InferenceMetadata_Response_AppInfoEntry app_info = 8;
-	repeated .CMsgSteamLearn_InferenceMetadata_Response_SequenceTable sequence_tables = 9;
 	optional float optimal_f1_score = 10;
 }
 
@@ -414,16 +413,23 @@ message CMsgSteamLearn_InferenceMetadata_Response_CompactTable {
 	repeated .CMsgSteamLearn_InferenceMetadata_Response_CompactTable_MapValuesEntry map_values = 2;
 	repeated .CMsgSteamLearn_InferenceMetadata_Response_CompactTable_MapMappingsEntry map_mappings = 3;
 	optional uint64 total_count = 4;
+	repeated .CMsgSteamLearn_InferenceMetadata_Response_CompactTable_MapStringValuesEntry map_string_values = 5;
 }
 
 message CMsgSteamLearn_InferenceMetadata_Response_CompactTable_Entry {
 	optional uint32 value = 1;
 	optional uint32 mapping = 2;
 	optional uint64 count = 3;
+	optional string value_string = 4;
 }
 
 message CMsgSteamLearn_InferenceMetadata_Response_CompactTable_MapMappingsEntry {
 	optional uint32 key = 1;
+	optional .CMsgSteamLearn_InferenceMetadata_Response_CompactTable_Entry value = 2;
+}
+
+message CMsgSteamLearn_InferenceMetadata_Response_CompactTable_MapStringValuesEntry {
+	optional string key = 1;
 	optional .CMsgSteamLearn_InferenceMetadata_Response_CompactTable_Entry value = 2;
 }
 
@@ -455,29 +461,6 @@ message CMsgSteamLearn_InferenceMetadata_Response_Range {
 message CMsgSteamLearn_InferenceMetadata_Response_RowRange {
 	optional uint64 min_row = 1;
 	optional uint64 max_row = 2;
-}
-
-message CMsgSteamLearn_InferenceMetadata_Response_SequenceTable {
-	optional string name = 1;
-	repeated .CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_MapValuesEntry map_values = 2;
-	repeated .CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_MapMappingsEntry map_mappings = 3;
-	optional uint64 total_count = 4;
-}
-
-message CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_Entry {
-	repeated uint32 values = 1;
-	optional uint32 crc = 2;
-	optional uint32 count = 3;
-}
-
-message CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_MapMappingsEntry {
-	optional string key = 1;
-	optional .CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_Entry value = 2;
-}
-
-message CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_MapValuesEntry {
-	optional uint32 key = 1;
-	optional .CMsgSteamLearn_InferenceMetadata_Response_SequenceTable_Entry value = 2;
 }
 
 message CMsgSteamLearn_InferenceMetadata_Response_SnapshotHistogram {
@@ -827,15 +810,13 @@ message CMsgSteamLearnDataSourceElementUsage {
 	optional float std_dev = 9;
 	optional string compact_table = 10;
 	optional uint32 compact_table_count = 11;
-	optional string sequence_table = 12;
-	optional uint32 sequence_table_count = 13;
-	optional bool sort_sequence = 14;
-	optional uint32 sequence_min_length = 15;
 	optional bool table_full_sample = 16;
-	optional float sequence_prefix_frequency = 17;
 	optional uint32 other_project_id = 18;
 	optional uint32 other_fetch_id = 19;
 	optional uint32 dropout_pct = 20;
+	optional uint32 quantize_size = 21;
+	optional uint32 quantize_min = 22;
+	optional uint32 quantize_max = 23;
 }
 
 message CMsgSteamLearnFetchInfo {
@@ -863,28 +844,6 @@ message CMsgSteamLearnModelNodeCombine {
 
 message CMsgSteamLearnModelNodeConcatenate {
 	optional uint32 axis = 1;
-}
-
-message CMsgSteamLearnModelNodeConditionalExtract {
-	optional int32 extract_filter_type = 10 [(.description) = "enum"];
-	optional int32 extract_weight_type = 11 [(.description) = "enum"];
-	optional .CMsgSteamLearnModelNodeConditionalExtract_FilterInfo filter_info = 12;
-	optional .CMsgSteamLearnModelNodeConditionalExtract_WeightInfo weight_info = 13;
-	optional string compact_table = 14;
-	optional string extracted_compact_table = 15;
-}
-
-message CMsgSteamLearnModelNodeConditionalExtract_FilterInfo {
-	optional uint32 appid_release_recency_months = 1;
-	optional uint32 appid_publisher_id = 2;
-	optional uint32 appid_featured_tag_id = 3;
-	optional uint32 appid_theme_tag_id = 4;
-}
-
-message CMsgSteamLearnModelNodeConditionalExtract_WeightInfo {
-	optional float appid_release_recency_bias = 1;
-	optional uint32 input_number = 2;
-	optional float input_strength = 3;
 }
 
 message CMsgSteamLearnModelNodeConditionalSwap {
@@ -990,11 +949,6 @@ message CMsgSteamLearnModelNodeLogic {
 message CMsgSteamLearnModelNodeMaskedHead {
 }
 
-message CMsgSteamLearnModelNodeMaxPooling1D {
-	optional uint32 pool_size = 1;
-	optional uint32 strides = 2;
-}
-
 message CMsgSteamLearnModelNodeNamedInference {
 	optional string name = 1;
 	optional bool only_inference = 2;
@@ -1015,14 +969,6 @@ message CMsgSteamLearnModelNodeReshape2D {
 
 message CMsgSteamLearnModelNodeRowExtract {
 	optional int32 row = 1;
-}
-
-message CMsgSteamLearnModelNodeSequenceSplit {
-	optional uint32 head_split_chance = 1;
-	optional uint32 mid_split_chance = 2;
-	optional uint32 tail_split_chance = 3;
-	optional string sequence_table_name = 4;
-	optional string compact_table_name = 5;
 }
 
 message CMsgSteamLearnModelNodeShuffle {
@@ -1085,19 +1031,6 @@ message CMsgSteamLearnModelNodeTrain {
 	optional float label_smoothing = 9;
 }
 
-message CMsgSteamLearnModelNodeTransformer {
-	optional uint32 num_heads = 1;
-	optional uint32 feedforward_size = 3;
-	optional uint32 dropout_pct = 4;
-	optional uint32 num_internal_blocks = 5;
-	optional int32 regularization = 6 [(.description) = "enum"];
-}
-
-message CMsgSteamLearnModelNodeWeightedAverage {
-	optional uint32 axis = 1;
-	optional bool use_weights = 2;
-}
-
 message CMsgSteamLearnProject {
 	optional uint32 project_id = 1;
 	optional string project_name = 2;
@@ -1147,7 +1080,6 @@ message CMsgSteamLearnProjectNode {
 	optional .CMsgSteamLearnModelNodeDropout dropout = 13;
 	optional .CMsgSteamLearnModelNodeEmbedding embedding = 14;
 	optional .CMsgSteamLearnModelNodeTrain train = 15;
-	optional .CMsgSteamLearnModelNodeConditionalExtract conditional_extract = 16;
 	optional .CMsgSteamLearnModelNodeConcatenate concatenate = 17;
 	optional .CMsgSteamLearnModelNodeShuffle shuffle = 18;
 	optional .CMsgSteamLearnModelNodeSyncedShuffle synced_shuffle = 19;
@@ -1163,14 +1095,10 @@ message CMsgSteamLearnProjectNode {
 	optional .CMsgSteamLearnModelNodeDot dot = 29;
 	optional .CMsgSteamLearnModelNodeExtract extract = 30;
 	optional .CMsgSteamLearnModelNodeConv1D conv_1d = 31;
-	optional .CMsgSteamLearnModelNodeMaxPooling1D max_pooling_1d = 32;
 	optional .CMsgSteamLearnModelNodeFlatten flatten = 33;
 	optional .CMsgSteamLearnModelNodeGlobalMaxPooling1D global_max_pooling = 34;
-	optional .CMsgSteamLearnModelNodeTransformer transformer = 35;
 	optional .CMsgSteamLearnModelNodeExternalEmbedding external_embedding = 36;
 	optional .CMsgSteamLearnModelNodeTimeDistributedDense time_distributed_dense = 37;
-	optional .CMsgSteamLearnModelNodeSequenceSplit sequence_split = 38;
-	optional .CMsgSteamLearnModelNodeWeightedAverage weighted_average = 39;
 	optional .CMsgSteamLearnModelNodeGlobalAvgPooling1D global_avg_pooling_1d = 40;
 	optional .CMsgSteamLearnModelNodeTokenMask token_mask = 41;
 	optional .CMsgSteamLearnModelNodeMaskedHead masked_head = 42;

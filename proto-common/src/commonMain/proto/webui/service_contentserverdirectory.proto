@@ -17,6 +17,16 @@ message CContentServerDirectory_GetCDNAuthToken_Response {
 	optional uint32 expiration_time = 2;
 }
 
+message CContentServerDirectory_GetCDNForVideo_Request {
+	optional int32 property_type = 1;
+	optional string client_ip = 2;
+	optional string client_region = 3;
+}
+
+message CContentServerDirectory_GetCDNForVideo_Response {
+	optional string cdn_hostname = 1;
+}
+
 message CContentServerDirectory_GetClientUpdateHosts_Request {
 	optional string cached_signature = 1;
 }
@@ -77,6 +87,17 @@ message CContentServerDirectory_GetServersForSteamPipe_Response {
 	optional bool no_change = 2;
 }
 
+message CContentServerDirectory_PickSingleContentServer_Request {
+	optional int32 property_type = 1;
+	optional uint32 cell_id = 2;
+	optional string client_ip = 3;
+}
+
+message CContentServerDirectory_PickSingleContentServer_Response {
+	optional string hostname = 1;
+	optional string caching_proxy_host_and_prefix = 2;
+}
+
 message CContentServerDirectory_RequestPeerContentServer_Request {
 	optional uint64 remote_client_id = 1;
 	optional uint64 steamid = 2;
@@ -107,11 +128,14 @@ message CContentServerDirectory_ServerInfo {
 	repeated uint32 allowed_app_ids = 13;
 	optional uint32 priority_class = 15;
 	repeated string bypass_proxies_of_type = 16;
+	optional string group = 17;
 }
 
 service ContentServerDirectory {
 	// bConstMethod=true, ePrivilege=2
 	rpc GetCDNAuthToken (.CContentServerDirectory_GetCDNAuthToken_Request) returns (.CContentServerDirectory_GetCDNAuthToken_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc GetCDNForVideo (.CContentServerDirectory_GetCDNForVideo_Request) returns (.CContentServerDirectory_GetCDNForVideo_Response);
 	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
 	rpc GetClientUpdateHosts (.CContentServerDirectory_GetClientUpdateHosts_Request) returns (.CContentServerDirectory_GetClientUpdateHosts_Response);
 	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=1
@@ -122,6 +146,8 @@ service ContentServerDirectory {
 	rpc GetPeerContentInfo (.CContentServerDirectory_GetPeerContentInfo_Request) returns (.CContentServerDirectory_GetPeerContentInfo_Response);
 	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
 	rpc GetServersForSteamPipe (.CContentServerDirectory_GetServersForSteamPipe_Request) returns (.CContentServerDirectory_GetServersForSteamPipe_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=1
+	rpc PickSingleContentServer (.CContentServerDirectory_PickSingleContentServer_Request) returns (.CContentServerDirectory_PickSingleContentServer_Response);
 	// ePrivilege=1
 	rpc RequestPeerContentServer (.CContentServerDirectory_RequestPeerContentServer_Request) returns (.CContentServerDirectory_RequestPeerContentServer_Response);
 }

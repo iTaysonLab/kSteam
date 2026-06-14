@@ -1,0 +1,22 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.storepreferences";
+
+message CStorePreferences_GetIgnoreList_Request {
+}
+
+message CStorePreferences_GetIgnoreList_Response {
+	repeated .CStorePreferences_GetIgnoreList_Response_IgnoreListEntry ignore_list = 1;
+}
+
+message CStorePreferences_GetIgnoreList_Response_IgnoreListEntry {
+	optional uint32 appid = 1;
+	optional uint32 packageid = 2;
+	optional int32 reason = 3 [(.description) = "enum"];
+}
+
+service StorePreferences {
+	// bConstMethod=true, ePrivilege=1
+	rpc GetIgnoreList (.CStorePreferences_GetIgnoreList_Request) returns (.CStorePreferences_GetIgnoreList_Response);
+}
+

@@ -1,4 +1,36 @@
+import "webui/common_base.proto";
+
 option java_package = "steam.webui.audio";
+
+message CAudio_GetHdmiCecActive_Request {
+	optional int32 sink_id = 1;
+}
+
+message CAudio_GetHdmiCecActive_Response {
+	optional bool active = 1;
+}
+
+message CAudio_GetHdmiCecEnabled_Request {
+	optional int32 sink_id = 1;
+}
+
+message CAudio_GetHdmiCecEnabled_Response {
+	optional bool enabled = 1;
+}
+
+message CAudio_GetMonoDownmixEnabled_Request {
+}
+
+message CAudio_GetMonoDownmixEnabled_Response {
+	optional bool enabled = 1;
+}
+
+message CAudio_GetUseBluetoothForMic_Request {
+}
+
+message CAudio_GetUseBluetoothForMic_Response {
+	optional bool enabled = 1;
+}
 
 message CAudio_PlaySpeakerTestOnChannel_Request {
 	optional int32 channel_num = 1;
@@ -8,8 +40,104 @@ message CAudio_PlaySpeakerTestOnChannel_Response {
 	optional bool success = 1;
 }
 
+message CAudio_SendHdmiCecVolume_Request {
+	optional int32 sink_id = 1;
+	optional bool up = 2;
+}
+
+message CAudio_SendHdmiCecVolume_Response {
+}
+
+message CAudio_SetHdmiCecEnabled_Request {
+	optional int32 sink_id = 1;
+	optional bool enabled = 2;
+}
+
+message CAudio_SetHdmiCecEnabled_Response {
+}
+
+message CAudio_SetMonoDownmixEnabled_Request {
+	optional bool enabled = 1;
+}
+
+message CAudio_SetMonoDownmixEnabled_Response {
+}
+
+message CAudio_SetSpeakerConfiguration_Request {
+	optional int32 sink_id = 1;
+	optional int32 config = 2 [(.description) = "enum"];
+}
+
+message CAudio_SetSpeakerConfiguration_Response {
+	optional int32 config = 1 [(.description) = "enum"];
+	optional int32 channels = 2;
+	optional string sdescription = 3;
+}
+
+message CAudio_SetUseBluetoothForMic_Request {
+	optional bool enabled = 1;
+}
+
+message CAudio_SetUseBluetoothForMic_Response {
+}
+
+message CAudio_SupportsHdmiCec_Request {
+	optional int32 sink_id = 1;
+}
+
+message CAudio_SupportsHdmiCec_Response {
+	optional bool enabled = 1;
+}
+
+message CAudio_SupportsMonoDownmix_Request {
+}
+
+message CAudio_SupportsMonoDownmix_Response {
+	optional bool enabled = 1;
+}
+
+message CAudio_SupportsUseBluetoothForMic_Request {
+}
+
+message CAudio_SupportsUseBluetoothForMic_Response {
+	optional bool enabled = 1;
+}
+
+message CAudio_ToggleHdmiCecMute_Request {
+	optional int32 sink_id = 1;
+}
+
+message CAudio_ToggleHdmiCecMute_Response {
+}
+
 service Audio {
 	// ePrivilege=1, eClientExecutionSite=1
+	rpc GetHdmiCecActive (.CAudio_GetHdmiCecActive_Request) returns (.CAudio_GetHdmiCecActive_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc GetHdmiCecEnabled (.CAudio_GetHdmiCecEnabled_Request) returns (.CAudio_GetHdmiCecEnabled_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc GetMonoDownmixEnabled (.CAudio_GetMonoDownmixEnabled_Request) returns (.CAudio_GetMonoDownmixEnabled_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc GetUseBluetoothForMic (.CAudio_GetUseBluetoothForMic_Request) returns (.CAudio_GetUseBluetoothForMic_Response);
+	// ePrivilege=1, eClientExecutionSite=1
 	rpc PlaySpeakerTestOnChannel (.CAudio_PlaySpeakerTestOnChannel_Request) returns (.CAudio_PlaySpeakerTestOnChannel_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SendHdmiCecVolume (.CAudio_SendHdmiCecVolume_Request) returns (.CAudio_SendHdmiCecVolume_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SetHdmiCecEnabled (.CAudio_SetHdmiCecEnabled_Request) returns (.CAudio_SetHdmiCecEnabled_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SetMonoDownmixEnabled (.CAudio_SetMonoDownmixEnabled_Request) returns (.CAudio_SetMonoDownmixEnabled_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SetSpeakerConfiguration (.CAudio_SetSpeakerConfiguration_Request) returns (.CAudio_SetSpeakerConfiguration_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SetUseBluetoothForMic (.CAudio_SetUseBluetoothForMic_Request) returns (.CAudio_SetUseBluetoothForMic_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SupportsHdmiCec (.CAudio_SupportsHdmiCec_Request) returns (.CAudio_SupportsHdmiCec_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SupportsMonoDownmix (.CAudio_SupportsMonoDownmix_Request) returns (.CAudio_SupportsMonoDownmix_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SupportsUseBluetoothForMic (.CAudio_SupportsUseBluetoothForMic_Request) returns (.CAudio_SupportsUseBluetoothForMic_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc ToggleHdmiCecMute (.CAudio_ToggleHdmiCecMute_Request) returns (.CAudio_ToggleHdmiCecMute_Response);
 }
 

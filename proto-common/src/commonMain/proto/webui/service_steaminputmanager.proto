@@ -58,6 +58,12 @@ message CSteamInputService_ControllerAxesStateChange_Notification {
 	optional float trigger_right = 10;
 }
 
+message CSteamInputService_ControllerBatteryState_Notification {
+	optional uint32 controller_index = 1;
+	optional uint32 battery_level = 2;
+	optional bool charging = 3;
+}
+
 message CSteamInputService_ControllerButtonStateChanged_Notification {
 	optional uint32 controller_index = 1;
 	optional bool dpad_up = 2;
@@ -254,14 +260,6 @@ message CSteamInputService_PairDongleTritonConnected_Request {
 message CSteamInputService_PairDongleTritonConnected_Response {
 }
 
-message CSteamInputService_PairDongleTritonDocked_Request {
-	optional uint32 docked_puck_index = 1;
-	optional uint32 target_dongle_index = 2;
-}
-
-message CSteamInputService_PairDongleTritonDocked_Response {
-}
-
 message CSteamInputService_RawControllerDetailItem {
 	optional uint32 controller_index = 1;
 	optional bool initialized = 2;
@@ -310,6 +308,7 @@ message CSteamInputService_RawControllerDetailItem {
 	optional int32 aux_capsense_threshold = 45;
 	optional int32 aux_capsense_hysterisis = 46;
 	optional int32 rumble_setting = 47;
+	optional bool use_gyro_sw_biases = 48;
 }
 
 message CSteamInputService_ShouldTritonPairInOobe_Request {
@@ -321,7 +320,7 @@ message CSteamInputService_ShouldTritonPairInOobe_Response {
 	optional uint32 dongle_index = 3;
 }
 
-message CSteamInputService_TritonDonglesChanged_Notification {
+message CSteamInputService_SteamDonglesChanged_Notification {
 }
 
 message CSteamInputService_TritonQos_Notification {
@@ -386,6 +385,8 @@ service SteamInputManager {
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc NotifyButtonStateChanged (.CSteamInputService_ControllerButtonStateChanged_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2
+	rpc NotifyControllerBatteryState (.CSteamInputService_ControllerBatteryState_Notification) returns (.NoResponse);
+	// ePrivilege=1, eClientExecutionSite=2
 	rpc NotifyControllerDisconnected (.CSteamInputService_ControllerDisconnected_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc NotifyControllerListChanged (.CSteamInputService_ControllerListChanged_Notification) returns (.NoResponse);
@@ -404,7 +405,7 @@ service SteamInputManager {
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc NotifyGyroSpeedStateChanged (.CSteamInputService_GyroSpeedChanged_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2
-	rpc NotifyTritonDonglesChanged (.CSteamInputService_TritonDonglesChanged_Notification) returns (.NoResponse);
+	rpc NotifySteamDonglesChanged (.CSteamInputService_SteamDonglesChanged_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc NotifyTritonQos (.CSteamInputService_TritonQos_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2
@@ -415,8 +416,6 @@ service SteamInputManager {
 	rpc NotifyUnpairedTritonPluggedIn (.CSteamInputService_UnpairedTritonPluggedIn_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc PairDongleTritonConnected (.CSteamInputService_PairDongleTritonConnected_Request) returns (.CSteamInputService_PairDongleTritonConnected_Response);
-	// ePrivilege=1, eClientExecutionSite=2
-	rpc PairDongleTritonDocked (.CSteamInputService_PairDongleTritonDocked_Request) returns (.CSteamInputService_PairDongleTritonDocked_Response);
 	// ePrivilege=1, eClientExecutionSite=2
 	rpc ShouldTritonPairInOobe (.CSteamInputService_ShouldTritonPairInOobe_Request) returns (.CSteamInputService_ShouldTritonPairInOobe_Response);
 	// ePrivilege=1, eClientExecutionSite=2

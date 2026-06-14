@@ -9,6 +9,19 @@ message CHardwareUpdate_CheckForUpdates_Response {
 	repeated .CMsgAvailableHardwareUpdate updates = 1;
 }
 
+message CHardwareUpdate_EnumerateDevices_Request {
+}
+
+message CHardwareUpdate_EnumerateDevices_Response {
+	repeated .CHardwareUpdate_EnumerateDevices_Response_Device devices = 1;
+}
+
+message CHardwareUpdate_EnumerateDevices_Response_Device {
+	optional int32 etype = 1 [(.description) = "enum"];
+	optional string serial_number = 2;
+	optional uint64 current_ts = 3;
+}
+
 message CHardwareUpdate_GetState_Request {
 }
 
@@ -29,6 +42,7 @@ message CHardwareUpdate_StateChanged_Notification {
 
 message CHardwareUpdate_Update_Request {
 	optional string serial_number = 1;
+	optional bool update_all = 2;
 }
 
 message CHardwareUpdate_Update_Response {
@@ -42,17 +56,19 @@ message CHardwareUpdate_UpdateStateChanged_Notification {
 }
 
 message CMsgAvailableHardwareUpdate {
-	optional uint32 etype = 1;
-	optional uint32 hardware_id = 2;
+	optional int32 etype = 1 [(.description) = "enum"];
 	optional string serial_number = 3;
-	optional string current_ts = 4;
-	optional string update_ts = 5;
-	optional bool mandatory_update = 6;
+	optional uint64 current_ts = 4;
+	optional uint64 update_ts = 5;
+	optional int32 priority = 6 [(.description) = "enum"];
+	optional bool is_downgrade = 7;
 }
 
 service HardwareUpdate {
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc CheckForUpdates (.CHardwareUpdate_CheckForUpdates_Request) returns (.CHardwareUpdate_CheckForUpdates_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc EnumerateDevices (.CHardwareUpdate_EnumerateDevices_Request) returns (.CHardwareUpdate_EnumerateDevices_Response);
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc GetState (.CHardwareUpdate_GetState_Request) returns (.CHardwareUpdate_GetState_Response);
 	// ePrivilege=1, eClientExecutionSite=1

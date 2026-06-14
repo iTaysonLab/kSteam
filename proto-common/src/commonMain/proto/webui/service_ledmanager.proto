@@ -42,12 +42,27 @@ message CLEDManager_SetEnabled_Request {
 message CLEDManager_SetEnabled_Response {
 }
 
+message CLEDManager_SetManagerMode_Request {
+	optional int32 mode = 1 [(.description) = "enum"];
+}
+
+message CLEDManager_SetManagerMode_Response {
+}
+
 message CLEDManager_SetSpeed_Request {
 	optional int32 device_id = 1;
 	optional float speed = 2;
 }
 
 message CLEDManager_SetSpeed_Response {
+}
+
+message CLEDManager_SetStartupBrightness_Request {
+	optional int32 device_id = 1;
+	optional float brightness = 2;
+}
+
+message CLEDManager_SetStartupBrightness_Response {
 }
 
 message CLEDManager_StateChanged_Notification {
@@ -71,6 +86,8 @@ message CMsgLEDManagerDevice {
 	optional float speed = 12;
 	optional bool supports_brightness = 13;
 	optional float brightness = 14;
+	optional bool supports_startup_brightness = 15;
+	optional float startup_brightness = 16;
 }
 
 message CMsgLEDManagerState {
@@ -92,6 +109,10 @@ service LEDManager {
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc SetEnabled (.CLEDManager_SetEnabled_Request) returns (.CLEDManager_SetEnabled_Response);
 	// ePrivilege=1, eClientExecutionSite=1
+	rpc SetManagerMode (.CLEDManager_SetManagerMode_Request) returns (.CLEDManager_SetManagerMode_Response);
+	// ePrivilege=1, eClientExecutionSite=1
 	rpc SetSpeed (.CLEDManager_SetSpeed_Request) returns (.CLEDManager_SetSpeed_Response);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc SetStartupBrightness (.CLEDManager_SetStartupBrightness_Request) returns (.CLEDManager_SetStartupBrightness_Response);
 }
 

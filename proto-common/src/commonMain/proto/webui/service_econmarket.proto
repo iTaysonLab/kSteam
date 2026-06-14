@@ -1,0 +1,21 @@
+option java_package = "steam.webui.econmarket";
+
+message CEconMarket_IsMarketplaceAllowed_Request {
+	optional string webcookie = 1;
+}
+
+message CEconMarket_IsMarketplaceAllowed_Response {
+	optional bool allowed = 1;
+	optional uint32 reason = 2;
+	optional uint32 allowed_at_time = 3;
+	optional uint32 steamguard_required_days = 4;
+	optional bool forms_requested = 7;
+	optional bool forms_require_verification = 8;
+	optional uint32 new_device_cooldown_days = 9;
+}
+
+service EconMarket {
+	// ePrivilege=1
+	rpc IsMarketplaceAllowed (.CEconMarket_IsMarketplaceAllowed_Request) returns (.CEconMarket_IsMarketplaceAllowed_Response);
+}
+

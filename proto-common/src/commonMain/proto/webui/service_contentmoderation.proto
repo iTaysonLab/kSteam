@@ -27,7 +27,6 @@ message CContentModeration_ClaimBatchForModeration_Request {
 }
 
 message CContentModeration_ClaimBatchForModeration_Response {
-	optional int32 selected_subject_type = 1 [(.description) = "enum"];
 	repeated .ContentReportSubject subject = 2;
 }
 
@@ -73,6 +72,7 @@ message CContentModeration_DisputeModerationForSubject_Request {
 }
 
 message CContentModeration_DisputeModerationForSubject_Response {
+	repeated .ContentReportSubjectKey subject_keys = 1;
 }
 
 message CContentModeration_EscalateSubject_Request {
@@ -81,6 +81,7 @@ message CContentModeration_EscalateSubject_Request {
 	optional uint64 subject_id = 3;
 	optional int32 required_level = 4 [(.description) = "enum"];
 	optional int32 reason = 5 [(.description) = "enum"];
+	optional string note = 6;
 }
 
 message CContentModeration_EscalateSubject_Response {
@@ -131,6 +132,22 @@ message CContentModeration_GetContentReportSubjectGroup_Response {
 	repeated .ContentReportSubject subjects = 1;
 }
 
+message CContentModeration_GetDailyModerationStatistics_Request {
+	optional uint32 rtime_start_date = 1;
+	optional uint32 rtime_end_date = 2;
+	optional int32 subject_type = 3 [(.description) = "enum"];
+}
+
+message CContentModeration_GetDailyModerationStatistics_Response {
+	repeated .CContentModeration_GetDailyModerationStatistics_Response_DayStatistics stats = 2;
+}
+
+message CContentModeration_GetDailyModerationStatistics_Response_DayStatistics {
+	optional uint32 rtime_date = 1;
+	optional uint32 times_unresolved = 2;
+	optional uint32 times_resolved = 3;
+}
+
 message CContentModeration_GetModeratorActivity_Request {
 	optional fixed64 steamid = 1;
 	optional uint32 rt_start = 2;
@@ -158,6 +175,21 @@ message CContentModeration_GetModeratorPreferences_Response {
 	repeated int32 enabled_subject_types = 2 [(.description) = "enum"];
 }
 
+message CContentModeration_GetOldestUnresolvedSubjects_Request {
+	optional int32 subject_type = 1 [(.description) = "enum"];
+	optional uint32 count = 2;
+}
+
+message CContentModeration_GetOldestUnresolvedSubjects_Response {
+	repeated .CContentModeration_GetOldestUnresolvedSubjects_Response_Subject subjects = 1;
+}
+
+message CContentModeration_GetOldestUnresolvedSubjects_Response_Subject {
+	optional int32 subject_type = 1 [(.description) = "enum"];
+	optional uint64 subject_group_id = 2;
+	optional uint64 subject_id = 3;
+}
+
 message CContentModeration_GetOneReportSubmittedByUser_Request {
 	optional uint64 steamid = 1;
 	optional int32 subject_type = 2 [(.description) = "enum"];
@@ -175,6 +207,25 @@ message CContentModeration_GetReportedSubjectsByOwner_Request {
 
 message CContentModeration_GetReportedSubjectsByOwner_Response {
 	repeated .ContentReportSubject subject = 1;
+}
+
+message CContentModeration_GetReporterCooldown_Request {
+	optional fixed64 steamid = 1;
+}
+
+message CContentModeration_GetReporterCooldown_Response {
+	optional uint32 rtime_cooldown_ends = 1;
+}
+
+message CContentModeration_GetReporterStats_Request {
+	optional uint64 steamid = 1;
+}
+
+message CContentModeration_GetReporterStats_Response {
+	optional uint32 total_reports = 1;
+	optional uint32 total_acquitted_reports = 2;
+	optional uint32 reports_in_last_week = 3;
+	optional uint32 acquitted_reports_in_last_week = 4;
 }
 
 message CContentModeration_GetReportsSubmittedByUser_Request {
@@ -282,6 +333,15 @@ message CContentModeration_SetModeratorPreferences_Request_SubjectTypeList {
 message CContentModeration_SetModeratorPreferences_Response {
 }
 
+message CContentModeration_UpdateReporterCooldown_Request {
+	optional fixed64 steamid = 1;
+	optional uint32 rtime_cooldown_ends = 2;
+	optional bool acquit_unresolved_reports = 3;
+}
+
+message CContentModeration_UpdateReporterCooldown_Response {
+}
+
 message CContentModeration_UpdateSubject_Request {
 	optional int32 subject_type = 1 [(.description) = "enum"];
 	optional uint64 subject_group_id = 2;
@@ -290,9 +350,21 @@ message CContentModeration_UpdateSubject_Request {
 	optional int32 terrorism_status = 5 [(.description) = "enum"];
 	optional int32 credible_threat_of_violence_status = 6 [(.description) = "enum"];
 	optional .AdditionalSubjectData additional_subject_data = 7;
+	optional string owner_dispute_details = 8;
+	optional uint64 new_subject_id = 9;
 }
 
 message CContentModeration_UpdateSubject_Response {
+}
+
+message CContentModeration_UpdateSubjectGroup_Request {
+	optional int32 subject_type = 1 [(.description) = "enum"];
+	optional uint64 subject_group_id = 2;
+	optional .AdditionalSubjectData additional_subject_data = 3;
+	optional uint64 new_subject_group_id = 4;
+}
+
+message CContentModeration_UpdateSubjectGroup_Response {
 }
 
 message CContentModeration_WriteToAuditLog_Request {
@@ -370,6 +442,12 @@ message ContentReportSubject {
 	repeated .ContentReportSubjectSanction sanctions_applied_after_dispute = 32;
 }
 
+message ContentReportSubjectKey {
+	optional int32 subject_type = 1 [(.description) = "enum"];
+	optional uint64 subject_group_id = 2;
+	optional uint64 subject_id = 3;
+}
+
 message ContentReportSubjectSanction {
 	optional int32 sanction = 1 [(.description) = "enum"];
 	optional int32 days = 2;
@@ -398,14 +476,22 @@ service ContentModeration {
 	rpc GetContentReportSubject (.CContentModeration_GetContentReportSubject_Request) returns (.CContentModeration_GetContentReportSubject_Response);
 	// ePrivilege=5
 	rpc GetContentReportSubjectGroup (.CContentModeration_GetContentReportSubjectGroup_Request) returns (.CContentModeration_GetContentReportSubjectGroup_Response);
+	// bConstMethod=true, ePrivilege=5
+	rpc GetDailyModerationStatistics (.CContentModeration_GetDailyModerationStatistics_Request) returns (.CContentModeration_GetDailyModerationStatistics_Response);
 	// ePrivilege=5
 	rpc GetModeratorActivity (.CContentModeration_GetModeratorActivity_Request) returns (.CContentModeration_GetModeratorActivity_Response);
 	// bConstMethod=true, ePrivilege=5
 	rpc GetModeratorPreferences (.CContentModeration_GetModeratorPreferences_Request) returns (.CContentModeration_GetModeratorPreferences_Response);
+	// bConstMethod=true, ePrivilege=5
+	rpc GetOldestUnresolvedSubjects (.CContentModeration_GetOldestUnresolvedSubjects_Request) returns (.CContentModeration_GetOldestUnresolvedSubjects_Response);
 	// bConstMethod=true, ePrivilege=1
 	rpc GetOneReportSubmittedByUser (.CContentModeration_GetOneReportSubmittedByUser_Request) returns (.CContentModeration_GetOneReportSubmittedByUser_Response);
 	// bConstMethod=true, ePrivilege=1
 	rpc GetReportedSubjectsByOwner (.CContentModeration_GetReportedSubjectsByOwner_Request) returns (.CContentModeration_GetReportedSubjectsByOwner_Response);
+	// bConstMethod=true, ePrivilege=1
+	rpc GetReporterCooldown (.CContentModeration_GetReporterCooldown_Request) returns (.CContentModeration_GetReporterCooldown_Response);
+	// bConstMethod=true, ePrivilege=5
+	rpc GetReporterStats (.CContentModeration_GetReporterStats_Request) returns (.CContentModeration_GetReporterStats_Response);
 	// bConstMethod=true, ePrivilege=1
 	rpc GetReportsSubmittedByUser (.CContentModeration_GetReportsSubmittedByUser_Request) returns (.CContentModeration_GetReportsSubmittedByUser_Response);
 	// ePrivilege=5
@@ -422,8 +508,12 @@ service ContentModeration {
 	rpc ResolveSubjectGroup (.CContentModeration_ResolveSubjectGroup_Request) returns (.CContentModeration_ResolveSubjectGroup_Response);
 	// ePrivilege=5
 	rpc SetModeratorPreferences (.CContentModeration_SetModeratorPreferences_Request) returns (.CContentModeration_SetModeratorPreferences_Response);
+	// ePrivilege=1
+	rpc UpdateReporterCooldown (.CContentModeration_UpdateReporterCooldown_Request) returns (.CContentModeration_UpdateReporterCooldown_Response);
 	// ePrivilege=5
 	rpc UpdateSubject (.CContentModeration_UpdateSubject_Request) returns (.CContentModeration_UpdateSubject_Response);
+	// ePrivilege=5
+	rpc UpdateSubjectGroup (.CContentModeration_UpdateSubjectGroup_Request) returns (.CContentModeration_UpdateSubjectGroup_Response);
 	// ePrivilege=5
 	rpc WriteToAuditLog (.CContentModeration_WriteToAuditLog_Request) returns (.CContentModeration_WriteToAuditLog_Response);
 }

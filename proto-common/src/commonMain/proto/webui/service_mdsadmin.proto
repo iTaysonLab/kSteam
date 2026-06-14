@@ -45,6 +45,23 @@ message CMDSAdmin_BeginOriginMigrationJob_Request {
 message CMDSAdmin_BeginOriginMigrationJob_Response {
 }
 
+message CMDSAdmin_ChunkStorageLocation {
+	optional uint32 location_id = 1;
+	optional string host = 2;
+	optional string path = 3;
+	optional .CMsgKeyValueSet headers_for_put = 4;
+	optional string virtual_host = 5;
+	optional bool use_https = 6;
+	optional string storage_provider = 7;
+}
+
+message CMDSAdmin_CSFailedToReadChunkFromStorage_Notification {
+	optional uint32 depot_id = 1;
+	optional bytes sha = 2;
+	optional uint32 origin_id = 3;
+	optional uint32 eresult = 4;
+}
+
 message CMDSAdmin_CSPurgeDepot_Notification {
 	optional uint32 depot_id = 1;
 }
@@ -53,6 +70,51 @@ message CMDSAdmin_DepotDownloadBytesInfo {
 	optional uint32 depotid = 1;
 	optional uint32 parentappid = 2;
 	optional string oslist = 3;
+}
+
+message CMDSAdmin_DepotIngestChunkReceived_Request {
+	optional uint32 appid = 1;
+	optional uint32 depot_id = 2;
+	optional fixed64 build_handle = 3;
+	optional bytes sha = 4;
+	optional uint32 compressed_size = 5;
+	optional bool need_encryption_key = 6;
+	optional string compressed_md5 = 7;
+}
+
+message CMDSAdmin_DepotIngestChunkReceived_Response {
+	optional uint32 original_size = 1;
+	optional bytes encryption_key = 2;
+	repeated .CMDSAdmin_ChunkStorageLocation storage_locations = 3;
+}
+
+message CMDSAdmin_DepotIngestChunkStored_Request {
+	optional uint32 appid = 1;
+	optional uint32 depot_id = 2;
+	optional fixed64 build_handle = 3;
+	optional bytes sha = 4;
+	optional uint32 compressed_crc = 5;
+	repeated .CMDSAdmin_ChunkStorageLocation storage_locations = 7;
+}
+
+message CMDSAdmin_DepotIngestChunkStored_Response {
+}
+
+message CMDSAdmin_GetDepotChunkLocation_Request {
+	optional uint32 depot_id = 1;
+	optional bytes sha = 2;
+	optional string storage_provider_preference = 3;
+}
+
+message CMDSAdmin_GetDepotChunkLocation_Response {
+	optional uint32 cub_chunk = 1;
+	optional uint32 crc_chunk = 2;
+	optional string url_host = 3;
+	optional string url_path = 4;
+	optional bool use_https = 5;
+	optional uint32 origin_id = 6;
+	optional string storage_provider = 7;
+	optional .CMsgKeyValueSet request_headers = 8;
 }
 
 message CMDSAdmin_GetDepotDownloadBytes_Request {
@@ -101,15 +163,34 @@ message CMDSAdmin_NewChunkAnnouncement_Notification {
 message CMDSAdmin_ReloadOriginStorageInfo_Notification {
 }
 
+message CMsgKeyValuePair {
+	optional string name = 1;
+	optional string value = 2;
+}
+
+message CMsgKeyValueSet {
+	repeated .CMsgKeyValuePair pairs = 1;
+}
+
 service MDSAdmin {
 	// ePrivilege=1
 	rpc AppBuildUpdated (.CMDSAdmin_AppBuildUpdated_Notification) returns (.NoResponse);
 	// ePrivilege=1
 	rpc BeginOriginMigrationJob (.CMDSAdmin_BeginOriginMigrationJob_Request) returns (.CMDSAdmin_BeginOriginMigrationJob_Response);
 	// ePrivilege=1
+	rpc ChunkReceived (.CMDSAdmin_DepotIngestChunkReceived_Request) returns (.CMDSAdmin_DepotIngestChunkReceived_Response);
+	// ePrivilege=1
+	rpc ChunkStorageFailure (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ChunkStored (.CMDSAdmin_DepotIngestChunkStored_Request) returns (.CMDSAdmin_DepotIngestChunkStored_Response);
+	// ePrivilege=1
+	rpc CSFailedToReadChunkFromStorage (.CMDSAdmin_CSFailedToReadChunkFromStorage_Notification) returns (.NoResponse);
+	// ePrivilege=1
 	rpc CSPurgeDepot (.CMDSAdmin_CSPurgeDepot_Notification) returns (.NoResponse);
 	// ePrivilege=1
 	rpc GetAppContentPurgeStatus (.CMDSAdmin_AppContentPurgeStatus_Request) returns (.CMDSAdmin_AppContentPurgeStatus_Response);
+	// ePrivilege=1
+	rpc GetDepotChunkLocation (.CMDSAdmin_GetDepotChunkLocation_Request) returns (.CMDSAdmin_GetDepotChunkLocation_Response);
 	// ePrivilege=1
 	rpc GetDepotDownloadBytes (.CMDSAdmin_GetDepotDownloadBytes_Request) returns (.CMDSAdmin_GetDepotDownloadBytes_Response);
 	// ePrivilege=1

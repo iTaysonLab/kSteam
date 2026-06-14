@@ -158,6 +158,13 @@ message CGameRecording_GetRecordingSize_Response {
 	optional uint64 file_size = 1;
 }
 
+message CGameRecording_GetState_Request {
+}
+
+message CGameRecording_GetState_Response {
+	optional bool is_h265_enabled = 1;
+}
+
 message CGameRecording_GetTags_Request {
 	optional uint64 game_id = 1;
 }
@@ -171,7 +178,7 @@ message CGameRecording_GetThumbnails_Request {
 	optional string clip_id = 3;
 	repeated int64 start_offset_us = 4;
 	optional uint32 major_axis = 5 [default = 512];
-	optional int32 time_precision = 6 [default = 0, (.description) = "enum"];
+	optional int32 time_precision = 6 [default = Identifier, (.description) = "enum"];
 	optional string timeline_id = 7;
 	optional int32 format = 8 [default = 1, (.description) = "enum"];
 }
@@ -331,6 +338,9 @@ message CGameRecording_StartRecording_Request {
 }
 
 message CGameRecording_StartRecording_Response {
+}
+
+message CGameRecording_StateChanged_Notification {
 }
 
 message CGameRecording_StopRecording_Request {
@@ -543,6 +553,8 @@ service GameRecording {
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc GetPlatformCapabilities (.CGameRecording_GetPlatformCapabilities_Request) returns (.CGameRecording_GetPlatformCapabilities_Response);
 	// ePrivilege=1, eClientExecutionSite=1
+	rpc GetState (.CGameRecording_GetState_Request) returns (.CGameRecording_GetState_Response);
+	// ePrivilege=1, eClientExecutionSite=1
 	rpc GetTags (.CGameRecording_GetTags_Request) returns (.CGameRecording_GetTags_Response);
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc GetThumbnails (.CGameRecording_GetThumbnails_Request) returns (.CGameRecording_GetThumbnails_Response);
@@ -572,6 +584,8 @@ service GameRecording {
 	rpc NotifyPostGameHighlightsChanged (.CGameRecording_PostGameHighlightsChanged_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc NotifyRecordingSessionChanged (.CGameRecording_RecordingSessionChanged_Notification) returns (.NoResponse);
+	// ePrivilege=1, eClientExecutionSite=1
+	rpc NotifyStateChanged (.CGameRecording_StateChanged_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=1
 	rpc NotifyTimelineChanged (.CGameRecording_TimelineChanged_Notification) returns (.NoResponse);
 	// ePrivilege=1, eClientExecutionSite=1

@@ -1,4 +1,59 @@
+import "webui/common.proto";
+import "webui/common_base.proto";
+
 option java_package = "steam.webui.contentserverconfig";
+
+message CContentServerConfig_AllocateOpenCache_Request {
+	optional string provider = 1;
+	optional string host_name = 2;
+	optional string name = 3;
+	optional bool serve_steampipe = 4;
+	optional bool serve_broadcast = 5;
+	optional bool serve_broadcastchat = 6;
+}
+
+message CContentServerConfig_AllocateOpenCache_Response {
+	optional uint32 cache_id = 1;
+}
+
+message CContentServerConfig_AllocateSteamCache_Request {
+	optional string provider = 1;
+	optional string host_name = 2;
+	optional string name = 3;
+}
+
+message CContentServerConfig_AllocateSteamCache_Response {
+	optional uint32 cache_id = 1;
+}
+
+message CContentServerConfig_CDNConfigInfo {
+	optional string cdn_name = 1;
+	optional fixed32 timestamp = 2;
+	optional bytes config = 3;
+}
+
+message CContentServerConfig_CheckManifestRequestCode_Request {
+	optional uint32 depot_id = 1;
+	optional uint64 manifest_id = 2;
+	optional uint64 manifest_request_code = 3;
+}
+
+message CContentServerConfig_CheckManifestRequestCode_Response {
+	optional bool is_valid = 1;
+}
+
+message CContentServerConfig_GetCDNConfigurations_Request {
+	repeated .CContentServerConfig_GetCDNConfigurations_Request_CDNInfoRequest requests = 1;
+}
+
+message CContentServerConfig_GetCDNConfigurations_Request_CDNInfoRequest {
+	optional string cdn_name = 1;
+	optional fixed32 timestamp = 2;
+}
+
+message CContentServerConfig_GetCDNConfigurations_Response {
+	repeated .CContentServerConfig_CDNConfigInfo responses = 1;
+}
 
 message CContentServerConfig_GetManifestRequestCode_Request {
 	optional uint32 depot_id = 1;
@@ -9,8 +64,307 @@ message CContentServerConfig_GetManifestRequestCode_Response {
 	optional uint64 manifest_request_code = 1;
 }
 
+message CContentServerConfig_GetOpenCacheConfig_Request {
+	optional uint32 cache_id = 1;
+}
+
+message CContentServerConfig_GetOpenCacheConfig_Response {
+	optional .CContentServerConfig_OpenCacheConfig config = 1;
+}
+
+message CContentServerConfig_GetOpenCacheConfigHistory_Request {
+	optional uint32 cache_id = 1;
+	optional uint32 max_results = 2;
+}
+
+message CContentServerConfig_GetOpenCacheConfigHistory_Response {
+	repeated .CContentServerConfig_GetOpenCacheConfigHistory_Response_HistoryEntry history = 1;
+}
+
+message CContentServerConfig_GetOpenCacheConfigHistory_Response_HistoryEntry {
+	optional uint32 timestamp = 1;
+	optional uint32 steamid_actor = 2;
+	optional string change_notes = 3;
+}
+
+message CContentServerConfig_GetOpenCacheNames_Request {
+}
+
+message CContentServerConfig_GetOpenCacheNames_Response {
+	repeated .CContentServerConfig_GetOpenCacheNames_Response_ConfigNames config_names = 1;
+}
+
+message CContentServerConfig_GetOpenCacheNames_Response_ConfigNames {
+	optional uint32 cache_id = 1;
+	optional string provider = 2;
+	optional string host_name = 3;
+	optional bool is_enabled = 4;
+	optional string name = 5;
+	optional bool serve_steampipe = 6;
+	optional bool serve_broadcast = 7;
+	optional bool serve_chat = 8;
+}
+
+message CContentServerConfig_GetSteamCacheConfig_Request {
+	optional uint32 cache_id = 1;
+}
+
+message CContentServerConfig_GetSteamCacheConfig_Response {
+	optional .CContentServerConfig_SteamCacheConfig config = 1;
+}
+
+message CContentServerConfig_GetSteamCacheConfigHistory_Request {
+	optional uint32 cache_id = 1;
+	optional uint32 max_results = 2;
+}
+
+message CContentServerConfig_GetSteamCacheConfigHistory_Response {
+	repeated .CContentServerConfig_GetSteamCacheConfigHistory_Response_HistoryEntry history = 1;
+}
+
+message CContentServerConfig_GetSteamCacheConfigHistory_Response_HistoryEntry {
+	optional uint32 timestamp = 1;
+	optional uint32 steamid_actor = 2;
+	optional string change_notes = 3;
+}
+
+message CContentServerConfig_GetSteamCacheNames_Request {
+}
+
+message CContentServerConfig_GetSteamCacheNames_Response {
+	repeated .CContentServerConfig_GetSteamCacheNames_Response_ConfigNames config_names = 1;
+}
+
+message CContentServerConfig_GetSteamCacheNames_Response_ConfigNames {
+	optional uint32 cache_id = 1;
+	optional string provider = 2;
+	optional string host_name = 3;
+	optional bool is_enabled = 4;
+	optional string name = 5;
+	optional uint32 cell_id = 6;
+	optional uint32 max_mbps = 7;
+	optional bool serve_steampipe = 8;
+	optional bool serve_broadcast = 9;
+	optional bool serve_chat = 10;
+	optional string https_support = 11;
+}
+
+message CContentServerConfig_GetSteamCacheNodeParams_Request {
+	optional uint32 cache_id = 1;
+	optional string cache_key = 2;
+}
+
+message CContentServerConfig_GetSteamCacheNodeParams_Response {
+	optional string params_json = 1;
+}
+
+message CContentServerConfig_GetSteamCSConfig_Request {
+	optional uint32 cs_id = 1;
+}
+
+message CContentServerConfig_GetSteamCSConfig_Response {
+	optional .CContentServerConfig_SteamCSConfig config = 1;
+}
+
+message CContentServerConfig_GetSteamCSConfigHistory_Request {
+	optional uint32 cs_id = 1;
+	optional uint32 max_results = 2;
+}
+
+message CContentServerConfig_GetSteamCSConfigHistory_Response {
+	repeated .CContentServerConfig_GetSteamCSConfigHistory_Response_HistoryEntry history = 1;
+}
+
+message CContentServerConfig_GetSteamCSConfigHistory_Response_HistoryEntry {
+	optional uint32 timestamp = 1;
+	optional uint32 steamid_actor = 2;
+	optional string change_notes = 3;
+}
+
+message CContentServerConfig_GetSteamCSNames_Request {
+}
+
+message CContentServerConfig_GetSteamCSNames_Response {
+	repeated .CContentServerConfig_GetSteamCSNames_Response_ConfigNames config_names = 1;
+}
+
+message CContentServerConfig_GetSteamCSNames_Response_ConfigNames {
+	optional uint32 cs_id = 1;
+	optional string provider = 2;
+	optional string host_name = 3;
+	optional bool is_enabled = 4;
+	optional string name = 5;
+	optional uint32 cell_id = 6;
+	optional uint32 max_mbps = 7;
+	optional bool serve_steampipe = 8;
+	optional bool serve_broadcast = 9;
+	optional bool serve_chat = 10;
+}
+
+message CContentServerConfig_IsDepotAllowedSteamChina_Request {
+	optional uint32 depot_id = 1;
+}
+
+message CContentServerConfig_IsDepotAllowedSteamChina_Response {
+	optional bool is_allowed = 1;
+}
+
+message CContentServerConfig_RevSteamCacheAPIKey_Request {
+	optional uint32 cache_id = 1;
+	optional bool primary_key = 2;
+	optional string change_notes = 3;
+}
+
+message CContentServerConfig_RevSteamCacheAPIKey_Response {
+}
+
+message CContentServerConfig_SetSteamCacheClientFilters_Request {
+	optional uint32 cache_id = 1;
+	optional string cache_key = 2;
+	optional string change_notes = 3;
+	optional string allowed_ip_blocks = 4;
+}
+
+message CContentServerConfig_SetSteamCacheClientFilters_Response {
+}
+
+message CContentServerConfig_SetSteamCachePerformanceStats_Request {
+	optional uint32 cache_id = 1;
+	optional string cache_key = 2;
+	optional uint32 mbps_sent = 3;
+	optional uint32 mbps_recv = 4;
+	optional uint32 cpu_percent = 5;
+	optional uint32 cache_hit_percent = 6;
+	optional uint32 num_connected_ips = 7;
+	optional uint32 upstream_egress_utilization = 8;
+	optional uint32 upstream_peering_utilization = 9;
+	optional uint32 upstream_transit_utilization = 10;
+}
+
+message CContentServerConfig_SetSteamCachePerformanceStats_Response {
+	optional string config_json = 2;
+	optional uint32 load_calc_percent = 3;
+}
+
+message CContentServerConfig_UpdateCDNConfig_Request {
+	optional string cdn_name = 1;
+	optional string config_file = 2;
+	optional string change_notes = 3;
+}
+
+message CContentServerConfig_UpdateCDNConfig_Response {
+}
+
+message CContentServerConfig_UpdateCDNPerformanceStats_Request {
+	optional string cdn_name = 1;
+	optional uint32 mbps_sent = 2;
+	optional uint32 mbps_recv = 3;
+	optional uint32 cpu_percent = 4;
+	optional uint32 cache_hit_percent = 5;
+}
+
+message CContentServerConfig_UpdateCDNPerformanceStats_Response {
+	optional string message = 1;
+}
+
+message CContentServerConfig_UpdateCSIPFilterRanges_Request {
+	optional uint32 cs_id = 1;
+	optional string ip_ranges = 2;
+}
+
+message CContentServerConfig_UpdateCSIPFilterRanges_Response {
+}
+
+message CContentServerConfig_UpdateOpenCacheConfig_Request {
+	optional uint32 cache_id = 1;
+	optional string change_notes = 2;
+	optional .CContentServerConfig_OpenCacheConfig config = 3;
+}
+
+message CContentServerConfig_UpdateOpenCacheConfig_Response {
+}
+
+message CContentServerConfig_UpdateSteamCacheConfig_Request {
+	optional uint32 cache_id = 1;
+	optional string change_notes = 2;
+	optional .CContentServerConfig_SteamCacheConfig config = 3;
+	optional bool omit_history_entry = 4;
+}
+
+message CContentServerConfig_UpdateSteamCacheConfig_Response {
+}
+
+message CContentServerConfig_UpdateSteamCSConfig_Request {
+	optional uint32 cs_id = 1;
+	optional string change_notes = 2;
+	optional .CContentServerConfig_SteamCSConfig config = 3;
+}
+
+message CContentServerConfig_UpdateSteamCSConfig_Response {
+}
+
 service ContentServerConfig {
 	// ePrivilege=1
+	rpc AllocateOpenCacheNode (.CContentServerConfig_AllocateOpenCache_Request) returns (.CContentServerConfig_AllocateOpenCache_Response);
+	// ePrivilege=2, eWebAPIKeyRequirement=4
+	rpc AllocateSteamCacheNode (.CContentServerConfig_AllocateSteamCache_Request) returns (.CContentServerConfig_AllocateSteamCache_Response);
+	// ePrivilege=1
+	rpc AnonymousDepotsBroadcast (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc CheckManifestRequestCode (.CContentServerConfig_CheckManifestRequestCode_Request) returns (.CContentServerConfig_CheckManifestRequestCode_Response);
+	// ePrivilege=1
+	rpc CMLoadBroadcast (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc ContentServerStatsBroadcast (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc GetCDNConfigurations (.CContentServerConfig_GetCDNConfigurations_Request) returns (.CContentServerConfig_GetCDNConfigurations_Response);
+	// ePrivilege=1
 	rpc GetManifestRequestCode (.CContentServerConfig_GetManifestRequestCode_Request) returns (.CContentServerConfig_GetManifestRequestCode_Response);
+	// ePrivilege=1
+	rpc GetOpenCacheConfig (.CContentServerConfig_GetOpenCacheConfig_Request) returns (.CContentServerConfig_GetOpenCacheConfig_Response);
+	// ePrivilege=4
+	rpc GetOpenCacheConfigHistory (.CContentServerConfig_GetOpenCacheConfigHistory_Request) returns (.CContentServerConfig_GetOpenCacheConfigHistory_Response);
+	// ePrivilege=1
+	rpc GetOpenCacheNames (.CContentServerConfig_GetOpenCacheNames_Request) returns (.CContentServerConfig_GetOpenCacheNames_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=4
+	rpc GetSteamCacheConfig (.CContentServerConfig_GetSteamCacheConfig_Request) returns (.CContentServerConfig_GetSteamCacheConfig_Response);
+	// bConstMethod=true, ePrivilege=2, eWebAPIKeyRequirement=4
+	rpc GetSteamCacheConfigHistory (.CContentServerConfig_GetSteamCacheConfigHistory_Request) returns (.CContentServerConfig_GetSteamCacheConfigHistory_Response);
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=4
+	rpc GetSteamCacheNames (.CContentServerConfig_GetSteamCacheNames_Request) returns (.CContentServerConfig_GetSteamCacheNames_Response);
+	// bConstMethod=true, ePrivilege=0, eWebAPIKeyRequirement=2
+	rpc GetSteamCacheNodeParams (.CContentServerConfig_GetSteamCacheNodeParams_Request) returns (.CContentServerConfig_GetSteamCacheNodeParams_Response);
+	// ePrivilege=1
+	rpc GetSteamCSConfig (.CContentServerConfig_GetSteamCSConfig_Request) returns (.CContentServerConfig_GetSteamCSConfig_Response);
+	// ePrivilege=4
+	rpc GetSteamCSConfigHistory (.CContentServerConfig_GetSteamCSConfigHistory_Request) returns (.CContentServerConfig_GetSteamCSConfigHistory_Response);
+	// ePrivilege=1
+	rpc GetSteamCSNames (.CContentServerConfig_GetSteamCSNames_Request) returns (.CContentServerConfig_GetSteamCSNames_Response);
+	// ePrivilege=1
+	rpc IsDepotAllowedSteamChina (.CContentServerConfig_IsDepotAllowedSteamChina_Request) returns (.CContentServerConfig_IsDepotAllowedSteamChina_Response);
+	// ePrivilege=1
+	rpc OpenCacheConfigUpdateNotification (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=4
+	rpc RevSteamCacheAPIKey (.CContentServerConfig_RevSteamCacheAPIKey_Request) returns (.CContentServerConfig_RevSteamCacheAPIKey_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=2
+	rpc SetSteamCacheClientFilters (.CContentServerConfig_SetSteamCacheClientFilters_Request) returns (.CContentServerConfig_SetSteamCacheClientFilters_Response);
+	// ePrivilege=0, eWebAPIKeyRequirement=2
+	rpc SetSteamCachePerformanceStats (.CContentServerConfig_SetSteamCachePerformanceStats_Request) returns (.CContentServerConfig_SetSteamCachePerformanceStats_Response);
+	// ePrivilege=1
+	rpc SteamCacheConfigUpdateNotification (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc SteamCSConfigUpdateNotification (.NotImplemented) returns (.NoResponse);
+	// ePrivilege=1
+	rpc UpdateCDNConfig (.CContentServerConfig_UpdateCDNConfig_Request) returns (.CContentServerConfig_UpdateCDNConfig_Response);
+	// ePrivilege=1
+	rpc UpdateCDNStats (.CContentServerConfig_UpdateCDNPerformanceStats_Request) returns (.CContentServerConfig_UpdateCDNPerformanceStats_Response);
+	// ePrivilege=1
+	rpc UpdateCSIPFilterRanges (.CContentServerConfig_UpdateCSIPFilterRanges_Request) returns (.CContentServerConfig_UpdateCSIPFilterRanges_Response);
+	// ePrivilege=4
+	rpc UpdateOpenCacheConfig (.CContentServerConfig_UpdateOpenCacheConfig_Request) returns (.CContentServerConfig_UpdateOpenCacheConfig_Response);
+	// ePrivilege=2, eWebAPIKeyRequirement=4
+	rpc UpdateSteamCacheConfig (.CContentServerConfig_UpdateSteamCacheConfig_Request) returns (.CContentServerConfig_UpdateSteamCacheConfig_Response);
+	// ePrivilege=4
+	rpc UpdateSteamCSConfig (.CContentServerConfig_UpdateSteamCSConfig_Request) returns (.CContentServerConfig_UpdateSteamCSConfig_Response);
 }
 

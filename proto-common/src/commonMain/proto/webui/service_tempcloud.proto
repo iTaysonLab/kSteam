@@ -1,0 +1,35 @@
+import "webui/common_base.proto";
+
+option java_package = "steam.webui.tempcloud";
+
+message CTempCloud_DeleteFile_Request {
+	optional uint64 file_id = 1;
+}
+
+message CTempCloud_DeleteFile_Response {
+}
+
+message CTempCloud_RecordFileUploaded_Request {
+	optional int32 bucket = 1 [(.description) = "enum"];
+	optional uint64 ugcid = 3;
+	optional uint32 appid = 4;
+	optional string url = 5;
+	optional uint64 client_id = 6;
+	optional uint64 content_game_id = 7;
+	optional uint32 duration_seconds = 8;
+	optional string machine_name = 9;
+	optional uint64 file_size = 10;
+	optional int32 media_type = 11 [(.description) = "enum"];
+	optional string thumbnail_url = 12;
+}
+
+message CTempCloud_RecordFileUploaded_Response {
+}
+
+service TempCloud {
+	// ePrivilege=1
+	rpc DeleteFile (.CTempCloud_DeleteFile_Request) returns (.CTempCloud_DeleteFile_Response);
+	// ePrivilege=1
+	rpc RecordFileUploaded (.CTempCloud_RecordFileUploaded_Request) returns (.CTempCloud_RecordFileUploaded_Response);
+}
+
